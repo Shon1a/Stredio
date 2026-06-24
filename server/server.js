@@ -1563,17 +1563,30 @@ function browserPlayScore(text = '') {
   return s;
 }
 /* ------------------------------------------------------------------ *
- *  "Saturn" — Torrentio + Georgian Dubbed unified behind one addon.
+ *  "Saturn" — the Georgian Dubbed addon, surfaced to the user as one card.
  *
- *  These two stream sources are presented to the user as a single addon
- *  called Saturn. Their streams stay hidden until the current user verifies
- *  a TorBox API key (per-user, see auth.js getUserSaturn/setUserSaturn), and
- *  the user then chooses which of the three audio languages (ka/en/ru) should
- *  surface in the modal's stream list.
+ *  Torrentio has been retired: STREDIO no longer serves torrents, so there is
+ *  no TorBox key gate anymore. The Georgian Dubbed addon now serves every audio
+ *  language as a DIRECT link — ka/ru/uk dubs plus en (resolved via a self-hosted
+ *  NuvioStreams instance). The only remaining per-user knob is an OPTIONAL audio-
+ *  language preference (which of ka/en/ru/uk to surface); the stored config still
+ *  lives in auth.js getUserSaturn/setUserSaturn.
  * ------------------------------------------------------------------ */
+// Torrentio is retired — STREDIO no longer serves torrents. English now arrives as
+// DIRECT links from the Georgian Dubbed addon (resolved via a self-hosted NuvioStreams
+// instance) alongside its ka/ru/uk dubs. isTorrentioAddon() hard-excludes any lingering
+// Torrentio install record (local file OR Postgres) from stream queries, so magnets can
+// never resurface even if the addon record wasn't deleted.
+const TORRENTIO_ADDON_ID = 'com.stremio.torrentio.addon';
+const isTorrentioAddon = a =>
+  (a?.manifest?.id || a?.id) === TORRENTIO_ADDON_ID ||
+  /(^|\/\/)([^/]*\.)?torrentio\.strem\.fun\//i.test(a?.url || '');
+
+// "Saturn" now carries only the Georgian Dubbed addon, which serves every audio language
+// as a direct link (en/ka/ru/uk). Its streams are tagged so the OPTIONAL per-user
+// language-preference filter can apply to them.
 const SATURN_SOURCE_IDS = new Set([
-  'com.stremio.torrentio.addon', // Torrentio  → English & Russian torrents
-  'community.georgian.dubbed',   // Georgian Dubbed → ge.movie (Georgian)
+  'community.georgian.dubbed',   // direct dubs (ka/ru/uk) + en (NuvioStreams)
 ]);
 const SATURN_LANGS = ['ka', 'en', 'ru', 'uk'];
 const isSaturnAddon = a => SATURN_SOURCE_IDS.has(a?.manifest?.id || a?.id);
@@ -1582,17 +1595,11 @@ function sanitizeLangs(arr) {
   if (!Array.isArray(arr)) return null;
   return SATURN_LANGS.filter(l => arr.includes(l));
 }
-// Client-safe view of a user's Saturn config — never leaks the raw TorBox token.
+// Client-safe view of a user's Saturn config. Saturn no longer holds a TorBox key or
+// account — only the optional audio-language preference (defaults to all languages).
 function saturnPublic(s) {
-  if (!s || !s.token) return { verified: false, langs: [], account: null, hint: null, verifiedAt: null };
-  const langs = Array.isArray(s.langs) && s.langs.length ? sanitizeLangs(s.langs) : SATURN_LANGS.slice();
-  return {
-    verified: true,
-    langs: langs.length ? langs : SATURN_LANGS.slice(),
-    account: { username: s.username || null, premium: s.premium ?? null, expiration: s.expiration || null },
-    hint: '••••' + String(s.token).slice(-4),
-    verifiedAt: s.verifiedAt || null,
-  };
+  const langs = s && Array.isArray(s.langs) ? sanitizeLangs(s.langs) : null;
+  return { langs: (langs && langs.length) ? langs : SATURN_LANGS.slice() };
 }
 
 /* normalise a Stremio catalog meta into the frontend movie shape (ids are IMDb tt…) */
@@ -1855,19 +1862,15 @@ app.get('/api/streams/:id', async (req, res) => {
     (a.manifest?.resources || []).includes('stream') &&
     (a.manifest?.types || []).includes(type));
 
-  // Saturn gate: the Torrentio + Georgian Dubbed sources only appear once the
-  // current user has verified their TorBox key, and then only in the languages
-  // they chose. Any OTHER stream addon (none ship by default) is unaffected.
-  const saturnAddons = all.filter(isSaturnAddon);
-  const otherAddons = all.filter(a => !isSaturnAddon(a));
+  // No TorBox gate anymore: every source now serves DIRECT links (no debrid needed),
+  // so streams are never locked. Torrentio is hard-excluded so a lingering install
+  // record can't resurface magnets. The only remaining knob is an OPTIONAL per-user
+  // audio-language preference; with none set, all available languages surface.
+  const addons = all.filter(a => !isTorrentioAddon(a));
   const saturnCfg = req.user ? await getUserSaturn(req.user.id) : null;
-  const verified = !!saturnCfg?.token;
-  const langs = verified ? saturnPublic(saturnCfg).langs : [];
-  const saturnState = saturnAddons.length ? (verified ? 'verified' : 'locked') : 'none';
-
-  // Addons we may actually query: everything non-Saturn, plus Saturn only when verified.
-  const addons = [...otherAddons, ...(verified ? saturnAddons : [])];
-  if (!addons.length) return res.json({ streams: [], addons: 0, saturn: saturnState, langs });
+  const cfgLangs = saturnCfg && Array.isArray(saturnCfg.langs) ? sanitizeLangs(saturnCfg.langs) : null;
+  const langs = (cfgLangs && cfgLangs.length) ? cfgLangs : SATURN_LANGS.slice();
+  if (!addons.length) return res.json({ streams: [], addons: 0, saturn: 'none', langs });
 
   const perAddon = await Promise.all(addons.map(async a => {
     const path = `stream/${type}/${encodeURIComponent(id)}.json`;
@@ -1886,58 +1889,19 @@ app.get('/api/streams/:id', async (req, res) => {
   }));
   let streams = perAddon.flat();
 
-  // Torrent sources (English / Russian): return a RANKED FALLBACK CHAIN per language
-  // (the client shows the single best row and silently advances to the next if one
-  // stalls / errors / plays silent). Ranking, in order:
-  //   1. browser-playable + has sound (browserPlayScore > 0) — must actually work
-  //   2. cached on TorBox                                     — instant, never "no seeds"
-  //   3. browserPlayScore                                     — codec/container/audio
-  //   4. resolution ≥ 1080p, then higher resolution           — quality floor
-  //   5. most seeded                                          — last tiebreaker
-  // (English reliably hits a YTS 1080p H.264/AAC release that plays with sound. Russian
-  // dubs are almost always AC-3/E-AC-3, which the browser can't decode — so the chain
-  // lets the player skip silent releases until it finds a playable one, if any exists.)
-  const MAX_PER_LANG = 6;
-  const torrents = streams.filter(s => s.kind === 'torrent');
-  if (torrents.length) {
-    const relText = s => `${s.title || ''} ${s.detail || ''}`;
-    const meets1080 = s => qualityRank(s.quality) >= qualityRank('1080p');
-    // TorBox cache check (user's key, server-side only): cached hashes resolve instantly.
-    const cachedSet = (verified && saturnCfg?.token)
-      ? await tbCachedHashes(torrents.map(s => s.infoHash), saturnCfg.token)
-      : null;
-    for (const s of torrents) {
-      s.cached = cachedSet ? cachedSet.has(s.infoHash || '') : null;
-      // audioOk: the release name signals browser-decodable audio (AAC/MP3/Opus or
-      // YTS) and no AC-3/E-AC-3/DTS marker → likely to actually play with sound.
-      const rt = relText(s);
-      s.audioOk = !BAD_AUDIO.test(rt) && (GOOD_AUDIO.test(rt) || /\b(yts|yify)\b/i.test(rt));
-      s.playable = browserPlayScore(rt) > 0;
-    }
-    const byLang = {};
-    for (const s of torrents) (byLang[s.lang || 'en'] = byLang[s.lang || 'en'] || []).push(s);
-    const trimmed = [];
-    for (const lng of Object.keys(byLang)) {
-      byLang[lng].sort((a, b) =>
-        (b.playable ? 1 : 0) - (a.playable ? 1 : 0) ||                  // plays in-browser w/ sound first
-        (b.cached ? 1 : 0) - (a.cached ? 1 : 0) ||                      // then cached (instant, no stall)
-        browserPlayScore(relText(b)) - browserPlayScore(relText(a)) ||  // then codec/container/audio score
-        (meets1080(b) ? 1 : 0) - (meets1080(a) ? 1 : 0) ||              // then ≥1080p (quality floor)
-        qualityRank(b.quality) - qualityRank(a.quality) ||              // then higher resolution
-        (b.seeds || 0) - (a.seeds || 0));                              // then most seeded
-      trimmed.push(...byLang[lng].slice(0, MAX_PER_LANG));             // ranked fallback chain per language
-    }
-    streams = streams.filter(s => s.kind !== 'torrent').concat(trimmed);
-  }
+  // Torrent ranking removed: STREDIO no longer serves magnets. Every source is now a
+  // DIRECT link, already ordered best-first by its addon (NuvioStreams sorts English by
+  // quality; the Georgian addon emits its best per-language row first). The client still
+  // shows the single best row per language and silently cascades to the next on failure.
 
-  // Saturn language filter: only surface the audio languages the user enabled — but ONLY for
-  // Saturn streams, so an unrelated stream addon (if one is ever installed) is left untouched.
-  if (verified && langs.length) {
-    streams = streams.filter(s => !s._saturn || langs.includes(s.lang || 'en'));
+  // Optional audio-language preference: when the user has set one, surface only those
+  // languages for our Georgian Dubbed source; otherwise show every available language.
+  if (cfgLangs && cfgLangs.length) {
+    streams = streams.filter(s => !s._saturn || cfgLangs.includes(s.lang || 'en'));
   }
   for (const s of streams) delete s._saturn;   // internal tag — don't leak it to the client
 
-  res.json({ streams, addons: addons.length, saturn: saturnState, langs });
+  res.json({ streams, addons: addons.length, saturn: 'none', langs });
 });
 
 /* list every catalog declared by installed catalog addons */
@@ -2212,51 +2176,28 @@ app.post('/api/debrid/resolve', requireAuth, resolveLimiter, async (req, res) =>
 });
 
 /* ------------------------------------------------------------------ *
- *  "Saturn" addon — per-user TorBox verification + language preferences.
- *  Verifying a key (validated against TorBox) unlocks the Torrentio +
- *  Georgian Dubbed streams; the chosen languages drive which ones surface.
+ *  "Saturn" addon — per-user audio-language preference (no TorBox key).
+ *  Torrentio is retired; every source is a direct link, so there is nothing
+ *  to verify. The user just picks which of ka/en/ru/uk surface in the stream
+ *  list; with no preference saved, all available languages show.
  * ------------------------------------------------------------------ */
 app.get('/api/saturn', requireAuth, async (req, res) => {
   res.json(saturnPublic(await getUserSaturn(req.user.id)));
 });
 
-app.post('/api/saturn/verify', requireAuth, saturnLimiter, async (req, res) => {
-  const token = (req.body?.token || '').trim();
-  if (!token) return res.status(400).json({ error: 'Paste your TorBox API key' });
-  try {
-    const rec = await DEBRID_PROVIDERS.torbox.validate(token); // throws on a bad key
-    const prev = await getUserSaturn(req.user.id);
-    const langs = prev && Array.isArray(prev.langs) && prev.langs.length
-      ? sanitizeLangs(prev.langs) : SATURN_LANGS.slice();
-    const saturn = {
-      token: rec.token,
-      username: rec.username || null,
-      premium: rec.premium ?? null,
-      expiration: rec.expiration || null,
-      verifiedAt: new Date().toISOString(),
-      langs: langs.length ? langs : SATURN_LANGS.slice(),
-    };
-    await setUserSaturn(req.user.id, saturn);
-    res.json(saturnPublic(saturn));
-  } catch (e) {
-    const status = e.code === 'DEBRID_AUTH' ? 401 : 502;
-    res.status(status).json({ error: e.message || 'Could not verify that key' });
-  }
-});
-
 app.post('/api/saturn/config', requireAuth, async (req, res) => {
-  const saturn = await getUserSaturn(req.user.id);
-  if (!saturn?.token) return res.status(409).json({ error: 'Verify your Saturn key first', code: 'UNVERIFIED' });
   const langs = sanitizeLangs(req.body?.langs);
   if (!langs || !langs.length) return res.status(400).json({ error: 'Choose at least one language' });
+  const saturn = (await getUserSaturn(req.user.id)) || {};
   saturn.langs = langs;
   await setUserSaturn(req.user.id, saturn);
   res.json(saturnPublic(saturn));
 });
 
+// Reset the language preference back to "all languages".
 app.delete('/api/saturn', requireAuth, async (req, res) => {
   await setUserSaturn(req.user.id, null);
-  res.json({ verified: false });
+  res.json(saturnPublic(null));
 });
 
 /* ------------------------------------------------------------------ *

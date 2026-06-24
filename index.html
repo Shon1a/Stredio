@@ -2620,7 +2620,7 @@
   </div>
 </div>
 
-<!-- Saturn configure (paste TorBox key → verify → choose stream languages) -->
+<!-- Saturn configure (choose which audio languages appear in the stream list) -->
 <div class="auth-overlay" id="saturnOverlay" role="dialog" aria-modal="true" aria-labelledby="saturnTitle" aria-hidden="true">
   <div class="auth-card">
     <button class="auth-dismiss" id="saturnDismiss" type="button" aria-label="Close">✕</button>
@@ -2628,31 +2628,10 @@
       <span class="auth-omega mono" aria-hidden="true">🪐</span>
       <div class="auth-word display" id="saturnTitle" data-i18n="saturn.modal_title">Configure Saturn</div>
     </div>
-    <div class="auth-kicker mono" data-i18n="saturn.modal_kicker">// unlock Georgian, English &amp; Russian streams</div>
+    <div class="auth-kicker mono" data-i18n="saturn.modal_kicker">// choose your stream languages</div>
 
-    <!-- verified-state banner (shown once a key is on file) -->
-    <div class="saturn-status" id="saturnStatus" hidden>
-      <span class="ss-dot" aria-hidden="true"></span>
-      <span class="ss-text" id="saturnStatusText"></span>
-      <span class="ss-hint" id="saturnStatusHint"></span>
-    </div>
-
-    <div class="auth-field">
-      <label for="saturnKey" class="mono" data-i18n="saturn.key_label">TORBOX API KEY</label>
-      <div class="saturn-verify-row">
-        <input id="saturnKey" type="password" autocomplete="off" autocorrect="off" autocapitalize="off"
-               spellcheck="false" data-i18n-ph="saturn.key_ph" placeholder="paste your TorBox API key" />
-        <button class="auth-submit" id="saturnVerifyBtn" type="button">
-          <span class="auth-submit-label" data-i18n="saturn.verify_btn">VERIFY</span>
-          <span class="spinner" id="saturnVerifySpin" hidden aria-hidden="true"></span>
-        </button>
-      </div>
-      <div class="auth-field-error" id="saturnKeyErr" aria-live="polite"></div>
-      <div class="saturn-getkey mono"><span data-i18n="saturn.get_key">Get a key at torbox.app</span></div>
-    </div>
-
-    <!-- language picker (revealed after a key verifies) -->
-    <div class="saturn-block is-hidden" id="saturnLangBlock">
+    <!-- language picker -->
+    <div class="saturn-block" id="saturnLangBlock">
       <label class="mono" style="display:block;font-size:13px;letter-spacing:.2em;color:var(--text-muted);margin-bottom:7px" data-i18n="saturn.langs_head">LANGUAGES IN STREAM LIST</label>
       <div class="auth-hint mono" data-i18n="saturn.langs_hint" style="margin:0 0 12px">Pick which audio languages appear when you open a title.</div>
       <div class="saturn-langs" id="saturnLangs">
@@ -2665,9 +2644,6 @@
         <span class="auth-submit-label" data-i18n="saturn.save_btn">SAVE PREFERENCES</span>
         <span class="spinner" id="saturnSaveSpin" hidden aria-hidden="true"></span>
       </button>
-      <div class="saturn-foot">
-        <button class="saturn-disconnect" id="saturnDisconnect" type="button" data-i18n="saturn.disconnect">Disconnect</button>
-      </div>
     </div>
   </div>
 </div>
@@ -3066,22 +3042,8 @@ window.I18N=(function(){
   "addons.installed_ok": "✓ Installed {name}",
   "addons.toast_installed": "✓ {name} installed",
   "addons.toast_removed": "✕ {name} removed",
-  "saturn.name": "Saturn",
-  "saturn.desc": "Georgian, English & Russian streams in one addon — Torrentio + Georgian Dubbed, unlocked with your TorBox key.",
-  "saturn.verified": "Verified ✓",
-  "saturn.not_configured": "Not configured",
-  "saturn.disconnect": "Disconnect",
   "saturn.modal_title": "Configure Saturn",
-  "saturn.modal_kicker": "unlock Georgian, English & Russian streams",
-  "saturn.key_label": "TORBOX API KEY",
-  "saturn.key_ph": "paste your TorBox API key",
-  "saturn.verify_btn": "VERIFY",
-  "saturn.reverify_btn": "RE-VERIFY",
-  "saturn.verifying": "… verifying key",
-  "saturn.verified_as": "Verified as {user}",
-  "saturn.verified_ok": "✓ Saturn key verified",
-  "saturn.verify_fail": "✕ Could not verify that key",
-  "saturn.get_key": "Get a key at torbox.app",
+  "saturn.modal_kicker": "choose your stream languages",
   "saturn.langs_head": "LANGUAGES IN STREAM LIST",
   "saturn.langs_hint": "Pick which audio languages appear when you open a title.",
   "saturn.lang_ka": "Georgian",
@@ -3091,8 +3053,6 @@ window.I18N=(function(){
   "saturn.save_btn": "SAVE PREFERENCES",
   "saturn.saved": "✓ Saturn preferences saved",
   "saturn.need_lang": "✕ Choose at least one language",
-  "saturn.disconnect_confirm": "Disconnect Saturn and forget your key on this account?",
-  "saturn.disconnected": "✕ Saturn disconnected",
   "saturn.locked": "Streams are locked",
   "saturn.locked_sub": "Verify your Saturn key on the Addons page to unlock Georgian, English & Russian sources.",
   "saturn.go_addons": "Configure addons",
@@ -3259,7 +3219,7 @@ window.I18N=(function(){
   "footer.catalog_live": "TMDB · live",
   "footer.catalog_mock": "mock sample",
   "footer.playback_label": "playback: ",
-  "footer.debrid_connected": "debrid connected",
+  "footer.debrid_connected": "streaming ready",
   "footer.demo_mode": "demo mode",
   "page.browse": "Browse",
   "page.addons": "Addons",
@@ -3320,7 +3280,7 @@ window.I18N=(function(){
   "modal.loading_metadata": "loading metadata…",
   "modal.searching_addons": "searching installed addons…",
   "modal.no_imdb": "No IMDb id available for this title, so installed stream addons can't be queried. Showing demo streams.",
-  "modal.no_stream_addons_html": "No <b>stream</b> addons installed. Add one (e.g. <b>Torrentio</b>) on the Addons page to pull real sources. Showing demo streams below.",
+  "modal.no_stream_addons_html": "No <b>stream</b> addons installed. Install <b>🪐 Saturn</b> on the Addons page to pull real sources. Showing demo streams below.",
   "modal.no_sources": "Your {addons} installed stream addon(s) returned no sources for this title.",
   "modal.now_showing": "NOW SHOWING",
   "modal.now_streaming": "NOW STREAMING",
@@ -3347,7 +3307,7 @@ window.I18N=(function(){
   "addons.default_tag": "Default",
   "addons.default_hint": "Auto-installed default add-on — always on",
   "addons.no_config": "{name} has no configurable options",
-  "saturn.installed_hint": "✓ Saturn installed — open Configure to add your TorBox key and unlock streams",
+  "saturn.installed_hint": "✓ Saturn installed — open Configure to choose your stream languages",
   "streams.catalog_only_title": "Catalog & discovery mode",
   "streams.catalog_only_sub": "Stredio is a media catalog and interface. Install a community streaming add-on to pull playable sources from third-party platforms.",
   "streams.browse_addons": "Browse add-ons →",
@@ -3552,22 +3512,8 @@ window.I18N=(function(){
   "addons.installed_ok": "✓ {name} დაინსტალირდა",
   "addons.toast_installed": "✓ {name} დაინსტალირდა",
   "addons.toast_removed": "✕ {name} წაიშალა",
-  "saturn.name": "Saturn",
-  "saturn.desc": "ქართული, ინგლისური და რუსული სტრიმები ერთ დამატებაში.",
-  "saturn.verified": "დადასტურებულია ✓",
-  "saturn.not_configured": "არ არის კონფიგურირებული",
-  "saturn.disconnect": "გათიშვა",
   "saturn.modal_title": "Saturn-ის კონფიგურაცია",
-  "saturn.modal_kicker": "// განბლოკეთ ქართული, ინგლისური და რუსული სტრიმები",
-  "saturn.key_label": "TORBOX API გასაღები",
-  "saturn.key_ph": "ჩასვით თქვენი TorBox API გასაღები",
-  "saturn.verify_btn": "დადასტურება",
-  "saturn.reverify_btn": "ხელახლა დადასტურება",
-  "saturn.verifying": "… გასაღების შემოწმება",
-  "saturn.verified_as": "დადასტურებულია როგორც {user}",
-  "saturn.verified_ok": "✓ Saturn გასაღები დადასტურდა",
-  "saturn.verify_fail": "✕ გასაღების დადასტურება ვერ მოხერხდა",
-  "saturn.get_key": "მიიღეთ გასაღები torbox.app-ზე",
+  "saturn.modal_kicker": "// აირჩიეთ სტრიმების ენები",
   "saturn.langs_head": "ენები სტრიმების სიაში",
   "saturn.langs_hint": "აირჩიეთ რომელი აუდიო ენები გამოჩნდეს ფილმის გახსნისას.",
   "saturn.lang_ka": "ქართული",
@@ -3577,8 +3523,6 @@ window.I18N=(function(){
   "saturn.save_btn": "პარამეტრების შენახვა",
   "saturn.saved": "✓ Saturn-ის პარამეტრები შენახულია",
   "saturn.need_lang": "✕ აირჩიეთ მინიმუმ ერთი ენა",
-  "saturn.disconnect_confirm": "გათიშოთ Saturn და წაშალოთ თქვენი TorBox გასაღები ამ ანგარიშზე?",
-  "saturn.disconnected": "✕ Saturn გათიშულია",
   "saturn.locked": "სტრიმები დაბლოკილია",
   "saturn.locked_sub": "დაადასტურეთ თქვენი Saturn TorBox გასაღები დამატებების გვერდზე, რათა განბლოკოთ ქართული, ინგლისური და რუსული წყაროები.",
   "saturn.go_addons": "Saturn-ის კონფიგურაცია →",
@@ -3745,7 +3689,7 @@ window.I18N=(function(){
   "footer.catalog_live": "TMDB · პირდაპირი",
   "footer.catalog_mock": "დემო ნიმუში",
   "footer.playback_label": "დაკვრა: ",
-  "footer.debrid_connected": "debrid დაკავშირებულია",
+  "footer.debrid_connected": "სტრიმინგი მზადაა",
   "footer.demo_mode": "დემო რეჟიმი",
   "page.browse": "მთავარი",
   "page.addons": "დამატებები",
@@ -3806,7 +3750,7 @@ window.I18N=(function(){
   "modal.loading_metadata": "მეტამონაცემების ჩატვირთვა…",
   "modal.searching_addons": "დაინსტალირებული დამატებების ძებნა…",
   "modal.no_imdb": "ამ სათაურისთვის IMDb id არ არის ხელმისაწვდომი, ამიტომ დაინსტალირებული stream დამატებების გამოკითხვა ვერ ხერხდება. ნაჩვენებია დემო ნაკადები.",
-  "modal.no_stream_addons_html": "არ არის დაინსტალირებული <b>stream</b> დამატებები. დაამატეთ ერთი (მაგ. <b>Torrentio</b>) დამატებების გვერდზე რეალური წყაროების მისაღებად. ქვემოთ ნაჩვენებია დემო ნაკადები.",
+  "modal.no_stream_addons_html": "არ არის დაინსტალირებული <b>stream</b> დამატებები. დააინსტალირეთ <b>🪐 Saturn</b> დამატებების გვერდზე რეალური წყაროების მისაღებად. ქვემოთ ნაჩვენებია დემო ნაკადები.",
   "modal.no_sources": "თქვენს მიერ დაინსტალირებულმა {addons} stream დამატებამ(ებმა) ვერ მოიძია წყაროები ამ სათაურისთვის.",
   "modal.now_showing": "ნაჩვენებია",
   "modal.now_streaming": "ეთერში",
@@ -3833,7 +3777,7 @@ window.I18N=(function(){
   "addons.default_tag": "ნაგულისხმევი",
   "addons.default_hint": "ავტომატურად დაინსტალირებული ნაგულისხმევი დამატება — ყოველთვის ჩართული",
   "addons.no_config": "{name}-ს არ აქვს კონფიგურირებადი პარამეტრები",
-  "saturn.installed_hint": "✓ Saturn დაინსტალირდა — გახსენით „კონფიგურაცია“ TorBox გასაღების დასამატებლად და სტრიმების განსაბლოკად",
+  "saturn.installed_hint": "✓ Saturn დაინსტალირდა — გახსენით „კონფიგურაცია“ სტრიმების ენების ასარჩევად",
   "streams.catalog_only_title": "კატალოგისა და აღმოჩენის რეჟიმი",
   "streams.catalog_only_sub": "Stredio არის მედია კატალოგი და ინტერფეისი. დააინსტალირეთ საზოგადოების სტრიმინგ-დამატება (მაგ. 🪐 Saturn), რომ მესამე მხარის პლატფორმებიდან დასაკრავი წყაროები მიიღოთ.",
   "streams.browse_addons": "დამატებების დათვალიერება →",
@@ -7434,21 +7378,21 @@ function renderAddonPreview(id){
    addons (Cinemeta, OpenSubtitles v3, and the Torrentio + Georgian Dubbed pair the
    UI folds into "Saturn"). This round-trip only refreshes Saturn's verified state
    and surfaces any *extra* add-ons a user installed by URL. */
-const SATURN_IDS=['com.stremio.torrentio.addon','community.georgian.dubbed'];
-const CURATED_BACKEND_IDS=['com.linvo.cinemeta','org.stremio.opensubtitlesv3','com.stremio.torrentio.addon','community.georgian.dubbed'];
-window.saturn={verified:false,langs:['ka','en','ru','uk'],account:null,hint:null};
+const SATURN_IDS=['community.georgian.dubbed'];
+const CURATED_BACKEND_IDS=['com.linvo.cinemeta','org.stremio.opensubtitlesv3','community.georgian.dubbed'];
+window.saturn={langs:['ka','en','ru','uk']};
 const isSaturnId=a=>SATURN_IDS.includes((a.manifest&&a.manifest.id)||a.id);
 const backendId=a=>(a.manifest&&a.manifest.id)||a.id;
 async function fetchSaturn(){
-  try{ window.saturn=await fetch('/api/saturn').then(r=>r.ok?r.json():{verified:false,langs:[]}); }
-  catch(e){ window.saturn={verified:false,langs:[]}; }
+  try{ window.saturn=await fetch('/api/saturn').then(r=>r.ok?r.json():{langs:[]}); }
+  catch(e){ window.saturn={langs:[]}; }
   syncSaturnPlayback();
   return window.saturn;
 }
-/* Effective stream gate = community source installed AND its TorBox key verified.
-   Mirrors into HAS_DEBRID (play guard) + the footer playback status line. */
+/* Streaming is ready once a community source is installed — no key to verify anymore
+   (every source is a direct link). Mirrors into the footer playback status line. */
 function syncSaturnPlayback(){
-  window.HAS_DEBRID=!!(streamSourceInstalled()&&window.saturn&&window.saturn.verified);
+  window.HAS_DEBRID=streamSourceInstalled();
   try{renderFooter();}catch(e){}
 }
 async function loadRemoteAddons(){
@@ -7491,27 +7435,12 @@ _remoteAddonsEl&&_remoteAddonsEl.addEventListener('click',async e=>{
   const ov=document.getElementById('saturnOverlay');
   if(!ov)return;
   const $=id=>document.getElementById(id);
-  const keyInp=$('saturnKey'), keyErr=$('saturnKeyErr');
-  const verifyBtn=$('saturnVerifyBtn'), verifySpin=$('saturnVerifySpin');
   const saveBtn=$('saturnSaveBtn'), saveSpin=$('saturnSaveSpin');
-  const langBlock=$('saturnLangBlock'), statusEl=$('saturnStatus');
   let lastFocus=null;
 
   function renderState(){
-    const s=window.saturn||{verified:false,langs:[]};
-    // status banner + verify button label
-    if(s.verified){
-      statusEl.hidden=false;
-      $('saturnStatusText').textContent=t('saturn.verified_as',{user:(s.account&&(s.account.username||'TorBox'))||'TorBox'});
-      $('saturnStatusHint').textContent=s.hint||'';
-      verifyBtn.querySelector('.auth-submit-label').textContent=t('saturn.reverify_btn');
-      langBlock.classList.remove('is-hidden');
-    }else{
-      statusEl.hidden=true;
-      verifyBtn.querySelector('.auth-submit-label').textContent=t('saturn.verify_btn');
-      langBlock.classList.add('is-hidden');
-    }
-    // language checkboxes reflect saved prefs (default all three)
+    const s=window.saturn||{langs:[]};
+    // language checkboxes reflect saved prefs (default all languages)
     const langs=(Array.isArray(s.langs)&&s.langs.length)?s.langs:['ka','en','ru','uk'];
     ov.querySelectorAll('.saturn-lang').forEach(lab=>{
       const cb=lab.querySelector('input');
@@ -7521,10 +7450,9 @@ _remoteAddonsEl&&_remoteAddonsEl.addEventListener('click',async e=>{
   }
   window.openSaturn=async function(){
     lastFocus=document.activeElement;
-    keyInp.value=''; keyErr.textContent='';
     renderState();                 // paint from cache first so it feels instant
     ov.classList.add('open'); ov.setAttribute('aria-hidden','false');
-    setTimeout(()=>{try{ (window.saturn&&window.saturn.verified?saveBtn:keyInp).focus(); }catch(e){}},40);
+    setTimeout(()=>{try{ saveBtn.focus(); }catch(e){}},40);
     await fetchSaturn(); renderState();   // then refresh from the server
   };
   function closeSaturn(){
@@ -7544,25 +7472,7 @@ _remoteAddonsEl&&_remoteAddonsEl.addEventListener('click',async e=>{
     btn.disabled=on; spin.hidden=!on;
     btn.querySelector('.auth-submit-label').style.opacity=on?'.5':'';
   }
-  // VERIFY (validates the TorBox key upstream)
-  verifyBtn.addEventListener('click',async()=>{
-    const token=keyInp.value.trim();
-    keyErr.textContent='';
-    if(!token){ keyErr.textContent=t('saturn.key_ph'); keyInp.classList.add('invalid'); return; }
-    keyInp.classList.remove('invalid');
-    busy(verifyBtn,verifySpin,true);
-    try{
-      const r=await fetch('/api/saturn/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok){ keyErr.textContent=data.error||t('saturn.verify_fail'); keyInp.classList.add('invalid'); return; }
-      window.saturn=data; keyInp.value='';
-      syncSaturnPlayback();   // verified TorBox key now also unlocks torrent playback
-      toast(t('saturn.verified_ok'),'var(--success)');
-      renderState(); loadRemoteAddons();
-    }catch(e){ keyErr.textContent=t('common.backend_unreachable'); }
-    finally{ busy(verifyBtn,verifySpin,false); }
-  });
-  // SAVE languages
+  // SAVE languages (no key needed — every source is a direct link)
   saveBtn.addEventListener('click',async()=>{
     const langs=[...ov.querySelectorAll('.saturn-lang input:checked')].map(c=>c.value);
     if(!langs.length){ toast(t('saturn.need_lang'),'var(--danger)'); return; }
@@ -7575,18 +7485,6 @@ _remoteAddonsEl&&_remoteAddonsEl.addEventListener('click',async e=>{
       renderState(); loadRemoteAddons();
     }catch(e){ toast(t('common.backend_unreachable'),'var(--danger)'); }
     finally{ busy(saveBtn,saveSpin,false); }
-  });
-  // DISCONNECT (forget the key on this account)
-  $('saturnDisconnect').addEventListener('click',async()=>{
-    if(!confirm(t('saturn.disconnect_confirm')))return;
-    try{
-      const r=await fetch('/api/saturn',{method:'DELETE'});
-      if(!r.ok){ toast(t('common.backend_unreachable'),'var(--danger)'); return; }
-      window.saturn={verified:false,langs:['ka','en','ru','uk']};
-      syncSaturnPlayback();   // forgetting the key re-locks torrent playback
-      toast(t('saturn.disconnected'),'var(--danger)');
-      renderState(); loadRemoteAddons();
-    }catch(e){ toast(t('common.backend_unreachable'),'var(--danger)'); }
   });
 })();
 /* loadRemoteAddons() runs from refreshAuth() once the user is authenticated */
@@ -7769,7 +7667,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
 
   async function doLogout(){
     try{ await fetch('/api/auth/logout',{method:'POST'}); }catch(e){}
-    AUTH.user=null; window.HAS_DEBRID=false; window.saturn={verified:false,langs:['ka','en','ru','uk']};
+    AUTH.user=null; window.HAS_DEBRID=false; window.saturn={langs:['ka','en','ru','uk']};
     updateAuthUI(); try{renderFooter();}catch(e){}
     const ra=$('remoteAddons'); if(ra) ra.innerHTML='';
     toast(t('auth.signed_out'),'var(--accent)');
