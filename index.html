@@ -4707,8 +4707,13 @@ function ensureSlideBg(sl){
   const bgEl=sl&&sl.querySelector('.hero-bg'); if(!bgEl||!bgEl.dataset.bg) return;
   const url=bgEl.dataset.bg; delete bgEl.dataset.bg;
   const pre=new Image();
-  pre.onload=()=>{ bgEl.style.backgroundImage=`url('${url}')`; };
+  const paint=()=>{ bgEl.style.backgroundImage=`url('${url}')`; };
   pre.src=url;
+  // decode() resolves only once the image is fully downloaded AND decoded, so the
+  // background is swapped in one clean frame — never a half-decoded / streaky pass
+  // (the artifact seen when a language switch loads a fresh, uncached backdrop).
+  if(pre.decode){ pre.decode().then(paint).catch(paint); }
+  else { pre.onload=paint; pre.onerror=paint; }
 }
 /* up to `n` feature-worthy titles: only feature titles that have a real TMDB
    backdrop so the hero is never a random non-movie image; highest-rated first,
@@ -4728,7 +4733,7 @@ function dedupeFeatured(list,n=8){
   for(const m of (list||[])){ if(!m||seen.has(m.title))continue; seen.add(m.title); out.push(m); if(out.length>=n)break; }
   return out;
 }
-function heroSlideHTML(it,idx){
+function heroSlideHTML(it,idx,defer){
   const plot=it.overview||t('hero.plot_fallback');
   // plain inline "rating  year" — no badge boxes, no genre chip (per the crimson brand)
   const meta=`<span>${esc(it.year)}</span><span>${it.rating?('★ '+esc(it.rating)):''}</span><span>${esc(I18N.genre(it.genre))||''}</span>`;
@@ -4741,9 +4746,14 @@ function heroSlideHTML(it,idx){
   // Only the first slide loads its art immediately; the rest defer their (often
   // multi-MB) backdrop via data-bg so it never competes with first paint —
   // ensureSlideBg() pulls it in just before the slide is shown.
+  // Slide 0 normally paints its art inline for the fastest first paint. On a re-render
+  // (`defer` — e.g. a language switch that swaps in a fresh, uncached backdrop) it instead
+  // defers like the rest, so ensureSlideBg() decodes the image before paint and no
+  // half-decoded streaky frame ever shows.
   const bg=heroBg(it);
-  const bgAttr=(bg&&idx!==0)?` data-bg="${esc(bg)}"`:'';
-  const bgStyle=(bg&&idx===0)?`background-image:url('${esc(bg)}')`:heroBgFallback(it);
+  const eager=(idx===0&&!defer);
+  const bgAttr=(bg&&!eager)?` data-bg="${esc(bg)}"`:'';
+  const bgStyle=(bg&&eager)?`background-image:url('${esc(bg)}')`:heroBgFallback(it);
   return `<div class="hero-slide${idx===0?' active':''}" data-i="${idx}"${idx===0?'':' aria-hidden="true"'}>
       <div class="hero-bg"${bgAttr} style="${bgStyle}"></div>
       <div class="hero-inner">
@@ -4759,6 +4769,10 @@ function heroSlideHTML(it,idx){
 }
 function renderHero(list,opts){
   const el=heroEl(); if(!el) return;
+  // a hero is already painted → this is a data/language swap, not first paint. Defer
+  // slide 0's backdrop through the decode-then-paint path so a swapped-in (uncached)
+  // image never flashes a half-decoded frame.
+  const reRender=!!el.querySelector('.hero-slide');
   // `ordered` (the /api/hero path) keeps the server's order — the admin's curated
   // sequence, or trending order — instead of re-sorting by rating; it still de-dupes
   // by title and caps the carousel. Row-seeded heroes use pickFeatured (rating-ranked).
@@ -4771,7 +4785,7 @@ function renderHero(list,opts){
     ? `<div class="hero-dots" role="tablist" aria-label="${esc(t('ui.featured_titles'))}">`+
         slides.map((s,i)=>`<button class="hero-dot${i===0?' active':''}" type="button" role="tab" data-i="${i}" aria-selected="${i===0}" aria-label="${esc(t('ui.show')+' '+s.title)}"></button>`).join('')+
       `</div>` : '';
-  el.innerHTML=slides.map(heroSlideHTML).join('')+dots;
+  el.innerHTML=slides.map((s,i)=>heroSlideHTML(s,i,reRender)).join('')+dots;
   // wire every slide's Play / + (all slides live in the DOM, stacked + crossfading)
   el.querySelectorAll('.hero-slide').forEach(sl=>{
     const it=slides[+sl.dataset.i];
@@ -4790,8 +4804,11 @@ function renderHero(list,opts){
   });
   el.querySelectorAll('.hero-dot').forEach(d=>d.addEventListener('click',()=>heroGo(+d.dataset.i)));
   // warm the next slide's backdrop in the background so the first crossfade is
-  // ready — slide 0 already loaded its art inline; the rest stay deferred.
-  ensureSlideBg(el.querySelectorAll('.hero-slide')[1]);
+  // ready — slide 0 already loaded its art inline; the rest stay deferred. On a
+  // re-render slide 0 is deferred too, so decode-then-paint it before it shows.
+  const slideEls=el.querySelectorAll('.hero-slide');
+  if(reRender) ensureSlideBg(slideEls[0]);
+  ensureSlideBg(slideEls[1]);
   // wire the carousel clock + hover/focus pause exactly once per element
   if(!el.__heroWired){
     el.__heroWired=true;
