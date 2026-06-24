@@ -6034,6 +6034,15 @@ const VP=(function(){
       vpToast(t('settings.ext_opening',{app:app.toUpperCase()}));
     }catch(e){}
   }
+  // On the split deploy (frontend on Vercel, backend on Render) our proxied stream
+  // URLs are root-relative '/api/stream-proxy?...'. A <video>.src or hls.loadSource()
+  // resolves those against the PAGE origin (Vercel), which has no /api/ — so they 404
+  // and the player sits at 0:00/0:00. The fetch() wrapper can't help here (these aren't
+  // fetch calls), so resolve '/api/...' media URLs against the backend explicitly.
+  // Already-absolute direct stream URLs (CORS-enabled files) are left untouched.
+  function mediaSrc(u){
+    return (window.API_BASE && typeof u==='string' && u.lastIndexOf('/api/',0)===0) ? window.API_BASE+u : u;
+  }
   function load(url,title){
     if(title)$('playerTitle').textContent=title;
     maybeExternalPlayer(url);           // external-player handoff (no-op when disabled)
@@ -6045,7 +6054,7 @@ const VP=(function(){
     // the #vpLoading overlay already shows the spinner for this initial-load phase —
     // don't also light up the center buffering ring (two overlapping loaders). The
     // center ring is reserved for mid-playback stalls via the 'waiting' listener.
-    v.src=url; v.load();
+    v.src=mediaSrc(url); v.load();
     const p=v.play(); if(p&&p.catch)p.catch(()=>{});
     addStreamSubs(curStream); loadSubs(); buildMenu();
   }
@@ -6079,7 +6088,7 @@ const VP=(function(){
       // rewinds/forward-seeks stall and snap back.
       hls=new Hls({maxBufferLength:60,maxMaxBufferLength:600,backBufferLength:180,
         manifestLoadingTimeOut:20000,levelLoadingTimeOut:20000});
-      hls.loadSource(url); hls.attachMedia(v);
+      hls.loadSource(mediaSrc(url)); hls.attachMedia(v);
       hls.on(Hls.Events.MANIFEST_PARSED,()=>{ selectAudioLang(desiredAudioLang); buildMenu(); const p=v.play(); if(p&&p.catch)p.catch(()=>{}); });
       // The audio-track list/selection can settle AFTER manifest parse (DEFAULT=YES wins
       // otherwise) — re-apply the desired language once tracks are updated.
@@ -6092,7 +6101,7 @@ const VP=(function(){
         else { destroyHls(); showLoading(t('player.cant_play'),t('player.try_another')); setStatus('✕ '+t('status.failed')); }
       });
     } else if(v.canPlayType('application/vnd.apple.mpegurl')){
-      v.src=url; v.load(); const p=v.play(); if(p&&p.catch)p.catch(()=>{});
+      v.src=mediaSrc(url); v.load(); const p=v.play(); if(p&&p.catch)p.catch(()=>{});
     } else {
       showLoading(t('player.cant_play'),t('player.try_another')); setStatus('✕ '+t('status.failed')); return;
     }
