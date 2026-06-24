@@ -1,0 +1,14 @@
+# dependencies
+server/node_modules/
+
+# secrets & local config
+server/.env
+.env
+
+# server runtime data (contains your Real-Debrid token + installed addons)
+server/data/
+
+# misc
+.DS_Store
+*.log
+.playwright-mcp/

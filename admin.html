@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>STREDIO — Admin</title>
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#000000" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23000000'/><text x='16' y='24' font-size='20' text-anchor='middle' font-family='monospace' fill='%23d02334'>&#9881;</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="dns-prefetch" href="https://image.tmdb.org" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  /* Gotham (Latin/English) leads every font stack; ArchyEDT (ქართული/Georgian) trails
+     it so Georgian glyphs — which Gotham lacks — fall through to ArchyEDT. Both ship a
+     single weight, so neither @font-face carries a font-weight constraint. */
+  @font-face{font-family:"Gotham";font-style:normal;font-display:swap;
+    src:url("assets/fonts/Gotham-Bold.otf") format("opentype");}
+  @font-face{font-family:"ArchyEDT";font-style:normal;font-display:swap;
+    src:url("assets/fonts/ArchyEDT-Bold.woff2") format("woff2"),
+        url("assets/fonts/ArchyEDT-Bold.otf") format("opentype");}
+  :root{
+    /* surfaces — deep cinematic crimson grade: warm near-black; the translucent
+       --bg lets the corner glow (body::before) bleed through for an ambient wash */
+    --bg:#00000059; --bg-2:#0d0d10; --bg-3:#161419; --bg-4:#1d1a20;
+    /* crimson-tinted glass + hairline so panels share the brand pigment */
+    --card:rgba(208,35,52,0.06); --card-2:rgba(208,35,52,0.035);
+    --border:rgba(208,35,52,0.18); --border-2:rgba(208,35,52,0.30);
+    --text:#ffffff; --text-muted:#a9a8b2; --text-dim:#6f6a72;
+    /* the deep-crimson brand ramp (matches stredio.html's cinematic reference grade) */
+    --indigo-deep:#3a0c0c; --violet:#b9212e; --violet-bright:#d02334; --lavender:#e0586a;
+    --accent:#d02334; --accent-h:#e0455a; --highlight:#ffe0e0;
+    --accent-rgb:208,35,52; --violet-rgb:185,33,46;
+    --ink:#ffffff;                                   /* white text sits on the crimson accent fill */
+    /* signature sweep — the crimson dark->bright->light gradient, clipped onto the wordmark */
+    --grad:linear-gradient(120deg,#8e1620 0%,#d02334 55%,#e0586a 100%);
+    --success:#5cd2a0; --warn:#e6c264; --danger:#ea6479; --info:#6aa3e8;
+    --success-rgb:92,210,160; --danger-rgb:234,100,121; --warn-rgb:230,194,100;
+    /* Gotham is the Latin/English face, ArchyEDT the ქართული (Georgian) face — matching
+       stredio.html. Gotham leads each stack; Georgian glyphs it lacks fall through to
+       ArchyEDT, then Noto Sans Georgian + system fonts. --font-display is kept as an
+       alias so the heading rules (.brand/.view-head h1/.stat .v/etc.) need no change. */
+    --font-display:"Gotham","ArchyEDT","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font:"Gotham","ArchyEDT","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"Gotham","ArchyEDT","Noto Sans Georgian",ui-monospace,"SF Mono","Cascadia Code","IBM Plex Mono","Courier New",monospace;
+    --sidebar-w:212px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  /* the [hidden] attribute must always win: several elements that JS toggles via
+     `.hidden` (the cover rails .cstrips, the search .cover-grid, #app/.wrap, panels)
+     also carry a `display:` class rule which, being author-origin, would otherwise
+     override the UA `[hidden]{display:none}` and leave them visible. */
+  [hidden]{display:none!important}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;letter-spacing:.04em;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{color:var(--accent-h)}
+  .mono{font-family:var(--font-mono)}
+  ::selection{background:rgba(var(--accent-rgb),.25)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  /* hide every scrollbar (incl. the page's right-hand vertical bar) while keeping scroll working */
+  html{scrollbar-width:none;-ms-overflow-style:none}
+  ::-webkit-scrollbar{width:0;height:0;display:none}
+  /* faint vertical glow background */
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(1200px 600px at 80% -10%,rgba(var(--violet-rgb),.10),transparent 60%),
+               radial-gradient(900px 500px at -10% 110%,rgba(var(--accent-rgb),.06),transparent 60%)}
+
+  /* ---------- shell ---------- */
+  .wrap{display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh}
+  aside{position:sticky;top:0;height:100vh;border-right:1px solid var(--border);
+    background:#000000;backdrop-filter:blur(8px);padding:22px 14px;display:flex;flex-direction:column;gap:6px;z-index:10}
+  .brand{font-family:var(--font-display);font-size:20px;letter-spacing:.04em;padding:4px 8px 2px}
+  .brand-logo{display:block;width:150px;max-width:100%;height:auto}
+  .brand .tag{display:block;font-family:var(--font-mono);font-size:12px;letter-spacing:.34em;color:var(--text-dim);margin-top:6px}
+  .nav-h{font-size:12px;letter-spacing:.24em;color:var(--text-dim);margin:18px 8px 8px}
+  .nav-item{display:flex;align-items:center;gap:10px;font-size:16px;padding:9px 10px;border-radius:6px;color:var(--text-muted);cursor:pointer;transition:.16s;border:1px solid transparent}
+  .nav-item .ic{width:16px;text-align:center;opacity:.8;font-size:16px}
+  .nav-item:hover{color:var(--text);background:rgba(var(--accent-rgb),.06)}
+  .nav-item.active{color:var(--accent);background:rgba(var(--accent-rgb),.10);border-color:var(--border)}
+  .nav-item .badge-n{margin-left:auto;font-family:var(--font-mono);font-size:13px;background:rgba(var(--danger-rgb),.16);color:var(--danger);border-radius:10px;padding:1px 7px;display:none}
+  .nav-item .badge-n.show{display:inline-block}
+  aside .foot{margin-top:auto;display:flex;flex-direction:column;gap:11px;padding:10px 8px 4px}
+  /* signed-in email: omega glyph + single-line, ellipsized so a long address never
+     spills past the 212px rail (full address shows on hover via title=) */
+  aside .foot .foot-user{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;color:var(--text-muted);min-width:0}
+  aside .foot .foot-user .fu-ic{color:var(--accent);font-size:13px;flex:none}
+  aside .foot .foot-user .em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  /* primary footer action — mirrors stredio.html's solid-crimson sign-in pill */
+  aside .foot .site-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);border:none;border-radius:6px;
+    color:#fff;font-weight:700;font-size:13.5px;letter-spacing:.06em;padding:10px 16px;cursor:pointer;transition:.2s;
+    box-shadow:0 6px 18px rgba(var(--accent-rgb),.28)}
+  aside .foot .site-btn:hover{background:var(--accent-h);color:#fff;box-shadow:0 8px 22px rgba(var(--accent-rgb),.42)}
+
+  main{min-width:0;padding:0 0 80px}
+  .topbar{position:sticky;top:0;z-index:9;display:flex;align-items:center;gap:14px;padding:14px 26px;
+    border-bottom:1px solid var(--border);background:#000000;backdrop-filter:blur(10px)}
+  .topbar .crumb{font-family:var(--font-mono);font-size:14px;letter-spacing:.16em;color:var(--text-dim);text-transform:uppercase}
+  .topbar .spacer{flex:1}
+  .back-link{font-family:inherit;font-weight:700;font-size:13.5px;letter-spacing:.06em;border:none;padding:8px 16px;border-radius:6px;
+    background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(var(--accent-rgb),.24);transition:.2s}
+  .back-link:hover{background:var(--accent-h);color:#fff;box-shadow:0 6px 18px rgba(var(--accent-rgb),.4)}
+  .user-chip{display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:15px}
+  .user-chip .om{color:var(--accent)}
+  .user-chip .em{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .view{display:none;padding:26px}
+  .view.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .view-head{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+  .view-head h1{font-family:var(--font-display);font-weight:400;font-size:clamp(24px,3.4vw,34px);letter-spacing:.01em}
+  .view-head p{color:var(--text-muted);font-size:15px;max-width:560px}
+  .view-head .spacer{flex:1}
+
+  /* ---------- cards / stat grid ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px;margin-bottom:26px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 16px 14px;position:relative;overflow:hidden;transition:.18s}
+  .stat:hover{border-color:var(--border-2);transform:translateY(-2px)}
+  .stat .k{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim)}
+  .stat .v{font-family:var(--font-display);font-size:32px;line-height:1.05;margin-top:8px;letter-spacing:.01em}
+  .stat .sub{font-size:14px;color:var(--text-muted);margin-top:4px}
+  .stat.good .v{color:var(--success)} .stat.bad .v{color:var(--danger)} .stat.warn .v{color:var(--warn)}
+  .stat .spark{position:absolute;right:-10px;bottom:-14px;font-size:64px;opacity:.05;line-height:1}
+
+  .panel{background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:20px}
+  .panel > h3{font-family:var(--font-display);font-weight:400;font-size:17px;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+  .panel > .desc{color:var(--text-muted);font-size:14.5px;margin-bottom:16px}
+  .panel-split{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:start}
+  @media(max-width:980px){.panel-split{grid-template-columns:1fr}}
+
+  /* ---------- overview: system health strip ---------- */
+  .health{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:22px}
+  .hchip{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px 16px;transition:.18s}
+  .hchip.link{cursor:pointer}
+  .hchip.link:hover{border-color:var(--border-2);transform:translateY(-2px)}
+  .hchip .hdot{width:10px;height:10px;border-radius:50%;background:var(--text-dim);flex:none}
+  .hchip.ok .hdot{background:var(--success);box-shadow:0 0 10px rgba(var(--success-rgb),.6)}
+  .hchip.warn .hdot{background:var(--warn);box-shadow:0 0 10px rgba(var(--warn-rgb),.55)}
+  .hchip.bad .hdot{background:var(--danger);box-shadow:0 0 10px rgba(var(--danger-rgb),.6)}
+  .hchip .htext{min-width:0;flex:1;display:flex;flex-direction:column}
+  .hchip .hk{font-family:var(--font-mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim)}
+  .hchip .hv{font-size:17px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hchip .hs{font-size:13px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- overview: quick actions ---------- */
+  .qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:520px){.qa-grid{grid-template-columns:1fr}}
+  .qa{display:flex;align-items:center;gap:11px;text-align:left;background:var(--card-2);border:1px solid var(--border);border-radius:10px;
+    padding:13px 14px;color:var(--text);cursor:pointer;transition:.16s;font-family:inherit;font-size:15px;width:100%}
+  .qa:hover{border-color:var(--accent);background:rgba(var(--accent-rgb),.07);transform:translateY(-2px)}
+  .qa .qic{font-size:19px;line-height:1;width:24px;text-align:center;color:var(--accent);flex:none}
+  .qa .ql{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .qa .ql b{font-weight:500}
+  .qa .ql small{font-size:12.5px;color:var(--text-muted)}
+
+  /* ---------- overview: needs-attention list ---------- */
+  .todo{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;
+    background:var(--card-2);cursor:pointer;transition:.16s;margin-bottom:9px}
+  .todo:hover{border-color:var(--border-2);transform:translateX(3px)}
+  .todo .tn{font-family:var(--font-mono);font-size:16px;font-weight:600;min-width:44px;text-align:center;padding:4px 8px;border-radius:8px;flex:none}
+  .todo.warn .tn{background:rgba(var(--warn-rgb),.14);color:var(--warn)}
+  .todo.bad .tn{background:rgba(var(--danger-rgb),.14);color:var(--danger)}
+  .todo.info .tn{background:rgba(var(--accent-rgb),.12);color:var(--accent)}
+  .todo .tt{flex:1;min-width:0}
+  .todo .tt b{font-weight:500;display:block}
+  .todo .tt small{font-size:13px;color:var(--text-muted)}
+  .todo .tarr{color:var(--text-dim);font-family:var(--font-mono);font-size:14px;flex:none}
+  .todo-clear{display:flex;align-items:center;gap:11px;color:var(--success);font-size:15px;padding:16px 6px}
+  .todo-clear .tc-ic{font-size:22px;line-height:1}
+
+  /* ---------- badges ---------- */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:13px;padding:2px 9px;border-radius:20px;letter-spacing:.04em;white-space:nowrap}
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .b-available{background:rgba(var(--success-rgb),.12);color:var(--success)}
+  .b-cooldown,.b-throttled{background:rgba(var(--warn-rgb),.14);color:var(--warn)}
+  .b-exhausted,.b-error,.b-disabled{background:rgba(var(--danger-rgb),.12);color:var(--danger)}
+  .b-disabled{color:var(--text-dim);background:rgba(255,255,255,.04)}
+  .b-info{background:rgba(106,163,232,.14);color:var(--info)}
+  .b-neutral{background:rgba(255,255,255,.05);color:var(--text-muted)}
+  .reason{font-family:var(--font-mono);font-size:12.5px;padding:1px 7px;border-radius:5px;background:rgba(var(--danger-rgb),.12);color:var(--danger)}
+  .pill{font-family:var(--font-mono);font-size:13px;padding:2px 8px;border-radius:20px;background:rgba(var(--accent-rgb),.1);color:var(--accent)}
+
+  /* ---------- buttons / inputs ---------- */
+  button{font-family:inherit}
+  /* every button mirrors stredio.html's sign-in pill — a solid-crimson, white, bold fill */
+  .btn{font-family:inherit;font-weight:700;font-size:14px;letter-spacing:.06em;padding:9px 18px;border-radius:6px;border:none;
+    background:var(--accent);color:#fff;cursor:pointer;transition:.2s;white-space:nowrap;box-shadow:0 4px 14px rgba(var(--accent-rgb),.24)}
+  .btn:hover{background:var(--accent-h);color:#fff;box-shadow:0 6px 18px rgba(var(--accent-rgb),.4)}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-h);color:#fff}
+  /* destructive actions stay unmistakable: same pill, danger-red fill */
+  .btn.danger{background:var(--danger);color:#fff;box-shadow:0 4px 14px rgba(var(--danger-rgb),.24)}
+  .btn.danger:hover{background:#f07d8e;color:#fff;box-shadow:0 6px 18px rgba(var(--danger-rgb),.42)}
+  .btn.sm{padding:6px 12px;font-size:13px;letter-spacing:.04em;box-shadow:none}
+  .btn.sm:hover{box-shadow:0 4px 12px rgba(var(--accent-rgb),.3)}
+  .btn.sm.danger:hover{box-shadow:0 4px 12px rgba(var(--danger-rgb),.32)}
+  .btn:disabled,.btn:disabled:hover{opacity:.45;cursor:not-allowed;box-shadow:none}
+  /* icon buttons follow suit — compact solid-crimson squares */
+  .ic-btn{background:var(--accent);border:none;color:#fff;width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1;
+    transition:.2s;box-shadow:0 3px 10px rgba(var(--accent-rgb),.22)}
+  .ic-btn:hover{background:var(--accent-h);color:#fff;box-shadow:0 5px 14px rgba(var(--accent-rgb),.38)}
+  .ic-btn.primary{background:var(--accent);color:#fff}
+  .ic-btn.danger{background:var(--danger);color:#fff;box-shadow:0 3px 10px rgba(var(--danger-rgb),.22)}
+  .ic-btn.danger:hover{background:#f07d8e;color:#fff}
+  input,select,textarea{font-family:var(--font);background:var(--bg-3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 10px;font-size:15px;outline:none;transition:.16s}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  input.mono{font-family:var(--font-mono)}
+  input::placeholder{color:var(--text-dim)}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .seg button{background:none;border:none;color:var(--text-muted);font-family:var(--font-mono);font-size:14px;padding:7px 12px;cursor:pointer;transition:.14s}
+  .seg button:hover{color:var(--text);background:rgba(var(--accent-rgb),.05)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:700}
+  .search-box{flex:1;min-width:160px;max-width:380px}
+
+  /* ---------- tables ---------- */
+  .tbl{width:100%;border-collapse:collapse;font-size:15px}
+  .tbl th{text-align:left;font-family:var(--font-mono);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);padding:8px 10px;border-bottom:1px solid var(--border);font-weight:400}
+  .tbl td{padding:11px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+  .tbl tr:hover td{background:rgba(var(--accent-rgb),.03)}
+  .tbl .num{font-family:var(--font-mono);text-align:right}
+  .tbl .muted{color:var(--text-muted)}
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+  .mini-in{width:64px;padding:5px 7px;font-family:var(--font-mono);font-size:14px;text-align:right}
+
+  /* meter */
+  .meter{height:5px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;min-width:80px}
+  .meter > i{display:block;height:100%;background:var(--grad);border-radius:4px}
+  .meter.hot > i{background:linear-gradient(90deg,var(--warn),var(--danger))}
+
+  /* toggle switch */
+  .sw{position:relative;width:38px;height:21px;border-radius:20px;background:rgba(255,255,255,.1);cursor:pointer;transition:.2s;flex:none;border:1px solid var(--border)}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--text-muted);transition:.2s}
+  .sw.on{background:rgba(var(--success-rgb),.3);border-color:rgba(var(--success-rgb),.4)}
+  .sw.on::after{left:19px;background:var(--success)}
+
+  /* ---------- cover grid ---------- */
+  .cover-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+  .cover{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-3);cursor:pointer;transition:.16s}
+  .cover:hover{border-color:var(--accent);transform:translateY(-3px)}
+  .cover .img{aspect-ratio:2/3;background:var(--bg-4) center/cover no-repeat;display:block}
+  .cover .meta{padding:9px 10px}
+  .cover .ttl{font-size:14.5px;line-height:1.3;max-height:2.6em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical}
+  .cover .yr{font-family:var(--font-mono);font-size:13px;color:var(--text-dim);margin-top:3px}
+  .cover .flags{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:5px;flex-wrap:wrap}
+  .cover .corner{position:absolute;top:8px;right:8px}
+  .tag-ka{background:rgba(var(--success-rgb),.92);color:#06231a}
+  .tag-noka{background:rgba(var(--danger-rgb),.92);color:#2a0710}
+  .tag-fix{background:rgba(var(--accent-rgb),.92);color:var(--ink)}
+  .tag-flag{background:rgba(var(--warn-rgb),.92);color:#2a2206}
+  .tag-tmdb{background:rgba(255,255,255,.16);color:var(--text)}
+  .tag-alt{background:rgba(var(--violet-rgb),.85);color:#fff}
+  .tag-logo{background:var(--info);color:#03121f}
+  .ctag{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;padding:2px 6px;border-radius:4px;font-weight:600}
+
+  /* ---------- featured hero picker ---------- */
+  /* reorder/remove controls float over a selected hero card, hidden until hover */
+  .hero-acts{position:absolute;top:8px;right:8px;display:flex;gap:5px;opacity:0;transition:.14s;z-index:2}
+  .cover:hover .hero-acts{opacity:1}
+  .hcbtn{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:rgba(12,12,16,.82);color:var(--text);
+    font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.14s}
+  .hcbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .hcbtn.danger:hover{border-color:var(--danger);color:var(--danger)}
+  .hcbtn:disabled{opacity:.3;cursor:default;border-color:var(--border);color:var(--text-dim)}
+  .cover.is-added{outline:2px solid var(--accent);outline-offset:-2px}
+  .cover.is-added .img{opacity:.5}
+
+  /* ---------- hero background picker (landscape backdrops) ---------- */
+  .bg-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+  .bgp{border:2px solid transparent;border-radius:9px;overflow:hidden;cursor:pointer;position:relative;background:var(--bg-3);transition:.14s}
+  .bgp img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+  .bgp:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .bgp.sel{border-color:var(--accent)}
+  .bgp.sel::after{content:"\2713";position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;
+    background:var(--accent);color:var(--ink);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .bgp .lng{position:absolute;bottom:0;left:0;right:0;font-family:var(--font-mono);font-size:11px;text-align:center;background:rgba(0,0,0,.6);padding:2px;letter-spacing:.1em}
+  .bgp.is-default{border-color:var(--border-2)}
+  .bgp .deftag{position:absolute;top:6px;left:6px;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.16);color:var(--text)}
+  .bg-preview{aspect-ratio:16/9;width:100%;border-radius:10px;border:1px solid var(--border);background:var(--bg-4) center/cover no-repeat;margin-bottom:6px}
+
+  /* ---------- cover rails: home-page-style strips in the cover editor ---------- */
+  .cstrips{display:flex;flex-direction:column;gap:30px}
+  .cstrip-head{display:flex;align-items:baseline;gap:10px;margin-bottom:11px}
+  .cstrip-head h3{font-size:16.5px;font-weight:600;letter-spacing:.01em}
+  .cstrip-head .ct-type{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;padding:2px 7px;border-radius:20px;border:1px solid var(--border);color:var(--text-dim)}
+  .cstrip-head .ct-type.tv{color:var(--info);border-color:rgba(90,170,255,.4)}
+  .cstrip-head .ct-count{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-left:auto}
+  .cstrip-rail{position:relative}
+  .cstrip-row{display:flex;gap:13px;overflow-x:auto;overflow-y:hidden;padding:3px 2px 12px;scroll-behavior:smooth;
+    scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+  .cstrip-row::-webkit-scrollbar{height:8px}
+  .cstrip-row::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+  .cstrip-row::-webkit-scrollbar-track{background:transparent}
+  .cstrip-row>.cover{flex:0 0 150px;width:150px;margin:0}
+  .cstrip-row>.empty,.cstrip-row>.loading{flex:1}
+  .cstrip-arrow{position:absolute;top:calc(50% - 16px);transform:translateY(-50%);z-index:4;width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--border-2);background:rgba(14,13,20,.92);color:var(--text);font-size:18px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;opacity:0;transition:.16s;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  .cstrip-rail:hover .cstrip-arrow{opacity:1}
+  .cstrip-arrow.l{left:-6px}.cstrip-arrow.r{right:-6px}
+  .cstrip-arrow:hover{border-color:var(--accent);color:var(--accent)}
+  .cstrip-arrow:disabled{opacity:0!important;pointer-events:none}
+  .empty.sm{padding:18px;font-size:13.5px;text-align:left}
+  .tag-tv{background:rgba(6,8,14,.72);color:#cfe0ff;border:1px solid rgba(255,255,255,.26)}
+  @media(hover:none){.cstrip-arrow{display:none}}
+
+  /* ---------- covers: per-language editing ---------- */
+  .lang-pick{display:flex;align-items:center;gap:9px}
+  .lang-pick .lp-label{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim)}
+  #coverLang button,#cmLang button{min-width:58px;font-weight:600}
+  .cm-langs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .cm-lang{border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--card-2);transition:.16s}
+  .cm-lang.active{border-color:var(--accent);background:rgba(var(--accent-rgb),.07)}
+  .cm-lh{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--font-mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);margin-bottom:9px}
+  .cm-cur{display:flex;gap:11px;align-items:flex-start}
+  .cm-cur img{width:72px;aspect-ratio:2/3;object-fit:cover;border-radius:6px;border:1px solid var(--border);background:var(--bg-4);flex:none}
+  .cm-cur-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+  @media(max-width:560px){.cm-langs{grid-template-columns:1fr}}
+
+  /* ---------- modal ---------- */
+  .overlay{position:fixed;inset:0;z-index:100;background:rgba(4,3,10,.72);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:24px}
+  .overlay.open{display:flex;animation:fade .2s ease}
+  .modal{background:var(--bg-2);border:1px solid var(--border-2);border-radius:14px;max-width:760px;width:100%;max-height:88vh;overflow:auto;padding:22px}
+  .modal h3{font-family:var(--font-display);font-weight:400;font-size:19px;margin-bottom:3px}
+  .modal .x{position:absolute;top:16px;right:18px}
+  .modal-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+  .poster-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+  .pp{border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;position:relative;background:var(--bg-3)}
+  .pp img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block}
+  .pp:hover{border-color:var(--accent)}
+  .pp.sel{border-color:var(--accent)}
+  .pp .lng{position:absolute;bottom:0;left:0;right:0;font-family:var(--font-mono);font-size:11px;text-align:center;background:rgba(0,0,0,.6);padding:2px;letter-spacing:.1em}
+  .group-h{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin:16px 0 8px}
+  /* ---------- title-logo editor (PNG wordmarks; transparent, so painted on a dark tile) ---------- */
+  .logo-editor{margin-top:20px;border-top:1px solid var(--border);padding-top:16px}
+  .logo-bg{background:repeating-conic-gradient(#1c1a1f 0 25%,#141216 0 50%) 0 0/16px 16px,#161419}
+  .cm-logo-cur{display:flex;align-items:center;gap:12px}
+  .cm-logo-cur img{width:160px;height:64px;object-fit:contain;border-radius:6px;border:1px solid var(--border);padding:6px;flex:none}
+  .logo-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .lp{border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;position:relative}
+  .lp img{width:100%;height:74px;object-fit:contain;display:block;padding:8px;box-sizing:border-box}
+  .lp:hover,.lp.sel{border-color:var(--accent)}
+  .lp .lng{position:absolute;bottom:0;left:0;right:0;font-family:var(--font-mono);font-size:11px;text-align:center;background:rgba(0,0,0,.66);padding:2px;letter-spacing:.1em}
+
+  /* ---------- activity feed ---------- */
+  .feed{display:flex;flex-direction:column;max-height:440px;overflow:auto;max-width:820px}
+  .feed .ev{display:flex;gap:11px;padding:10px 12px;border-radius:8px;font-size:14.5px;line-height:1.45;letter-spacing:0;transition:background .12s}
+  .feed .ev+.ev{border-top:1px solid rgba(255,255,255,.07)}
+  .feed .ev:hover{background:rgba(255,255,255,.05)}
+  .feed .ev .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none;background:var(--text-muted)}
+  .feed .ev.ev-translation .dot{background:var(--accent)}
+  .feed .ev.ev-cover .dot{background:var(--info)} .feed .ev.ev-user .dot{background:var(--success)}
+  .feed .ev .msg{flex:1;min-width:0;color:#fff;font-weight:600;letter-spacing:0} .feed .ev .t{font-family:var(--font-mono);font-size:12.5px;color:#b9b8c2;white-space:nowrap;flex:none;font-weight:500}
+
+  .empty{text-align:center;color:var(--text-dim);padding:40px 20px;font-size:15px}
+  .loading{color:var(--text-dim);font-family:var(--font-mono);font-size:14px;padding:20px;text-align:center;letter-spacing:.1em;
+    display:flex;align-items:center;justify-content:center;gap:11px}
+  .loading::before{content:"";width:17px;height:17px;border-radius:50%;flex:0 0 auto;
+    background:conic-gradient(from 90deg,rgba(208,35,52,0) 0deg,var(--accent) 330deg,var(--accent-h) 360deg);
+    -webkit-mask:radial-gradient(farthest-side,#0000 calc(100% - 2px),#000 calc(100% - 2px));
+            mask:radial-gradient(farthest-side,#0000 calc(100% - 2px),#000 calc(100% - 2px));
+    animation:sfSpin .9s linear infinite}
+
+  /* ---------- skeleton loading + brand loader (shared with the main site) ---------- */
+  .sk,.sk-line{background:var(--bg-3);position:relative;overflow:hidden}
+  .sk-line{border-radius:6px;height:13px}
+  .sk::after,.sk-line::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(90deg,rgba(208,35,52,0) 0,rgba(208,35,52,.12) 46%,rgba(224,69,90,.22) 50%,rgba(208,35,52,.12) 54%,rgba(208,35,52,0) 100%);
+    transform:translateX(-100%);animation:sfSheen 1.5s ease-in-out infinite}
+  @keyframes sfSheen{60%,100%{transform:translateX(100%)}}
+  .sf-loader{width:42px;height:42px;display:inline-block;position:relative;flex:0 0 auto;vertical-align:middle}
+  .sf-loader::before{content:"";position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 90deg,rgba(208,35,52,0) 0deg,rgba(208,35,52,.18) 130deg,var(--accent) 330deg,var(--accent-h) 360deg);
+    -webkit-mask:radial-gradient(farthest-side,#0000 calc(100% - 3.5px),#000 calc(100% - 3.5px));
+            mask:radial-gradient(farthest-side,#0000 calc(100% - 3.5px),#000 calc(100% - 3.5px));
+    filter:drop-shadow(0 0 7px rgba(208,35,52,.45));animation:sfSpin .9s linear infinite}
+  .sf-loader::after{content:"";position:absolute;inset:35%;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px rgba(208,35,52,.55);animation:sfCore 1.15s ease-in-out infinite}
+  @keyframes sfSpin{to{transform:rotate(1turn)}}
+  @keyframes sfCore{0%,100%{transform:scale(.5);opacity:.4}50%{transform:scale(1);opacity:.95}}
+  .sf-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:46px 20px;width:100%}
+  .sf-loading .lbl{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--text-dim);animation:sfFade 1.6s ease-in-out infinite}
+  @keyframes sfFade{0%,100%{opacity:.45}50%{opacity:.9}}
+  @media(prefers-reduced-motion:reduce){
+    .sk::after,.sk-line::after{animation:none;transform:none;background:linear-gradient(90deg,rgba(208,35,52,.05),rgba(208,35,52,.12),rgba(208,35,52,.05))}
+    .sf-loader::before{animation-duration:1.8s} .sf-loader::after,.sf-loading .lbl{animation:none}
+  }
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:15px}
+  .kv .k{color:var(--text-muted)} .kv .v{font-family:var(--font-mono)}
+  .gate{max-width:420px;margin:14vh auto;text-align:center;padding:30px}
+  .gate .om{font-family:var(--font-mono);font-size:40px;color:var(--accent);margin-bottom:10px}
+  .gate h2{font-family:var(--font-display);font-weight:400;font-size:24px;margin-bottom:8px}
+  .gate p{color:var(--text-muted);margin-bottom:18px}
+
+  /* toast */
+  #toasts{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .toast{background:#161419;border:1px solid var(--border);border-radius:6px;padding:10px 18px;font-family:var(--font-mono);font-size:15px;animation:fade .2s ease;max-width:90vw}
+
+  @media(max-width:720px){
+    .wrap{grid-template-columns:1fr}
+    aside{position:fixed;left:0;top:0;transform:translateX(-100%);transition:.2s;width:240px}
+    aside.open{transform:none}
+    .menu-toggle{display:inline-flex}
+  }
+  .menu-toggle{display:none;align-items:center;justify-content:center}
+
+  /* ---------- alert banner (cross-view) ---------- */
+  .alertbar{position:sticky;top:0;z-index:8;display:flex;flex-direction:column;background:var(--bg)}
+  .alertbar .al{display:flex;align-items:center;gap:11px;padding:9px 26px;font-size:15px;cursor:pointer;border-bottom:1px solid var(--border);transition:.14s}
+  .alertbar .al .ai{font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:2px 8px;border-radius:20px;flex:none}
+  .alertbar .al.critical{background:rgba(var(--danger-rgb),.10)} .alertbar .al.critical .ai{background:rgba(var(--danger-rgb),.20);color:var(--danger)}
+  .alertbar .al.warn{background:rgba(var(--warn-rgb),.08)} .alertbar .al.warn .ai{background:rgba(var(--warn-rgb),.20);color:var(--warn)}
+  .alertbar .al.info{background:rgba(106,163,232,.07)} .alertbar .al.info .ai{background:rgba(106,163,232,.18);color:var(--info)}
+  .alertbar .al:hover{filter:brightness(1.2)}
+  .alertbar .al .arr{margin-left:auto;color:var(--text-dim);font-family:var(--font-mono);font-size:13px}
+
+  /* ---------- feed dot colors (new event types) ---------- */
+  .feed .ev.ev-fallback .dot{background:var(--danger)} .feed .ev.ev-addon .dot{background:var(--info)}
+  .feed .ev.ev-debrid .dot{background:var(--lavender)} .feed .ev.ev-system .dot{background:var(--text-muted)}
+
+  /* ---------- sub-tabs ---------- */
+  .subnav{display:flex;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap}
+  .subnav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);font-family:var(--font-mono);font-size:14.5px;letter-spacing:.04em;padding:9px 15px;cursor:pointer;transition:.14s;margin-bottom:-1px}
+  .subnav button:hover{color:var(--text)} .subnav button.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .tsub{display:none} .tsub.on{display:block;animation:fade .2s ease}
+
+  /* ---------- bench verdict rows ---------- */
+  .bench-row{display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+  .bench-row .src{color:var(--text-muted);font-size:14.5px} .bench-row .ka{font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  @media(max-width:680px){.bench-row{grid-template-columns:1fr;gap:6px}}
+
+  /* ---------- command palette ---------- */
+  .cmdk{position:fixed;inset:0;z-index:300;background:rgba(4,3,10,.6);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:14vh 20px 20px}
+  .cmdk.open{display:flex;animation:fade .14s ease}
+  .cmdk-box{background:var(--bg-2);border:1px solid var(--border-2);border-radius:12px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+  .cmdk-box input{width:100%;border:none;border-bottom:1px solid var(--border);border-radius:0;background:none;padding:15px 18px;font-size:17px}
+  .cmdk-box input:focus{border-color:var(--border)}
+  .cmdk-list{max-height:48vh;overflow:auto;padding:6px}
+  .cmdk-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:7px;cursor:pointer;font-size:15.5px}
+  .cmdk-item .kc{font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-left:auto}
+  .cmdk-item .cic{width:18px;text-align:center;color:var(--accent);font-size:15px}
+  .cmdk-item.sel{background:rgba(var(--accent-rgb),.14)}
+  .cmdk-empty{padding:18px;text-align:center;color:var(--text-dim);font-size:15px}
+  kbd{font-family:var(--font-mono);font-size:12.5px;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div id="toasts"></div>
+
+<!-- access gate (shown until /api/admin/me resolves) -->
+<div id="gate" class="gate" hidden>
+  <div class="om mono">&#937;</div>
+  <h2 id="gateTitle">Checking access…</h2>
+  <p id="gateMsg" class="mono">one moment</p>
+  <div id="gateActions"></div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <aside id="sidebar">
+    <div class="brand"><img class="brand-logo" src="assets/stredio-logo.svg" alt="STREDIO"/><span class="tag">ADMIN CONSOLE</span></div>
+    <div class="nav-h">DASHBOARD</div>
+    <div class="nav-item active" data-view="overview"><span class="ic">&#9783;</span>Overview</div>
+    <div class="nav-item" data-view="covers"><span class="ic">&#9635;</span>Covers<span class="badge-n" id="navCovers"></span></div>
+    <div class="nav-item" data-view="hero"><span class="ic">&#9733;</span>Featured Hero<span class="badge-n" id="navHero"></span></div>
+    <div class="nav-item" data-view="translations"><span class="ic">&#10100;&#10101;</span>Translations<span class="badge-n" id="navTrans"></span></div>
+    <div class="nav-h">ACCESS</div>
+    <div class="nav-item" data-view="users"><span class="ic">&#9787;</span>Users</div>
+    <div class="nav-item" data-view="system"><span class="ic">&#9881;</span>System</div>
+    <div class="foot">
+      <div class="foot-user"><span class="fu-ic mono">&#937;</span><span class="em" id="footUser"></span></div>
+      <a class="site-btn" href="/stredio.html">&#8592; Back to site</a>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <button class="ic-btn menu-toggle" id="menuToggle" aria-label="Menu">&#9776;</button>
+      <span class="crumb" id="crumb">Overview</span>
+      <span class="spacer"></span>
+      <button class="btn sm" id="refreshBtn" title="Reload current view">&#10227; Refresh</button>
+      <a class="back-link" href="/stredio.html">&#8599; Site</a>
+      <div class="user-chip"><span class="om mono">&#937;</span><span class="em" id="topUser"></span></div>
+    </div>
+
+    <!-- cross-view alert banner (populated by the status poll) -->
+    <div class="alertbar" id="alertBar" hidden></div>
+
+    <!-- ============ OVERVIEW ============ -->
+    <section class="view active" id="view-overview">
+      <div class="view-head">
+        <h1>Overview</h1>
+        <p>Your site at a glance — what's healthy, what needs you, and quick jumps to the things you manage most.</p>
+        <span class="spacer"></span>
+        <a class="btn" href="/stredio.html" target="_blank" rel="noopener">&#8599; Open site</a>
+      </div>
+
+      <!-- system health strip: is everything up? -->
+      <div class="health" id="healthStrip"><div class="loading">checking health…</div></div>
+
+      <!-- key numbers (the few that matter at a glance) -->
+      <div class="stat-grid" id="statGrid"><div class="loading">loading metrics…</div></div>
+
+      <div class="panel-split">
+        <!-- things waiting on the admin, each a one-click jump -->
+        <div class="panel">
+          <h3>&#9873; Needs attention</h3>
+          <div class="desc">Items waiting on you. Click a row to jump straight to it.</div>
+          <div id="todoList"><div class="loading">…</div></div>
+        </div>
+        <!-- shortcuts to the most common tasks -->
+        <div class="panel">
+          <h3>&#9889; Quick actions</h3>
+          <div class="desc">Jump to the tasks you do most.</div>
+          <div class="qa-grid" id="quickActions"></div>
+        </div>
+      </div>
+
+      <!-- recent activity -->
+      <div class="panel">
+        <h3>Recent activity</h3>
+        <div class="desc">Translation calls and admin actions, newest first (in-memory).</div>
+        <div class="feed" id="feed"><div class="loading">…</div></div>
+      </div>
+    </section>
+
+    <!-- ============ COVERS ============ -->
+    <section class="view" id="view-covers">
+      <div class="view-head">
+        <h1>Covers</h1>
+        <p>Pick a poster &amp; title-logo for each language, browsing the same rails as the home page. The cover you set under <b>KA</b> shows to Georgian visitors; <b>EN</b> shows in English — each falls back to the TMDB default until you choose one. Works for movies <b>and</b> shows.</p>
+      </div>
+      <div class="toolbar">
+        <div class="lang-pick">
+          <span class="lp-label">Editing for</span>
+          <div class="seg" id="coverLang"><button data-l="ka" class="on">&#4325;&#4304;&#4320; KA</button><button data-l="en">EN</button></div>
+        </div>
+        <div class="seg" id="coverMode"><button data-m="audit" class="on">Browse rails</button><button data-m="overrides">My covers</button></div>
+        <span class="spacer" style="flex:1"></span>
+        <input id="coverSearch" class="search-box" placeholder="Search any movie or show…"/>
+        <label class="row mono" style="font-size:14px;gap:6px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="onlyMissing" style="width:auto"/> Only without a <span id="onlyMissingLang">KA</span> cover</label>
+        <button class="btn sm" id="coverRefresh" title="Re-check posters (bypass 24h cache)">&#10227;</button>
+      </div>
+      <div id="coverStats" class="mono" style="font-size:14px;color:var(--text-muted);margin:2px 0 18px"></div>
+      <!-- Browse mode: home-page-style rails (movies + shows), lazy-loaded -->
+      <div id="coverStrips" class="cstrips"></div>
+      <!-- Search results / My covers: flat grid -->
+      <div class="cover-grid" id="coverGrid" hidden></div>
+    </section>
+
+    <!-- ============ FEATURED HERO ============ -->
+    <section class="view" id="view-hero">
+      <div class="view-head">
+        <h1>Featured Hero</h1>
+        <p>The big rotating banner at the top of the home page. Leave it <b>Automatic</b> to feature this week's trending movies, or switch to <b>Manual</b> and hand-pick the movies &amp; series shown. Your choice applies to <b>both</b> the Georgian and English sites.</p>
+      </div>
+      <div class="toolbar">
+        <div class="lang-pick">
+          <span class="lp-label">Hero source</span>
+          <div class="seg" id="heroMode"><button data-m="auto" class="on">&#9733; Automatic · Trending</button><button data-m="manual">&#9998; Manual pick</button></div>
+        </div>
+        <span class="spacer" style="flex:1"></span>
+        <span class="mono" id="heroStatus" style="font-size:13.5px;color:var(--text-dim)"></span>
+        <button class="btn primary" id="heroSave">Save</button>
+      </div>
+
+      <div class="panel" id="heroAutoNote">
+        <div class="desc" style="margin:0">Currently featuring this week's <b>Trending Movies</b> &mdash; the same titles that lead the home page, refreshed automatically. Switch to <b>Manual pick</b> to choose your own line-up.</div>
+      </div>
+
+      <div id="heroManual" hidden>
+        <div class="panel-split">
+          <div class="panel">
+            <h3>In the hero <span class="mono" id="heroCount" style="font-size:13px;color:var(--text-dim)"></span></h3>
+            <div class="desc">These play in the banner, in this order (up to 8). Hover a card: &#9635; picks its <b>background image</b>, the arrows reorder, &#10005; removes. <b>BG custom</b> means you chose the artwork; <b>BG auto</b> uses the title's TMDB backdrop.</div>
+            <div class="cover-grid" id="heroSelected"></div>
+          </div>
+          <div class="panel">
+            <h3>Add a movie or series</h3>
+            <div class="desc">Search the catalog and click a result to add it.</div>
+            <input id="heroSearch" class="search-box" placeholder="Search movies &amp; series…" style="max-width:none;width:100%"/>
+            <div class="cover-grid" id="heroResults" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ TRANSLATIONS ============ -->
+    <section class="view" id="view-translations">
+      <div class="view-head">
+        <h1>Translations</h1>
+        <p>The Georgian machine-translation engine — the cache, a live bench to vet the engine, the house-style glossary, and a quality breakdown of what's going wrong.</p>
+      </div>
+      <div class="subnav" id="transSub">
+        <button data-t="cache" class="on">Cache</button>
+        <button data-t="bench">Bench</button>
+        <button data-t="glossary">Glossary</button>
+        <button data-t="quality">Quality</button>
+      </div>
+
+      <!-- ---- Cache ---- -->
+      <div class="tsub on" id="tsub-cache">
+        <div class="toolbar">
+          <input id="transSearch" class="search-box" placeholder="Search source or translation…"/>
+          <div class="seg" id="transFilter"><button data-f="all" class="on">All</button><button data-f="suspicious">Suspicious</button><button data-f="locked">Locked</button></div>
+          <span class="spacer" style="flex:1"></span>
+          <button class="btn sm" id="retransAll" title="Re-translate every suspicious entry via Google Translate (locked entries are kept)">&#10227; Fix suspicious</button>
+          <button class="btn sm danger" id="delSuspicious">Delete suspicious</button>
+          <button class="btn sm danger" id="clearCache">Clear all</button>
+        </div>
+        <div id="transStats" class="mono" style="font-size:14px;color:var(--text-muted);margin-bottom:12px"></div>
+        <div class="tbl-wrap"><table class="tbl" id="transTable"></table></div>
+        <div class="row" style="justify-content:center;margin-top:16px">
+          <button class="btn sm" id="transPrev">&#8592; Prev</button>
+          <span class="mono" id="transPage" style="font-size:14px;color:var(--text-muted)">page 1</span>
+          <button class="btn sm" id="transNext">Next &#8594;</button>
+        </div>
+      </div>
+
+      <!-- ---- Bench ---- -->
+      <div class="tsub" id="tsub-bench">
+        <div class="panel">
+          <h3>&#9851; Translation bench</h3>
+          <div class="desc">Translate any English through the <b>live</b> pipeline (Google Translate → glossary check → Georgian validation) and judge the result. Nothing is cached automatically — promote good rows. One string per line.</div>
+          <textarea id="benchIn" rows="4" style="width:100%;font-family:var(--font-mono);font-size:15px" placeholder="The Dark Knight&#10;A retired detective is pulled back for one last case."></textarea>
+          <div class="row" style="margin-top:10px">
+            <button class="btn primary" id="benchRun">&#9851; Translate</button>
+            <button class="btn" id="benchSelf" title="Translate a fixed synthetic batch as a full-pipeline smoke test">&#10003; Pipeline self-check</button>
+            <span class="mono" id="benchMeta" style="font-size:13.5px;color:var(--text-dim)"></span>
+          </div>
+          <div id="benchOut" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <!-- ---- Glossary ---- -->
+      <div class="tsub" id="tsub-glossary">
+        <div class="panel">
+          <h3>&#9783; Georgian glossary</h3>
+          <div class="desc"><b>Forced renderings</b> pin a term's exact Georgian and short-circuit the translator entirely when a whole title matches (instant, never flagged). <b>Keep-as-is</b> terms are protected when a whole string equals one — Google Translate already leaves most proper nouns alone, so add a forced rendering for anything it gets wrong. Use <b>Scan cache</b> to find entries that don't follow the glossary.</div>
+          <div class="panel-split" style="margin-top:6px">
+            <div>
+              <div class="group-h">Keep as-is (do not translate)</div>
+              <div id="glossDnt"></div>
+              <div class="row" style="margin-top:8px"><input id="glossDntIn" placeholder="e.g. Netflix" style="flex:1"/><button class="btn sm" id="glossDntAdd">Add</button></div>
+            </div>
+            <div>
+              <div class="group-h">Forced renderings (EN &#8594; KA)</div>
+              <div id="glossPairs"></div>
+              <div class="row" style="margin-top:8px"><input id="glossPairEn" placeholder="English" style="width:38%"/><input id="glossPairKa" placeholder="ქართული" style="width:38%"/><button class="btn sm" id="glossPairAdd">Add</button></div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:18px">
+            <button class="btn primary" id="glossSave">Save glossary</button>
+            <button class="btn" id="glossScan" title="Find cached entries that don't follow the glossary">Scan cache</button>
+            <span class="mono" id="glossMeta" style="font-size:13.5px;color:var(--text-dim)"></span>
+          </div>
+          <div id="glossViolations" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <!-- ---- Quality ---- -->
+      <div class="tsub" id="tsub-quality">
+        <div class="panel">
+          <h3>&#9878; Quality breakdown</h3>
+          <div class="desc">Suspicious entries grouped by the concrete problem — empty, untranslated, or <i>which</i> foreign script leaked in (Cyrillic = the model echoed Russian metadata). Retranslate a whole bucket at once; locked entries are spared.</div>
+          <div class="row" style="margin-bottom:14px"><button class="btn sm" id="qualRefresh">&#10227; Analyze</button><span class="mono" id="qualMeta" style="font-size:14px;color:var(--text-muted)"></span></div>
+          <div id="qualBuckets"><div class="empty">Press “Analyze” to scan the cache.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ USERS ============ -->
+    <section class="view" id="view-users">
+      <div class="view-head"><h1>Users</h1><p>Everyone who can sign in. Admins reach this console; the last admin can't be removed.</p></div>
+      <div class="tbl-wrap"><table class="tbl" id="userTable"></table></div>
+    </section>
+
+    <!-- ============ SYSTEM ============ -->
+    <section class="view" id="view-system">
+      <div class="view-head"><h1>System</h1><p>Runtime, connections, and the on-disk JSON data store.</p></div>
+      <div class="panel-split">
+        <div class="panel"><h3>Runtime</h3><div id="sysRuntime"><div class="loading">…</div></div></div>
+        <div class="panel"><h3>Connections</h3><div id="sysIntegrations"><div class="loading">…</div></div></div>
+      </div>
+      <div class="panel"><h3>Data store</h3><div class="desc">JSON files under <span class="mono">server/data/</span>.</div><div id="sysFiles"></div></div>
+      <div class="panel"><h3>Maintenance</h3>
+        <div class="desc">Operational tools. The backup is <b>redacted</b> — password hashes, API keys, debrid &amp; session tokens are masked or omitted, so it captures config + the translation cache but never credentials.</div>
+        <div class="row"><button class="btn" id="backupBtn">&#8615; Download redacted backup</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- cover override modal -->
+<div class="overlay" id="coverModal">
+  <div class="modal" style="position:relative">
+    <button class="ic-btn x" id="coverModalX">&#10005;</button>
+    <div class="modal-head">
+      <div><h3 id="cmTitle">—</h3><div class="mono" style="font-size:14px;color:var(--text-muted)" id="cmId"></div></div>
+    </div>
+
+    <!-- what's live right now, per language -->
+    <div class="cm-langs">
+      <div class="cm-lang" data-l="ka">
+        <div class="cm-lh"><span>Georgian (KA)</span><span id="cmStateKa"></span></div>
+        <div class="cm-cur">
+          <img id="cmCurKa" alt=""/>
+          <div class="cm-cur-side"><button class="btn sm danger cmClearLang" data-l="ka">Clear KA cover</button></div>
+        </div>
+      </div>
+      <div class="cm-lang" data-l="en">
+        <div class="cm-lh"><span>English (EN)</span><span id="cmStateEn"></span></div>
+        <div class="cm-cur">
+          <img id="cmCurEn" alt=""/>
+          <div class="cm-cur-side"><button class="btn sm danger cmClearLang" data-l="en">Clear EN cover</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- assignment target: poster clicks / custom URL / flags below apply here -->
+    <div class="row" style="margin:16px 0 8px;align-items:center;gap:10px">
+      <span class="lp-label">Apply chosen poster to</span>
+      <div class="seg" id="cmLang"><button data-l="ka" class="on">&#4325;&#4304;&#4320; KA</button><button data-l="en">EN</button></div>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn sm" data-cstatus="bad_font" title="Flag this language's cover as having a poor font">&#9873; Flag bad font</button>
+      <button class="btn sm" data-cstatus="ok">Mark OK</button>
+    </div>
+    <div class="field" style="margin-bottom:8px"><label>Note for this language (optional)</label><input id="cmNote" placeholder="e.g. font unreadable on dark backgrounds"/></div>
+    <div class="field" style="margin-bottom:14px"><label>Custom poster URL (optional)</label>
+      <div class="row" style="gap:8px"><input id="cmCustom" class="mono" style="flex:1" placeholder="https://…/poster.jpg — paste any image link"/><button class="btn sm" id="cmCustomSet" type="button">Set</button></div>
+    </div>
+    <div id="cmPickers"><div class="loading">loading posters…</div></div>
+
+    <!-- title-logo editor: applies to the same chosen language as the poster above -->
+    <div class="logo-editor">
+      <div class="row" style="align-items:center;gap:10px;margin-bottom:6px">
+        <span class="lp-label">Title logo · <b id="cmLogoLang">KA</b></span>
+        <span class="spacer" style="flex:1"></span>
+        <button class="btn sm danger" id="cmClearLogo">Clear logo</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">A transparent PNG wordmark shown in the hero &amp; detail title instead of plain text. Paste your own Georgian (or any) logo PNG below, or pick one of TMDB's. Falls back to text (and the other language &rarr; English &rarr; neutral) when none is set.</p>
+      <div class="cm-logo-cur"><img id="cmCurLogo" class="logo-bg" alt=""/><span id="cmLogoState" class="mono" style="font-size:13px;color:var(--text-muted)"></span></div>
+      <div class="field" style="margin:12px 0"><label>Custom logo URL — paste your <b id="cmLogoLang2">KA</b> PNG</label>
+        <div class="row" style="gap:8px"><input id="cmCustomLogo" class="mono" style="flex:1" placeholder="https://…/title-logo.png (transparent PNG)"/><button class="btn sm" id="cmCustomLogoSet" type="button">Set logo</button></div>
+      </div>
+      <div id="cmLogoPickers"><div class="loading">loading logos…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- hero background picker modal -->
+<div class="overlay" id="heroBgModal">
+  <div class="modal" style="position:relative">
+    <button class="ic-btn x" id="heroBgX">&#10005;</button>
+    <div class="modal-head">
+      <div>
+        <h3 id="hbTitle">—</h3>
+        <div class="mono" style="font-size:14px;color:var(--text-muted)" id="hbId"></div>
+      </div>
+    </div>
+    <p style="font-size:13.5px;color:var(--text-muted);margin-bottom:12px">
+      Pick the image that paints this title's slide in the home-page hero banner. Choose a TMDB backdrop below or paste your own landscape image, or use the title's default.
+    </p>
+    <div class="bg-preview" id="hbPreview" aria-hidden="true"></div>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:14px">
+      <span class="mono" id="hbState" style="font-size:13px;color:var(--text-muted)"></span>
+      <button class="btn sm danger" id="hbUseDefault">Use TMDB default</button>
+    </div>
+    <div class="field" style="margin-bottom:16px"><label>Custom background URL (optional)</label>
+      <div class="row" style="gap:8px"><input id="hbCustom" class="mono" style="flex:1" placeholder="https://…/backdrop.jpg — paste any landscape image"/><button class="btn sm" id="hbCustomSet" type="button">Set</button></div>
+    </div>
+    <div id="hbPickers"><div class="loading">loading backdrops…</div></div>
+  </div>
+</div>
+
+<!-- command palette (Ctrl/Cmd-K) -->
+<div class="cmdk" id="cmdk">
+  <div class="cmdk-box">
+    <input id="cmdkIn" placeholder="Jump to a view or run an action…" autocomplete="off" spellcheck="false"/>
+    <div class="cmdk-list" id="cmdkList"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+  // escapes & < > " and ' — the single quote matters because poster URLs are
+  // interpolated into a CSS url('…') context (defense in depth; the server also
+  // rejects poster override URLs containing quotes/brackets/whitespace).
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+  function toast(msg,kind){
+    const el=document.createElement('div');
+    el.className='toast'; const c=kind==='bad'?'var(--danger)':kind==='ok'?'var(--success)':'var(--accent)';
+    el.style.borderColor=c; el.style.color=c; el.textContent=msg;
+    $('#toasts').appendChild(el); setTimeout(()=>el.remove(),2600);
+  }
+  async function api(method,path,body){
+    const opt={method,headers:{}};
+    if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+    const r=await fetch('/api/admin'+path,opt);
+    let data=null; try{data=await r.json();}catch(e){}
+    if(!r.ok){const err=new Error((data&&data.error)||('HTTP '+r.status));err.status=r.status;err.data=data;throw err;}
+    return data;
+  }
+  const fmt=n=>n==null?'—':n.toLocaleString();
+  function ago(iso){ if(!iso)return '—'; const d=(Date.now()-new Date(iso).getTime())/1000;
+    if(d<60)return Math.floor(d)+'s'; if(d<3600)return Math.floor(d/60)+'m'; if(d<86400)return Math.floor(d/3600)+'h'; return Math.floor(d/86400)+'d'; }
+  function dur(sec){ const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor(sec%3600/60);
+    return (d?d+'d ':'')+(h?h+'h ':'')+m+'m'; }
+
+  /* ---------------- access gate ---------------- */
+  let ME=null;
+  async function checkAccess(){
+    try{ const d=await api('GET','/me'); ME=d.user; bootApp(); }
+    catch(e){
+      $('#gate').hidden=false; $('#app').hidden=true;
+      if(e.status===401){ $('#gateTitle').textContent='Sign in required'; $('#gateMsg').textContent='This console needs an admin account.';
+        $('#gateActions').innerHTML='<a class="btn primary" href="/stredio.html">Go to STREDIO to sign in &#8594;</a>'; }
+      else if(e.status===403){ $('#gateTitle').textContent='Access denied'; $('#gateMsg').textContent='Your account is not an admin.';
+        $('#gateActions').innerHTML='<a class="btn" href="/stredio.html">&#8592; Back to site</a>'; }
+      else { $('#gateTitle').textContent='Backend unreachable'; $('#gateMsg').textContent=e.message||'error';
+        $('#gateActions').innerHTML='<button class="btn" onclick="location.reload()">Retry</button>'; }
+    }
+  }
+  function bootApp(){
+    $('#gate').hidden=true; $('#app').hidden=false;
+    $('#topUser').textContent=ME.email; $('#topUser').title=ME.email;
+    $('#footUser').textContent=ME.email; $('#footUser').title=ME.email;
+    renderView('overview');
+    startStatusPoll();   // cross-view alert banner + nav badges, refreshed every 60s
+  }
+
+  /* ---------------- view routing ---------------- */
+  const RENDER={overview:loadOverview,covers:loadCoversEntry,hero:loadHero,translations:loadTranslationsView,users:loadUsers,system:loadSystem};
+  let CURRENT='overview';
+  function renderView(v){
+    if(!RENDER[v]) v='overview';   // stale alert scopes (e.g. removed views) fall back to Overview
+    CURRENT=v;
+    $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===v));
+    $$('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
+    $('#crumb').textContent=({overview:'Overview',covers:'Covers',hero:'Featured Hero',translations:'Translations',users:'Users',system:'System'})[v];
+    $('#sidebar').classList.remove('open');
+    (RENDER[v]||(()=>{}))();
+  }
+  $$('.nav-item').forEach(n=>n.addEventListener('click',()=>renderView(n.dataset.view)));
+  $('#refreshBtn').addEventListener('click',()=>renderView(CURRENT));
+  $('#menuToggle').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
+
+  /* ---------------- OVERVIEW ---------------- */
+  async function loadOverview(){
+    $('#statGrid').innerHTML='<div class="loading">loading metrics…</div>';
+    $('#healthStrip').innerHTML='<div class="loading">checking health…</div>';
+    let s; try{ s=await api('GET','/stats'); }
+    catch(e){ $('#statGrid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; $('#healthStrip').innerHTML=''; return; }
+    // featured-hero mode lives in a separate config — fetch it (best-effort) so the
+    // health strip can show whether the banner is automatic or hand-picked
+    let hero=null; try{ hero=await api('GET','/hero'); }catch(e){}
+    renderHealth(s, hero);
+    renderStats(s);
+    renderTodos(s);
+    renderQuickActions();
+    setNavBadge('navTrans', s.translations.suspicious);
+    setNavBadge('navCovers', s.covers.flagged);
+    renderAlerts(s.alerts||[]);
+    loadFeed();
+  }
+  function setNavBadge(id,n){ const el=$('#'+id); if(!el)return; el.textContent=n; el.classList.toggle('show',!!n); }
+
+  // top "is everything up?" status strip — folds the old reliability panel down to one chip
+  function renderHealth(s, hero){
+    const sys=s.system||{}, rel=s.translations.reliability||{}, chips=[];
+    chips.push({cls:sys.tmdb?'ok':'bad',k:'Catalog',v:sys.tmdb?'Online':'Offline',
+      s:sys.tmdb?'TMDB connected':'TMDB key missing',go:sys.tmdb?'':'system'});
+    const hr=rel.hitRate;
+    chips.push({cls:hr==null?'ok':(hr>=80?'ok':hr>=50?'warn':'bad'),k:'Localization',v:sys.translation||'—',
+      s:hr==null?'Georgian engine ready':(hr+'% cache hit · '+fmt(rel.served||0)+' served'),go:'translations'});
+    chips.push({cls:'ok',k:'Server',v:'Up '+dur(sys.uptimeSec),s:'Node '+sys.node+' · '+sys.memoryMB+' MB',go:'system'});
+    if(hero){ const man=hero.mode==='manual';
+      chips.push({cls:'ok',k:'Featured hero',v:man?'Manual':'Automatic',
+        s:man?((hero.items?hero.items.length:0)+' hand-picked title(s)'):"This week's trending",go:'hero'}); }
+    $('#healthStrip').innerHTML=chips.map(c=>
+      `<div class="hchip ${c.cls}${c.go?' link':''}"${c.go?` data-go="${esc(c.go)}"`:''}>
+        <span class="hdot"></span>
+        <span class="htext"><span class="hk">${esc(c.k)}</span><span class="hv">${esc(c.v)}</span><span class="hs">${esc(c.s)}</span></span>
+      </div>`).join('');
+    $$('#healthStrip .hchip.link').forEach(el=>el.addEventListener('click',()=>renderView(el.dataset.go)));
+  }
+
+  // a handful of headline numbers — only the ones worth a glance from here
+  function renderStats(s){
+    const cov=s.covers||{}, cards=[
+      ['Users',fmt(s.users.total),s.users.sessions+' active · '+s.users.admins+' admin',''],
+      ['Custom covers',fmt(cov.withPoster!=null?cov.withPoster:cov.overrides),(cov.kaPosters||0)+' KA · '+(cov.enPosters||0)+' EN',''],
+      ['Title logos',fmt((cov.kaLogos||0)+(cov.enLogos||0)),'wordmarks set',''],
+      ['Add-ons',fmt(s.addons),'installed',''],
+      ['Translations',fmt(s.translations.entries),'cached strings',''],
+    ];
+    $('#statGrid').innerHTML=cards.map(([k,v,sub,cls])=>
+      `<div class="stat ${cls}"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="sub">${esc(sub)}</div></div>`).join('');
+  }
+
+  // actionable to-do list built from the stats — each row is a one-click jump
+  function renderTodos(s){
+    const cov=s.covers||{}, items=[];
+    if(s.translations.suspicious) items.push({cls:'warn',n:s.translations.suspicious,
+      t:'Suspicious translations',d:'Flagged as empty, untranslated or wrong-script.',
+      act:()=>{ renderView('translations'); setTransSub('quality'); }});
+    if(cov.flagged) items.push({cls:'info',n:cov.flagged,
+      t:'Covers flagged for review',d:'Marked bad-font or otherwise needing a new poster.',act:()=>renderView('covers')});
+    if(cov.missingKa) items.push({cls:'warn',n:cov.missingKa,
+      t:'Titles missing a Georgian cover',d:'Of '+fmt(cov.audited)+' audited — pick a KA poster for each.',act:gotoMissingCovers});
+    const box=$('#todoList');
+    if(!items.length){ box.innerHTML='<div class="todo-clear"><span class="tc-ic">&#10003;</span><span>All clear — nothing needs your attention right now.</span></div>'; return; }
+    box.innerHTML=items.map((it,i)=>
+      `<div class="todo ${it.cls}" data-i="${i}"><span class="tn">${esc(fmt(it.n))}</span><span class="tt"><b>${esc(it.t)}</b><small>${esc(it.d)}</small></span><span class="tarr">open &#8594;</span></div>`).join('');
+    $$('#todoList .todo').forEach(el=>el.addEventListener('click',()=>items[+el.dataset.i].act()));
+  }
+
+  // fixed shortcuts to the things this console manages
+  function renderQuickActions(){
+    const acts=[
+      ['&#9733;','Featured hero','Curate the home banner',()=>renderView('hero')],
+      ['&#9635;','Covers','Posters & title-logos',()=>renderView('covers')],
+      ['&#10100;&#10101;','Translations','Cache, bench & glossary',()=>renderView('translations')],
+      ['&#9787;','Users','Accounts & admins',()=>renderView('users')],
+      ['&#9881;','System','Runtime & data store',()=>renderView('system')],
+      ['&#8615;','Backup','Download redacted JSON',()=>{ window.location.href='/api/admin/backup'; }],
+    ];
+    $('#quickActions').innerHTML=acts.map(([ic,t,d],i)=>
+      `<button class="qa" data-i="${i}"><span class="qic">${ic}</span><span class="ql"><b>${esc(t)}</b><small>${esc(d)}</small></span></button>`).join('');
+    $$('#quickActions .qa').forEach(el=>el.addEventListener('click',()=>acts[+el.dataset.i][3]()));
+  }
+
+  // deep-link from the to-do list straight into "missing Georgian covers"
+  function gotoMissingCovers(){
+    COV.lang='ka'; COV.onlyMissing=true;
+    const cb=$('#onlyMissing'); if(cb) cb.checked=true;
+    $$('#coverLang button').forEach(x=>x.classList.toggle('on',x.dataset.l==='ka'));
+    renderView('covers');
+  }
+  async function loadFeed(){
+    try{ const d=await api('GET','/activity?limit=60'); const a=d.activity||[];
+      $('#feed').innerHTML=a.length?a.map(ev=>
+        `<div class="ev ev-${esc(ev.type)}"><span class="dot"></span><span class="msg">${esc(ev.message)}</span><span class="t">${ago(ev.at)}</span></div>`).join('')
+        :'<div class="empty">No activity yet.</div>';
+    }catch(e){ $('#feed').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; }
+  }
+
+  /* ---------------- COVERS ---------------- */
+  // One state object drives both the Browse audit and the My-covers list. `lang`
+  // is the language whose cover the whole tab is currently editing.
+  const COV={lang:'ka',mode:'audit',onlyMissing:false,q:'',byKey:{},gridItems:[],_refresh:false};
+  const otherLang=l=>l==='ka'?'en':'ka';
+  const ovBlock=(it,l)=>{ const o=it&&it.override; return (o&&o[l])||null; };
+  // client-side cache key — mirrors the server's keyOf() (bare id for movies, 'tv:' for shows)
+  const keyFor=(id,type)=>(type==='tv'?'tv:':'')+id;
+  // home-page-style rails shown in Browse mode (movies first, then shows)
+  const STRIP_DEFS=[
+    {src:'trending',     label:'Trending Movies', type:'movie'},
+    {src:'popular',      label:'Popular Movies',  type:'movie'},
+    {src:'top_rated',    label:'Top Rated Movies',type:'movie'},
+    {src:'now_playing',  label:'Now Playing',     type:'movie'},
+    {src:'upcoming',     label:'Upcoming Movies', type:'movie'},
+    {src:'trending_tv',  label:'Trending Shows',  type:'tv'},
+    {src:'popular_tv',   label:'Popular Shows',   type:'tv'},
+    {src:'top_rated_tv', label:'Top Rated Shows', type:'tv'},
+    {src:'on_the_air',   label:'Shows On The Air',type:'tv'},
+  ];
+
+  // skeleton cover cards / poster pickers — shimmer the real layout while we fetch
+  function skCovers(n){ let s=''; for(let i=0;i<(n||12);i++) s+='<div class="cover"><div class="img sk"></div><div class="meta"><div class="sk-line" style="width:84%"></div><div class="sk-line" style="width:46%;height:11px;margin-top:6px"></div></div></div>'; return s; }
+  function skPickers(n){ let s='<div class="poster-pick">'; for(let i=0;i<(n||9);i++) s+='<div class="pp"><div class="sk" style="width:100%;aspect-ratio:2/3"></div></div>'; return s+'</div>'; }
+
+  // Shared cover card — rails, search grid and My-covers grid all render with this.
+  // Reflects the language currently being edited (COV.lang).
+  function coverCardHTML(it){
+    const L=COV.lang;
+    const b=ovBlock(it,L), ob=ovBlock(it,otherLang(L));
+    const img=(b&&b.poster)||it.defaultPoster||'';
+    const tags=[];
+    if(it.type==='tv') tags.push('<span class="ctag tag-tv">SHOW</span>');
+    if(b&&b.poster) tags.push(`<span class="ctag tag-fix">${L.toUpperCase()} SET</span>`);
+    else if(L==='ka'&&it.hasKa===false) tags.push('<span class="ctag tag-noka">NO KA</span>');
+    else tags.push('<span class="ctag tag-tmdb">TMDB</span>');
+    if(b&&(b.flagged||b.status==='bad_font')) tags.push('<span class="ctag tag-flag">FLAG</span>');
+    if(b&&b.logo) tags.push(`<span class="ctag tag-logo">${L.toUpperCase()} LOGO</span>`);
+    if(ob&&ob.poster) tags.push(`<span class="ctag tag-alt">+${otherLang(L).toUpperCase()}</span>`);
+    return `<div class="cover" data-id="${esc(it.id)}" data-type="${esc(it.type||'movie')}">
+      <div class="img" style="background-image:url('${esc(img)}')"></div>
+      <div class="flags">${tags.join('')}</div>
+      <div class="meta"><div class="ttl">${esc(it.title)}</div><div class="yr">${esc(it.year||'—')} · #${esc(it.id)}</div></div>
+    </div>`;
+  }
+  // Canonicalise items so the SAME title appearing in two rails shares one object —
+  // then a cover edit reflects everywhere without a refetch.
+  function indexItems(items){
+    return (items||[]).map(it=>{
+      const k=keyFor(it.id,it.type);
+      if(COV.byKey[k]){ Object.assign(COV.byKey[k],it); return COV.byKey[k]; }
+      COV.byKey[k]=it; return it;
+    });
+  }
+  const passMissing=it=>{ if(!(COV.mode==='audit'&&COV.onlyMissing))return true; const b=ovBlock(it,COV.lang); return !(b&&b.poster); };
+  function setStats(k){ if(k) $('#coverStats').textContent=`${k.overrides||0} title(s) with a custom cover · ${k.kaPosters||0} KA · ${k.enPosters||0} EN posters · ${(k.kaLogos||0)+(k.enLogos||0)} title-logo(s)`; }
+  function refreshStats(){ api('GET','/covers/overrides').then(d=>{ const ov=d.overrides||[]; let ka=0,en=0,lg=0; ov.forEach(o=>{ if(o.ka&&o.ka.poster)ka++; if(o.en&&o.en.poster)en++; if((o.ka&&o.ka.logo)||(o.en&&o.en.logo))lg++; }); $('#coverStats').textContent=`${ov.length} title(s) with a custom cover · ${ka} KA · ${en} EN posters · ${lg} title-logo(s)`; }).catch(()=>{}); }
+
+  /* ----- Browse mode: lazy-loaded home-page-style rails ----- */
+  let stripObserver=null;
+  const showStrips=on=>{ $('#coverStrips').hidden=!on; $('#coverGrid').hidden=on; };
+  function renderStrips(refresh){
+    showStrips(true);
+    $('#coverStrips').innerHTML=STRIP_DEFS.map(d=>`
+      <div class="cstrip" data-src="${d.src}" data-type="${d.type}"${refresh?' data-refresh="1"':''}>
+        <div class="cstrip-head"><h3>${esc(d.label)}</h3><span class="ct-type ${d.type==='tv'?'tv':''}">${d.type==='tv'?'show':'movie'}</span><span class="ct-count" data-count></span></div>
+        <div class="cstrip-rail">
+          <button class="cstrip-arrow l" type="button" aria-label="Scroll left" hidden>&#8249;</button>
+          <div class="cstrip-row">${skCovers(7)}</div>
+          <button class="cstrip-arrow r" type="button" aria-label="Scroll right" hidden>&#8250;</button>
+        </div>
+      </div>`).join('');
+    if(stripObserver) stripObserver.disconnect();
+    // lazy-load each rail as it nears the viewport — spreads the TMDB audit cost
+    stripObserver=new IntersectionObserver((ents,obs)=>{ ents.forEach(en=>{ if(en.isIntersecting){ obs.unobserve(en.target); loadStrip(en.target); } }); },{rootMargin:'320px'});
+    $$('#coverStrips .cstrip').forEach(s=>stripObserver.observe(s));
+  }
+  function loadStrip(strip){
+    const refresh=strip.dataset.refresh==='1'; delete strip.dataset.refresh;
+    api('GET','/covers?source='+strip.dataset.src+(refresh?'&refresh=1':'')).then(res=>{
+      strip._items=indexItems(res.items||[]); renderStripRow(strip); setStats(res.stats);
+    }).catch(e=>{ strip.querySelector('.cstrip-row').innerHTML='<div class="empty sm">'+esc(e.message)+'</div>'; });
+  }
+  function renderStripRow(strip){
+    const items=(strip._items||[]).filter(passMissing);
+    const row=strip.querySelector('.cstrip-row');
+    strip.querySelector('[data-count]').textContent=items.length?(items.length+' shown'):'';
+    row.innerHTML=items.length?items.map(coverCardHTML).join('')
+      :('<div class="empty sm">'+(COV.onlyMissing?('All set in '+COV.lang.toUpperCase()+' ✓'):'Nothing here.')+'</div>');
+    row.onscroll=()=>updateArrows(strip);   // keep arrow disabled-state fresh while scrolling (assignment → no stacking)
+    requestAnimationFrame(()=>updateArrows(strip));
+  }
+  function rerenderStrips(){ $$('#coverStrips .cstrip').forEach(s=>{ if(s._items) renderStripRow(s); }); }
+  function updateArrows(strip){
+    const row=strip.querySelector('.cstrip-row'),l=strip.querySelector('.cstrip-arrow.l'),r=strip.querySelector('.cstrip-arrow.r');
+    const scrollable=row.scrollWidth-row.clientWidth>4;
+    if(l){ l.hidden=!scrollable; l.disabled=row.scrollLeft<=2; }
+    if(r){ r.hidden=!scrollable; r.disabled=row.scrollLeft>=row.scrollWidth-row.clientWidth-2; }
+  }
+  $('#coverStrips').addEventListener('click',e=>{
+    const arr=e.target.closest('.cstrip-arrow');
+    if(arr){ const row=arr.closest('.cstrip-rail').querySelector('.cstrip-row'); row.scrollBy({left:(arr.classList.contains('l')?-1:1)*row.clientWidth*0.85,behavior:'smooth'}); return; }
+    const c=e.target.closest('.cover'); if(c) openCover(c.dataset.id,c.dataset.type);
+  });
+
+  /* ----- search results / My-covers: flat grid ----- */
+  function renderGrid(items){
+    showStrips(false);
+    const list=(items||[]).filter(passMissing);
+    if(!list.length){ $('#coverGrid').innerHTML='<div class="empty">'+(COV.mode==='overrides'?'No covers set yet. Switch to Browse rails and pick one.':'Nothing to show here.')+'</div>'; return; }
+    $('#coverGrid').innerHTML=list.map(coverCardHTML).join('');
+  }
+  $('#coverGrid').addEventListener('click',e=>{ const c=e.target.closest('.cover'); if(c) openCover(c.dataset.id,c.dataset.type); });
+
+  // language switch — re-renders whatever's showing, and re-syncs an open modal.
+  function setCoverLang(l){
+    COV.lang=l;
+    $$('#coverLang button').forEach(x=>x.classList.toggle('on',x.dataset.l===l));
+    $('#onlyMissingLang').textContent=l.toUpperCase();
+    if(!$('#coverStrips').hidden) rerenderStrips(); else renderGrid(COV.gridItems);
+    if($('#coverModal').classList.contains('open')) setModalLang(l);
+  }
+  $$('#coverLang button').forEach(b=>b.addEventListener('click',()=>setCoverLang(b.dataset.l)));
+
+  let covSearchTimer=null;
+  $('#coverSearch').addEventListener('input',e=>{ clearTimeout(covSearchTimer); COV.q=e.target.value.trim(); covSearchTimer=setTimeout(runSearch,350); });
+  function runSearch(){
+    if(!COV.q){ if(COV.mode==='audit'){ showStrips(true); rerenderStrips(); } return; }
+    showStrips(false); $('#coverGrid').innerHTML=skCovers();
+    api('GET','/covers/search?q='+encodeURIComponent(COV.q)).then(res=>{ COV.gridItems=indexItems(res.items||[]); renderGrid(COV.gridItems); setStats(res.stats); })
+      .catch(e=>{ $('#coverGrid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+  }
+  $('#onlyMissing').addEventListener('change',e=>{ COV.onlyMissing=e.target.checked; if(!$('#coverStrips').hidden) rerenderStrips(); else renderGrid(COV.gridItems); });
+  $('#coverRefresh').addEventListener('click',()=>{ if(COV.q) runSearch(); else renderStrips(true); });
+
+  /* ----- cover modal: edits one language at a time, shows both ----- */
+  let CM_ID=null, CM_TYPE='movie', CM_LANG='ka', CM_IMAGES=null;
+  const elFor=l=>l==='ka'?'Ka':'En';
+  const cmItem=()=>COV.byKey[keyFor(CM_ID,CM_TYPE)]||{};
+  function openCover(id,type){
+    type=(type==='tv')?'tv':'movie';
+    CM_ID=id; CM_TYPE=type; CM_LANG=COV.lang;
+    const it=cmItem();
+    $('#cmTitle').textContent=it.title||('#'+id); $('#cmId').textContent=(type==='tv'?'TMDB TV #':'TMDB #')+id;
+    $('#cmPickers').innerHTML=skPickers();
+    $('#cmLogoPickers').innerHTML='<div class="loading">loading logos…</div>';
+    CM_IMAGES=null;
+    $('#coverModal').classList.add('open');
+    refreshModal();
+    api('GET','/covers/'+encodeURIComponent(id)+'/images?type='+type).then(d=>{ CM_IMAGES=d; renderPickers(); renderLogoPickers(); }).catch(e=>{$('#cmPickers').innerHTML='<div class="empty">'+esc(e.message)+'</div>';$('#cmLogoPickers').innerHTML='';});
+  }
+  // reflect current per-language state into the two preview cards + the editor
+  function refreshModal(){
+    const it=cmItem();
+    ['ka','en'].forEach(l=>{
+      const b=ovBlock(it,l);
+      const img=$('#cmCur'+elFor(l)); img.src=(b&&b.poster)||it.defaultPoster||'';
+      const custom=!!(b&&b.poster);
+      $('#cmState'+elFor(l)).innerHTML=custom?'<span class="badge b-info">custom</span>'
+        :(l==='ka'&&it.hasKa===false?'<span class="badge b-exhausted">no KA poster</span>':'<span class="badge b-neutral">TMDB default</span>');
+      const clr=$('.cmClearLang[data-l="'+l+'"]'); if(clr) clr.disabled=!custom;
+    });
+    $$('.cm-lang').forEach(c=>c.classList.toggle('active',c.dataset.l===CM_LANG));
+    $$('#cmLang button').forEach(b=>b.classList.toggle('on',b.dataset.l===CM_LANG));
+    const ab=ovBlock(it,CM_LANG);
+    $('#cmNote').value=(ab&&ab.note)||'';
+    $('#cmCustom').value=(ab&&ab.poster&&!String(ab.poster).includes('image.tmdb.org'))?ab.poster:'';
+    // title-logo editor reflects the active language
+    $('#cmLogoLang').textContent=CM_LANG.toUpperCase();
+    { const l2=$('#cmLogoLang2'); if(l2) l2.textContent=CM_LANG.toUpperCase(); }
+    const lg=(ab&&ab.logo)||'';
+    const lImg=$('#cmCurLogo'); lImg.src=lg; lImg.style.display=lg?'':'none';
+    $('#cmLogoState').textContent=lg?'logo set':'No logo — title shows as text (auto: other lang → EN → neutral)';
+    $('#cmCustomLogo').value=(lg&&!String(lg).includes('image.tmdb.org'))?lg:'';
+    const clrL=$('#cmClearLogo'); if(clrL) clrL.disabled=!lg;
+    highlightPickers(); highlightLogoPickers();
+  }
+  function setModalLang(l){ CM_LANG=l; refreshModal(); if(CM_IMAGES){ renderPickers(); renderLogoPickers(); } }   // re-surface the active language's posters/logos first
+  $$('#cmLang button').forEach(b=>b.addEventListener('click',()=>setModalLang(b.dataset.l)));
+  $$('.cm-lang').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('button'))return; setModalLang(c.dataset.l); }));
+
+  function renderPickers(){
+    const d=CM_IMAGES; if(!d) return;
+    const grp=(title,arr,note)=>arr&&arr.length?`<div class="group-h">${title} · ${arr.length}</div><div class="poster-pick">`+
+      arr.map(p=>`<div class="pp" data-url="${esc(p.url)}"><img src="${esc(p.url)}" loading="lazy"/><span class="lng">${esc(p.lang||note||'—')}${p.votes?(' · '+p.votes):''}</span></div>`).join('')+`</div>`:'';
+    // surface the active language's posters first
+    const groups=CM_LANG==='ka'
+      ? grp('Georgian (ka)',d.ka,'ka')+grp('English (en)',d.en,'en')+grp('No language',d.neutral,'neutral')
+      : grp('English (en)',d.en,'en')+grp('Georgian (ka)',d.ka,'ka')+grp('No language',d.neutral,'neutral');
+    $('#cmPickers').innerHTML=groups||'<div class="empty">No alternative posters available on TMDB.</div>';
+    $$('#cmPickers .pp').forEach(pp=>pp.addEventListener('click',()=>saveCover({poster:pp.dataset.url})));
+    highlightPickers();
+  }
+  function highlightPickers(){
+    const b=ovBlock(cmItem(),CM_LANG); const sel=(b&&b.poster)||'';
+    $$('#cmPickers .pp').forEach(pp=>pp.classList.toggle('sel',pp.dataset.url===sel));
+  }
+  // logo pickers — mirror renderPickers but for the TMDB title-logos (landscape PNGs)
+  function renderLogoPickers(){
+    const d=CM_IMAGES, L=d&&d.logos;
+    if(!L){ $('#cmLogoPickers').innerHTML='<div class="empty">No title-logos on TMDB.</div>'; return; }
+    const grp=(title,arr,note)=>arr&&arr.length?`<div class="group-h">${title} · ${arr.length}</div><div class="logo-pick">`+
+      arr.map(p=>`<div class="lp logo-bg" data-url="${esc(p.url)}"><img src="${esc(p.url)}" loading="lazy"/><span class="lng">${esc(p.lang||note||'—')}${p.votes?(' · '+p.votes):''}</span></div>`).join('')+`</div>`:'';
+    const groups=CM_LANG==='ka'
+      ? grp('Georgian (ka)',L.ka,'ka')+grp('English (en)',L.en,'en')+grp('No language',L.neutral,'neutral')
+      : grp('English (en)',L.en,'en')+grp('Georgian (ka)',L.ka,'ka')+grp('No language',L.neutral,'neutral');
+    $('#cmLogoPickers').innerHTML=groups||'<div class="empty">No title-logos available on TMDB.</div>';
+    $$('#cmLogoPickers .lp').forEach(lp=>lp.addEventListener('click',()=>saveCover({logo:lp.dataset.url})));
+    highlightLogoPickers();
+  }
+  function highlightLogoPickers(){
+    const b=ovBlock(cmItem(),CM_LANG); const sel=(b&&b.logo)||'';
+    $$('#cmLogoPickers .lp').forEach(lp=>lp.classList.toggle('sel',lp.dataset.url===sel));
+  }
+  async function saveCover(patch){
+    const body=Object.assign({lang:CM_LANG,type:CM_TYPE,title:($('#cmTitle').textContent||'').slice(0,200),note:$('#cmNote').value},patch);
+    try{
+      const r=await api('POST','/covers/'+encodeURIComponent(CM_ID),body);
+      const it=cmItem(); if(it) it.override=r.override;
+      toast(CM_LANG.toUpperCase()+' '+(CM_TYPE==='tv'?'show ':'')+'cover saved','ok');
+      refreshModal(); afterCoverChange(); refreshStats();
+    }catch(e){ toast(e.message,'bad'); }
+  }
+  async function clearLang(l){
+    try{
+      await api('DELETE','/covers/'+encodeURIComponent(CM_ID)+'?lang='+l+'&type='+CM_TYPE);
+      const it=cmItem();
+      if(it&&it.override){ delete it.override[l]; if(!it.override.ka&&!it.override.en) it.override=null; }
+      toast(l.toUpperCase()+' cover cleared');
+      refreshModal(); afterCoverChange(); refreshStats();
+    }catch(e){ toast(e.message,'bad'); }
+  }
+  // a save/clear can drop a title out of the My-covers list, so re-render what's showing.
+  function afterCoverChange(){ if(COV.mode==='overrides') loadOverrides(); else if(!$('#coverStrips').hidden) rerenderStrips(); else renderGrid(COV.gridItems); }
+  function closeCover(){ $('#coverModal').classList.remove('open'); }
+  $('#coverModalX').addEventListener('click',closeCover);
+  $('#coverModal').addEventListener('mousedown',e=>{ if(e.target===$('#coverModal')) closeCover(); });
+  $$('#coverModal [data-cstatus]').forEach(b=>b.addEventListener('click',()=>saveCover({status:b.dataset.cstatus,flagged:b.dataset.cstatus==='bad_font'})));
+  $$('.cmClearLang').forEach(b=>b.addEventListener('click',()=>clearLang(b.dataset.l)));
+  // custom poster URL: apply via the Set button or Enter (no surprise save on blur)
+  const setPoster=()=>{ const u=$('#cmCustom').value.trim(); if(u) saveCover({poster:u}); };
+  $('#cmCustomSet').addEventListener('click',setPoster);
+  $('#cmCustom').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); setPoster(); } });
+  // custom title-logo URL: paste your own PNG (e.g. a Georgian wordmark), then Set / Enter
+  const setLogo=()=>{ const u=$('#cmCustomLogo').value.trim(); if(u) saveCover({logo:u}); };
+  $('#cmCustomLogoSet').addEventListener('click',setLogo);
+  $('#cmCustomLogo').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); setLogo(); } });
+  $('#cmClearLogo').addEventListener('click',()=>saveCover({logo:''}));
+
+  /* ---------------- TRANSLATIONS ---------------- */
+  const TR={q:'',filter:'all',page:1,pageSize:50};
+  let trTimer=null;
+  function loadTranslations(){
+    $('#transTable').innerHTML='<tr><td><div class="loading">loading…</div></td></tr>';
+    const q=`?page=${TR.page}&pageSize=${TR.pageSize}&filter=${TR.filter}`+(TR.q?'&q='+encodeURIComponent(TR.q):'');
+    api('GET','/translations'+q).then(d=>{
+      $('#transStats').textContent=`${fmt(d.cacheSize)} cached · ${fmt(d.suspiciousTotal)} suspicious · ${fmt(d.total)} match filter`;
+      $('#transPage').textContent='page '+d.page+' / '+Math.max(1,Math.ceil(d.total/d.pageSize));
+      renderTrans(d.items);
+    }).catch(e=>{$('#transTable').innerHTML='<tr><td><div class="empty">'+esc(e.message)+'</div></td></tr>';});
+  }
+  function renderTrans(items){
+    if(!items.length){ $('#transTable').innerHTML='<tr><td><div class="empty">No entries.</div></td></tr>'; return; }
+    $('#transTable').innerHTML='<thead><tr><th style="width:34%">Source</th><th>Georgian</th><th>Flag</th><th style="width:160px"></th></tr></thead><tbody>'+
+      items.map(it=>`<tr>
+        <td class="muted" style="font-size:14.5px">${it.locked?'<span title="Locked" style="color:var(--accent)">&#9919; </span>':''}${esc(it.source)}</td>
+        <td><input class="trKa" style="width:100%" value="${esc(it.ka)}"/></td>
+        <td>${it.reason?`<span class="reason">${esc(it.reason)}</span>`:''}</td>
+        <td><div class="row" style="gap:5px;flex-wrap:nowrap"><button class="ic-btn trLock${it.locked?' primary':''}" title="${it.locked?'Unlock — allow bulk sweeps':'Lock — protect from bulk delete/fix'}">${it.locked?'&#9919;':'&#9920;'}</button><button class="ic-btn trSave" title="Save">&#10003;</button><button class="ic-btn trRetr" title="Retranslate">&#10227;</button><button class="ic-btn danger trDel" title="Delete">&#10005;</button></div></td>
+      </tr>`).join('')+'</tbody>';
+    $$('#transTable tbody tr').forEach((tr,i)=>{
+      const it=items[i], src=it.source, input=tr.querySelector('.trKa');
+      tr.querySelector('.trSave').addEventListener('click',()=>api('PUT','/translations',{source:src,ka:input.value}).then(()=>toast('Saved','ok')).catch(e=>toast(e.message,'bad')));
+      tr.querySelector('.trDel').addEventListener('click',()=>api('DELETE','/translations?source='+encodeURIComponent(src)).then(()=>{toast('Deleted');loadTranslations();}).catch(e=>toast(e.message,'bad')));
+      tr.querySelector('.trRetr').addEventListener('click',async()=>{ toast('Retranslating…'); try{const r=await api('POST','/translations/retranslate',{sources:[src]}); toast(r.updated?'✓ Updated':'No change',r.updated?'ok':'bad'); loadTranslations(); }catch(e){toast(e.message,'bad');} });
+      tr.querySelector('.trLock').addEventListener('click',()=>api('POST','/translations/lock',{source:src,locked:!it.locked}).then(r=>{toast(r.locked?'Locked':'Unlocked','ok');loadTranslations();}).catch(e=>toast(e.message,'bad')));
+    });
+  }
+  $('#transSearch').addEventListener('input',e=>{ clearTimeout(trTimer); TR.q=e.target.value.trim(); TR.page=1; trTimer=setTimeout(loadTranslations,300); });
+  $$('#transFilter button').forEach(b=>b.addEventListener('click',()=>{ $$('#transFilter button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); TR.filter=b.dataset.f; TR.page=1; loadTranslations(); }));
+  $('#transPrev').addEventListener('click',()=>{ if(TR.page>1){TR.page--;loadTranslations();} });
+  $('#transNext').addEventListener('click',()=>{ TR.page++;loadTranslations(); });
+  $('#retransAll').addEventListener('click',async()=>{ if(!confirm('Re-translate every suspicious entry via Google Translate? (Locked entries are kept.)'))return; toast('Retranslating…'); try{const r=await api('POST','/translations/retranslate',{suspicious:true}); toast(`✓ ${r.updated} updated, ${r.failed} failed`,'ok'); loadTranslations(); }catch(e){toast(e.message,'bad');} });
+  $('#delSuspicious').addEventListener('click',()=>{ if(!confirm('Delete all suspicious entries? They will be re-translated on next request.'))return; api('DELETE','/translations?suspicious=1').then(r=>{toast(r.cleared+' deleted');loadTranslations();}).catch(e=>toast(e.message,'bad')); });
+  $('#clearCache').addEventListener('click',()=>{ if(!confirm('Clear the ENTIRE translation cache? Every string will be re-translated on demand (costs quota).'))return; api('DELETE','/translations?all=1').then(r=>{toast(r.cleared+' cleared');loadTranslations();}).catch(e=>toast(e.message,'bad')); });
+
+  /* ---------------- USERS ---------------- */
+  function loadUsers(){
+    $('#userTable').innerHTML='<tr><td><div class="loading">loading…</div></td></tr>';
+    api('GET','/users').then(d=>{
+      const u=d.users||[];
+      $('#userTable').innerHTML='<thead><tr><th>Email</th><th>Created</th><th>Sessions</th><th>Admin</th><th></th></tr></thead><tbody>'+
+        u.map(x=>{
+          const me=x.id===ME.id;
+          return `<tr data-id="${esc(x.id)}">
+            <td>${esc(x.email)}${me?' <span class="pill">you</span>':''}</td>
+            <td class="muted mono" style="font-size:13.5px">${esc((x.createdAt||'').slice(0,10))}</td>
+            <td class="num muted">${x.sessions}</td>
+            <td><div class="sw uAdmin ${x.isAdmin?'on':''}" role="switch" aria-checked="${x.isAdmin}"></div></td>
+            <td>${me?'':'<button class="ic-btn danger uDel" title="Delete user">&#10005;</button>'}</td>
+          </tr>`;
+        }).join('')+'</tbody>';
+      $$('#userTable tbody tr').forEach(tr=>{
+        const id=tr.dataset.id;
+        tr.querySelector('.uAdmin').addEventListener('click',()=>{ const on=tr.querySelector('.uAdmin').classList.contains('on'); api('POST','/users/'+id+'/admin',{admin:!on}).then(()=>{toast('Updated','ok');loadUsers();}).catch(e=>toast(e.message,'bad')); });
+        const del=tr.querySelector('.uDel'); if(del) del.addEventListener('click',()=>{ if(confirm('Delete this user and all their sessions?')) api('DELETE','/users/'+id).then(()=>{toast('Deleted');loadUsers();}).catch(e=>toast(e.message,'bad')); });
+      });
+    }).catch(e=>{$('#userTable').innerHTML='<tr><td><div class="empty">'+esc(e.message)+'</div></td></tr>';});
+  }
+
+  /* ---------------- SYSTEM ---------------- */
+  function loadSystem(){
+    api('GET','/stats').then(s=>{
+      const sys=s.system;
+      $('#sysRuntime').innerHTML=[['Node',sys.node],['Uptime',dur(sys.uptimeSec)],['Memory (RSS)',sys.memoryMB+' MB']]
+        .map(([k,v])=>`<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(String(v))}</span></div>`).join('');
+      $('#sysIntegrations').innerHTML=[
+        ['TMDB',sys.tmdb?'<span class="badge b-available">connected</span>':'<span class="badge b-exhausted">not set</span>'],
+        ['Translation',`<span class="badge b-available">${esc(sys.translation||'—')}</span>`],
+        ['Debrid',(s.debrid&&s.debrid.length)?'<span class="badge b-info">'+s.debrid.map(p=>esc(p)).join(', ')+'</span>':'<span class="badge b-neutral">none</span>'],
+      ].map(([k,v])=>`<div class="kv"><span class="k">${esc(k)}</span><span class="v">${v}</span></div>`).join('');
+      $('#sysFiles').innerHTML='<div class="tbl-wrap"><table class="tbl"><thead><tr><th>File</th><th class="num">Size</th></tr></thead><tbody>'+
+        sys.dataFiles.map(f=>`<tr><td class="mono">${esc(f.name)}</td><td class="num muted">${f.sizeKB} KB</td></tr>`).join('')+'</tbody></table></div>';
+    }).catch(e=>toast(e.message,'bad'));
+  }
+
+  /* ---------------- OVERVIEW: reliability + alerts ---------------- */
+  function renderAlerts(alerts){
+    const bar=$('#alertBar'); if(!bar) return;
+    if(!alerts||!alerts.length){ bar.hidden=true; bar.innerHTML=''; return; }
+    const order={critical:0,warn:1,info:2};
+    const sorted=alerts.slice().sort((a,b)=>(order[a.level]??3)-(order[b.level]??3)).slice(0,4);
+    bar.hidden=false;
+    bar.innerHTML=sorted.map(a=>`<div class="al ${esc(a.level)}" data-scope="${esc(a.scope||'overview')}"><span class="ai">${esc(a.level)}</span><span>${esc(a.message)}</span><span class="arr">view &#8594;</span></div>`).join('');
+    $$('#alertBar .al').forEach(el=>el.addEventListener('click',()=>renderView(el.dataset.scope||'overview')));
+  }
+  /* lightweight poll feeding the cross-view banner + nav badges (single in-flight) */
+  let statusTimer=null, statusBusy=false;
+  async function pollStatus(){
+    if(statusBusy) return; statusBusy=true;
+    try{ const s=await api('GET','/stats');
+      renderAlerts(s.alerts||[]);
+      setNavBadge('navTrans', s.translations.suspicious);
+      setNavBadge('navCovers', s.covers.flagged);
+    }catch(e){/* a transient blip shouldn't spam toasts */}
+    finally{ statusBusy=false; }
+  }
+  function startStatusPoll(){ pollStatus(); clearInterval(statusTimer); statusTimer=setInterval(pollStatus,60000); }
+
+  /* ---------------- TRANSLATIONS sub-tabs ---------------- */
+  let TRANS_SUB='cache';
+  function setTransSub(t){
+    TRANS_SUB=t;
+    $$('#transSub button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+    $$('#view-translations .tsub').forEach(p=>p.classList.toggle('on',p.id==='tsub-'+t));
+    if(t==='cache') loadTranslations();
+    else if(t==='glossary') loadGlossary();
+    else if(t==='quality') loadQuality();
+  }
+  // RENDER + the global Refresh button re-run whichever sub-tab is actually visible.
+  function loadTranslationsView(){ setTransSub(TRANS_SUB); }
+  $$('#transSub button').forEach(b=>b.addEventListener('click',()=>setTransSub(b.dataset.t)));
+
+  /* ---------------- BENCH ---------------- */
+  async function runBench(){
+    const texts=$('#benchIn').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,25);
+    if(!texts.length){ toast('Enter at least one line','bad'); return; }
+    $('#benchMeta').textContent='translating…'; $('#benchRun').disabled=true;
+    try{ const r=await api('POST','/translate',{texts}); $('#benchMeta').textContent=r.latencyMs+'ms · '+(r.model||''); renderBench(r.items); }
+    catch(e){ $('#benchMeta').textContent=''; toast(e.message,'bad'); }
+    finally{ $('#benchRun').disabled=false; }
+  }
+  async function runSelfCheck(){
+    $('#benchMeta').textContent='self-check…'; $('#benchSelf').disabled=true;
+    try{ const r=await api('POST','/translations/selfcheck'); $('#benchMeta').textContent=(r.ok?'✓ passed':'✗ issues')+' · '+(r.latencyMs||0)+'ms';
+      if(r.items) renderBench(r.items); else $('#benchOut').innerHTML='<div class="empty">'+esc(r.error||'failed')+'</div>';
+      toast(r.ok?'Self-check passed':'Self-check found issues',r.ok?'ok':'bad'); }
+    catch(e){ $('#benchMeta').textContent=''; toast(e.message,'bad'); }
+    finally{ $('#benchSelf').disabled=false; }
+  }
+  function renderBench(items){
+    if(!items||!items.length){ $('#benchOut').innerHTML=''; return; }
+    $('#benchOut').innerHTML=items.map((it,i)=>`<div class="bench-row" data-i="${i}">
+      <div class="src">${esc(it.source)}</div>
+      <div class="ka">${it.ka?esc(it.ka):'<span class="muted">—</span>'}${it.reason?`<span class="reason">${esc(it.reason)}</span>`:'<span class="badge b-available">ok</span>'}${it.forced?'<span class="pill">glossary</span>':''}</div>
+      <div><button class="btn sm benchSave" ${(!it.ka)?'disabled':''}>${it.cached?'Update cache':'Save'}</button></div>
+    </div>`).join('');
+    $$('#benchOut .bench-row').forEach((row,i)=>{ const it=items[i];
+      row.querySelector('.benchSave').addEventListener('click',()=>api('PUT','/translations',{source:it.source,ka:it.ka}).then(()=>{toast('Saved to cache','ok');it.cached=true;}).catch(e=>toast(e.message,'bad')));
+    });
+  }
+  $('#benchRun').addEventListener('click',runBench);
+  $('#benchSelf').addEventListener('click',runSelfCheck);
+
+  /* ---------------- GLOSSARY ---------------- */
+  const GLOSS={dnt:[],pairs:[]};
+  function loadGlossary(){
+    api('GET','/glossary').then(d=>{ GLOSS.dnt=(d.dnt||[]).slice(); GLOSS.pairs=(d.pairs||[]).map(p=>({...p})); renderGloss();
+      $('#glossMeta').textContent=`${d.counts.dnt} keep-as-is · ${d.counts.pairs} forced`; }).catch(e=>toast(e.message,'bad'));
+  }
+  function renderGloss(){
+    $('#glossDnt').innerHTML=GLOSS.dnt.length?GLOSS.dnt.map((t,i)=>`<div class="kv"><span class="v">${esc(t)}</span><button class="ic-btn danger gDel" data-i="${i}" title="Remove">&#10005;</button></div>`).join(''):'<div class="mono" style="font-size:14px;color:var(--text-dim)">none yet</div>';
+    $('#glossPairs').innerHTML=GLOSS.pairs.length?GLOSS.pairs.map((p,i)=>`<div class="kv"><span class="v">${esc(p.en)} &#8594; ${esc(p.ka)}</span><button class="ic-btn danger pDel" data-i="${i}" title="Remove">&#10005;</button></div>`).join(''):'<div class="mono" style="font-size:14px;color:var(--text-dim)">none yet</div>';
+    $$('#glossDnt .gDel').forEach(b=>b.addEventListener('click',()=>{GLOSS.dnt.splice(+b.dataset.i,1);renderGloss();}));
+    $$('#glossPairs .pDel').forEach(b=>b.addEventListener('click',()=>{GLOSS.pairs.splice(+b.dataset.i,1);renderGloss();}));
+  }
+  $('#glossDntAdd').addEventListener('click',()=>{ const v=$('#glossDntIn').value.trim(); if(!v)return; if(!GLOSS.dnt.some(t=>t.toLowerCase()===v.toLowerCase()))GLOSS.dnt.push(v); $('#glossDntIn').value=''; renderGloss(); });
+  $('#glossPairAdd').addEventListener('click',()=>{ const en=$('#glossPairEn').value.trim(), ka=$('#glossPairKa').value.trim(); if(!en||!ka){toast('Both English and Georgian are required','bad');return;} GLOSS.pairs=GLOSS.pairs.filter(p=>p.en.toLowerCase()!==en.toLowerCase()); GLOSS.pairs.push({en,ka}); $('#glossPairEn').value='';$('#glossPairKa').value=''; renderGloss(); });
+  $('#glossDntIn').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();$('#glossDntAdd').click();} });
+  $('#glossPairKa').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();$('#glossPairAdd').click();} });
+  $('#glossSave').addEventListener('click',()=>api('PUT','/glossary',{dnt:GLOSS.dnt,pairs:GLOSS.pairs}).then(d=>{toast('Glossary saved','ok');$('#glossMeta').textContent=`${d.counts.dnt} keep-as-is · ${d.counts.pairs} forced`;}).catch(e=>toast(e.message,'bad')));
+  $('#glossScan').addEventListener('click',()=>{
+    $('#glossViolations').innerHTML='<div class="loading">scanning…</div>';
+    api('GET','/translations/glossary-scan').then(d=>{
+      const v=d.violations||[];
+      if(!v.length){ $('#glossViolations').innerHTML='<div class="mono" style="font-size:14px;color:var(--success)">No glossary violations in the cache. &#10003;</div>'; return; }
+      $('#glossViolations').innerHTML='<div class="group-h">'+v.length+' violation(s)</div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Source</th><th>Georgian</th><th>Term</th><th></th></tr></thead><tbody>'+
+        v.map(x=>`<tr><td class="muted" style="font-size:14px">${esc(x.source)}</td><td>${esc(x.ka)}</td><td><span class="reason">${esc(x.term)}</span></td><td><button class="ic-btn gvRetr" title="Retranslate" data-src="${esc(x.source)}">&#10227;</button></td></tr>`).join('')+'</tbody></table></div>';
+      $$('#glossViolations .gvRetr').forEach(b=>b.addEventListener('click',async()=>{ toast('Retranslating…'); try{ await api('POST','/translations/retranslate',{sources:[b.dataset.src]}); toast('Updated','ok'); }catch(e){toast(e.message,'bad');} }));
+    }).catch(e=>{ $('#glossViolations').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+  });
+
+  /* ---------------- QUALITY ---------------- */
+  function loadQuality(){
+    $('#qualBuckets').innerHTML='<div class="loading">analyzing…</div>';
+    api('GET','/translations/quality').then(d=>{
+      $('#qualMeta').textContent=`${fmt(d.suspicious)} suspicious of ${fmt(d.total)} cached`;
+      if(!d.buckets.length){ $('#qualBuckets').innerHTML='<div class="empty">No suspicious entries — the cache looks clean. &#10003;</div>'; return; }
+      const max=Math.max(...d.buckets.map(b=>b.count));
+      $('#qualBuckets').innerHTML=d.buckets.map(b=>{
+        const leak=b.bucket.indexOf('leak:')===0;
+        const label=leak?('Foreign script · '+b.bucket.slice(5)):b.bucket;
+        const samp=(b.samples||[]).map(s=>esc(s.source)).join(' · ');
+        return `<div style="margin-bottom:16px"><div class="row" style="justify-content:space-between;gap:10px"><span>${esc(label)} <span class="muted mono">${b.count}</span></span><button class="btn sm qRetr" data-bucket="${esc(b.bucket)}">Retranslate these</button></div>
+          <div class="meter ${leak?'hot':''}" style="margin:7px 0"><i style="width:${Math.round(b.count/max*100)}%"></i></div>
+          <div class="mono" style="font-size:13px;color:var(--text-dim)">${samp}</div></div>`;
+      }).join('');
+      $$('#qualBuckets .qRetr').forEach(btn=>btn.addEventListener('click',async()=>{ if(!confirm('Re-translate every entry in this bucket via Google Translate? (Locked entries are skipped.)'))return; btn.disabled=true; toast('Retranslating…'); try{ const r=await api('POST','/translations/retranslate',{bucket:btn.dataset.bucket}); toast(`✓ ${r.updated} updated, ${r.failed} failed`,'ok'); loadQuality(); }catch(e){toast(e.message,'bad');btn.disabled=false;} }));
+    }).catch(e=>{ $('#qualBuckets').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+  }
+  $('#qualRefresh').addEventListener('click',loadQuality);
+
+  /* ---------------- COVERS: browse / my-covers mode ---------------- */
+  // Entering the Covers view resets to Browse so the seg + controls match the grid.
+  function loadCoversEntry(){
+    COV.mode='audit'; COV.q=''; $('#coverSearch').value='';
+    $$('#coverMode button').forEach(x=>x.classList.toggle('on',x.dataset.m==='audit'));
+    $$('#coverLang button').forEach(x=>x.classList.toggle('on',x.dataset.l===COV.lang));
+    $('#onlyMissingLang').textContent=COV.lang.toUpperCase();
+    renderStrips();      // build + lazy-load the home-page-style rails
+    refreshStats();
+  }
+  $$('#coverMode button').forEach(b=>b.addEventListener('click',()=>{
+    $$('#coverMode button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    COV.mode=b.dataset.m;
+    if(COV.mode==='overrides'){ loadOverrides(); }
+    else { COV.q=''; $('#coverSearch').value=''; if($$('#coverStrips .cstrip').length){ showStrips(true); rerenderStrips(); } else renderStrips(); }
+  }));
+  function loadOverrides(){
+    showStrips(false);
+    $('#coverGrid').innerHTML=skCovers();
+    api('GET','/covers/overrides').then(d=>{
+      const ov=d.overrides||[];
+      let ka=0,en=0,lg=0; ov.forEach(o=>{ if(o.ka&&o.ka.poster)ka++; if(o.en&&o.en.poster)en++; if((o.ka&&o.ka.logo)||(o.en&&o.en.logo))lg++; });
+      $('#coverStats').textContent=`${ov.length} title(s) with a custom cover · ${ka} KA · ${en} EN posters · ${lg} title-logo(s)`;
+      // map each override record to the shared card item shape; defaultPoster falls
+      // back to whichever language has a poster so a card is never blank.
+      COV.gridItems=indexItems(ov.map(o=>({
+        id:String(o.id), type:o.type||'movie', title:o.title||('#'+o.id), year:'',
+        hasKa:!!(o.ka&&o.ka.poster),
+        defaultPoster:(o.ka&&o.ka.poster)||(o.en&&o.en.poster)||'',
+        override:o,
+      })));
+      renderGrid(COV.gridItems);
+    }).catch(e=>{ $('#coverGrid').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+  }
+
+  /* ---------------- FEATURED HERO ---------------- */
+  // One shared, language-agnostic selection. `items` are rich cards while editing
+  // (title/poster/type); only {id,type} is persisted. Max 8, order is meaningful.
+  const HERO={mode:'auto',items:[]};
+  const HERO_MAX=8;
+  const heroBadge=t=>t==='tv'?'SERIES':'MOVIE';
+  const heroHas=(id,type)=>HERO.items.some(x=>x.id===id&&x.type===type);
+
+  async function loadHero(){
+    $('#heroResults').innerHTML=''; $('#heroSearch').value='';
+    $('#heroSelected').innerHTML='<div class="loading">loading…</div>';
+    $('#heroStatus').textContent='';
+    try{
+      const d=await api('GET','/hero');
+      HERO.mode=d.mode==='manual'?'manual':'auto';
+      // `backdrop` is the TMDB default (the picker's fallback); `bg` is the admin's
+      // chosen hero background for this slide (empty = use the default).
+      HERO.items=(d.items||[]).map(it=>({id:String(it.id),type:it.type==='tv'?'tv':'movie',title:it.title||('#'+it.id),year:it.year||'',poster:it.poster||'',backdrop:it.backdrop||'',bg:it.bg||''}));
+      syncHeroMode(); renderHeroSelected();
+    }catch(e){ $('#heroSelected').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; }
+  }
+  function syncHeroMode(){
+    $$('#heroMode button').forEach(x=>x.classList.toggle('on',x.dataset.m===HERO.mode));
+    $('#heroAutoNote').hidden=HERO.mode!=='auto';
+    $('#heroManual').hidden=HERO.mode!=='manual';
+    setNavBadge('navHero', HERO.mode==='manual'?HERO.items.length:0);
+  }
+  function renderHeroSelected(){
+    const host=$('#heroSelected');
+    $('#heroCount').textContent=HERO.items.length?('· '+HERO.items.length+'/'+HERO_MAX):'';
+    if(!HERO.items.length){ host.innerHTML='<div class="empty">No titles yet — search on the right and click to add.</div>'; return; }
+    host.innerHTML=HERO.items.map((it,i)=>{
+      const img=it.poster||it.backdrop||'';
+      const custom=!!it.bg;
+      return `<div class="cover" data-id="${esc(it.id)}" data-type="${esc(it.type)}">
+        <div class="img" style="background-image:url('${esc(img)}')"></div>
+        <div class="flags">
+          <span class="ctag ${it.type==='tv'?'tag-alt':'tag-tmdb'}">${heroBadge(it.type)}</span>
+          <span class="ctag ${custom?'tag-fix':'tag-tmdb'}" title="${custom?'Custom hero background':'Uses the title’s TMDB backdrop'}">BG ${custom?'custom':'auto'}</span>
+        </div>
+        <div class="hero-acts">
+          <button class="hcbtn" data-act="bg" title="Choose hero background">&#9635;</button>
+          <button class="hcbtn" data-act="up" ${i===0?'disabled':''} title="Move up">&#8593;</button>
+          <button class="hcbtn" data-act="down" ${i===HERO.items.length-1?'disabled':''} title="Move down">&#8595;</button>
+          <button class="hcbtn danger" data-act="rm" title="Remove">&#10005;</button>
+        </div>
+        <div class="meta"><div class="ttl">${esc(it.title)}</div><div class="yr">${esc(it.year||'—')} · ${heroBadge(it.type).toLowerCase()}</div></div>
+      </div>`;
+    }).join('');
+    $$('#heroSelected .cover').forEach(c=>{
+      c.querySelectorAll('.hcbtn').forEach(b=>b.addEventListener('click',ev=>{
+        ev.stopPropagation();
+        const i=HERO.items.findIndex(x=>x.id===c.dataset.id&&x.type===c.dataset.type);
+        if(i<0) return;
+        const act=b.dataset.act;
+        if(act==='bg'){ openHeroBg(i); return; }
+        if(act==='rm') HERO.items.splice(i,1);
+        else if(act==='up'&&i>0){ const t=HERO.items[i-1]; HERO.items[i-1]=HERO.items[i]; HERO.items[i]=t; }
+        else if(act==='down'&&i<HERO.items.length-1){ const t=HERO.items[i+1]; HERO.items[i+1]=HERO.items[i]; HERO.items[i]=t; }
+        renderHeroSelected(); markHeroResultsAdded();
+        setNavBadge('navHero', HERO.items.length);
+      }));
+    });
+  }
+  function heroAddFromCard(c){
+    if(HERO.items.length>=HERO_MAX){ toast('The hero holds up to '+HERO_MAX+' titles','bad'); return; }
+    const d=c.dataset;
+    if(heroHas(d.id,d.type)){ toast('Already in the hero'); return; }
+    HERO.items.push({id:d.id,type:d.type,title:d.title,year:d.year,poster:d.poster,backdrop:d.backdrop});
+    c.classList.add('is-added');
+    renderHeroSelected();
+  }
+  // re-sync the "ADDED" outline on search results after a removal/reorder
+  function markHeroResultsAdded(){
+    $$('#heroResults .cover').forEach(c=>c.classList.toggle('is-added',heroHas(c.dataset.id,c.dataset.type)));
+  }
+  function heroDoSearch(q){
+    if(!q){ $('#heroResults').innerHTML=''; return; }
+    $('#heroResults').innerHTML='<div class="loading">searching…</div>';
+    api('GET','/hero/search?q='+encodeURIComponent(q)).then(d=>{
+      const items=d.items||[];
+      if(!items.length){ $('#heroResults').innerHTML='<div class="empty">No matches.</div>'; return; }
+      $('#heroResults').innerHTML=items.map(it=>{
+        const img=it.poster||it.backdrop||'';
+        const added=heroHas(String(it.id),it.type);
+        return `<div class="cover${added?' is-added':''}" data-id="${esc(it.id)}" data-type="${esc(it.type)}" data-title="${esc(it.title)}" data-year="${esc(it.year||'')}" data-poster="${esc(it.poster||'')}" data-backdrop="${esc(it.backdrop||'')}">
+          <div class="img" style="background-image:url('${esc(img)}')"></div>
+          <div class="flags"><span class="ctag ${it.type==='tv'?'tag-alt':'tag-tmdb'}">${heroBadge(it.type)}</span></div>
+          <div class="meta"><div class="ttl">${esc(it.title)}</div><div class="yr">${esc(it.year||'—')}</div></div>
+        </div>`;
+      }).join('');
+      $$('#heroResults .cover').forEach(c=>c.addEventListener('click',()=>heroAddFromCard(c)));
+    }).catch(e=>{ $('#heroResults').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+  }
+  let heroSearchTimer=null;
+  $('#heroSearch').addEventListener('input',e=>{ clearTimeout(heroSearchTimer); const q=e.target.value.trim(); heroSearchTimer=setTimeout(()=>heroDoSearch(q),350); });
+  $$('#heroMode button').forEach(b=>b.addEventListener('click',()=>{ HERO.mode=b.dataset.m; syncHeroMode(); }));
+  $('#heroSave').addEventListener('click',async()=>{
+    const payload={mode:HERO.mode,items:HERO.items.map(it=>({id:it.id,type:it.type,bg:it.bg||''}))};
+    $('#heroSave').disabled=true;
+    try{
+      const d=await api('PUT','/hero',payload);
+      toast('Hero saved','ok');
+      $('#heroStatus').textContent=d.mode==='manual'?('Saved · '+d.items.length+' title(s) · both languages'):'Saved · automatic · both languages';
+      setNavBadge('navHero', d.mode==='manual'?d.items.length:0);
+    }catch(e){ toast(e.message,'bad'); }
+    finally{ $('#heroSave').disabled=false; }
+  });
+
+  /* ----- hero background picker (per featured title) ----- */
+  // Edits HERO.items[HB_I].bg locally; the choice is persisted with the next Save,
+  // exactly like the title order. HB_DATA caches the title's TMDB backdrops.
+  let HB_I=-1, HB_DATA=null;
+  const hbItem=()=>HERO.items[HB_I];
+  // Same CSS-url safety the server enforces, checked early so a bad paste is caught
+  // before it can fail the whole Hero save.
+  function hbValidUrl(s){ s=String(s||'').trim(); if(!s||/['"()<>\\\s]/.test(s)) return false; try{ const u=new URL(s); return u.protocol==='http:'||u.protocol==='https:'; }catch{ return false; } }
+  function openHeroBg(i){
+    HB_I=i; HB_DATA=null;
+    const it=hbItem(); if(!it){ return; }
+    $('#hbTitle').textContent=it.title||('#'+it.id);
+    $('#hbId').textContent=(it.type==='tv'?'TMDB TV #':'TMDB #')+it.id;
+    $('#hbPickers').innerHTML='<div class="loading">loading backdrops…</div>';
+    $('#heroBgModal').classList.add('open');
+    hbRender();
+    api('GET','/hero/images?id='+encodeURIComponent(it.id)+'&type='+it.type)
+      .then(d=>{ HB_DATA=d; hbRender(); renderHbPickers(); })
+      .catch(e=>{ $('#hbPickers').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+  }
+  // paint the preview + state to whatever the item currently points at
+  function hbRender(){
+    const it=hbItem(); if(!it) return;
+    const def=(HB_DATA&&HB_DATA.default)||it.backdrop||'';
+    const eff=it.bg||def||'';
+    $('#hbPreview').style.backgroundImage=eff?`url('${esc(eff)}')`:'';
+    $('#hbState').textContent=it.bg?'Custom background set':(def?'Using the title’s TMDB backdrop (default)':'No backdrop on TMDB — the home hero falls back to a gradient');
+    $('#hbUseDefault').disabled=!it.bg;
+    $('#hbCustom').value=(it.bg&&!String(it.bg).includes('image.tmdb.org'))?it.bg:'';
+    highlightHbPickers();
+  }
+  function renderHbPickers(){
+    const d=HB_DATA; if(!d) return;
+    const def=d.default||'';
+    const defTile=def?`<div class="bgp is-default" data-url=""><img src="${esc(def)}" loading="lazy"/><span class="deftag">DEFAULT</span><span class="lng">TMDB backdrop</span></div>`:'';
+    const tiles=(d.backdrops||[]).map(b=>`<div class="bgp" data-url="${esc(b.full)}"><img src="${esc(b.thumb)}" loading="lazy"/><span class="lng">${esc(b.lang||'textless')}${b.vote?(' · '+b.vote.toFixed(1)):''}</span></div>`).join('');
+    $('#hbPickers').innerHTML=(defTile||tiles)
+      ? `<div class="group-h">Available backdrops</div><div class="bg-pick">${defTile}${tiles}</div>`
+      : '<div class="empty">No backdrops available on TMDB. Paste a custom image URL above.</div>';
+    $$('#hbPickers .bgp').forEach(p=>p.addEventListener('click',()=>hbSetBg(p.dataset.url)));
+    highlightHbPickers();
+  }
+  function highlightHbPickers(){
+    const sel=(hbItem()&&hbItem().bg)||'';
+    $$('#hbPickers .bgp').forEach(p=>p.classList.toggle('sel',(p.dataset.url||'')===sel));
+  }
+  // set (url) or clear (empty string ⇒ TMDB default) this slide's background
+  function hbSetBg(url){
+    const it=hbItem(); if(!it) return;
+    url=String(url||'').trim();
+    if(url&&!hbValidUrl(url)){ toast('That doesn’t look like a usable image URL','bad'); return; }
+    it.bg=url;
+    hbRender(); renderHeroSelected(); markHeroResultsAdded();
+    toast(url?'Background chosen — press Save to apply':'Reverted to the TMDB default');
+  }
+  $('#hbUseDefault').addEventListener('click',()=>hbSetBg(''));
+  $('#hbCustomSet').addEventListener('click',()=>hbSetBg($('#hbCustom').value));
+  $('#hbCustom').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); hbSetBg($('#hbCustom').value); } });
+  function closeHeroBg(){ $('#heroBgModal').classList.remove('open'); HB_I=-1; HB_DATA=null; }
+  $('#heroBgX').addEventListener('click',closeHeroBg);
+  $('#heroBgModal').addEventListener('mousedown',e=>{ if(e.target===$('#heroBgModal')) closeHeroBg(); });
+
+  /* ---------------- MAINTENANCE ---------------- */
+  $('#backupBtn').addEventListener('click',()=>{ window.location.href='/api/admin/backup'; });
+
+  /* ---------------- COMMAND PALETTE (Ctrl/Cmd-K) ---------------- */
+  const CMDS=[
+    {label:'Overview',ic:'⌂',kw:'overview home dashboard',act:()=>renderView('overview')},
+    {label:'Covers',ic:'▣',kw:'covers posters audit georgian english language poster',act:()=>renderView('covers')},
+    {label:'Featured Hero',ic:'◆',kw:'hero featured banner home trending manual movies series pick',act:()=>renderView('hero')},
+    {label:'Translation Cache',ic:'⟦',kw:'translations cache',act:()=>{TRANS_SUB='cache';renderView('translations');}},
+    {label:'Translation Bench',ic:'✎',kw:'bench translate test try model',act:()=>{TRANS_SUB='bench';renderView('translations');}},
+    {label:'Edit Glossary',ic:'⟐',kw:'glossary house style forced keep terms',act:()=>{TRANS_SUB='glossary';renderView('translations');}},
+    {label:'Quality breakdown',ic:'⚖',kw:'quality suspicious leak script',act:()=>{TRANS_SUB='quality';renderView('translations');}},
+    {label:'Users',ic:'☻',kw:'users accounts',act:()=>renderView('users')},
+    {label:'System',ic:'⚙',kw:'system runtime data store',act:()=>renderView('system')},
+    {label:'Download redacted backup',ic:'⭳',kw:'backup export download data',act:()=>{window.location.href='/api/admin/backup';}},
+    {label:'Refresh current view',ic:'⟳',kw:'refresh reload',act:()=>renderView(CURRENT)},
+  ];
+  let cmdkSel=0, cmdkShown=CMDS;
+  function openCmdk(){ $('#cmdk').classList.add('open'); $('#cmdkIn').value=''; filterCmdk(''); $('#cmdkIn').focus(); }
+  function closeCmdk(){ $('#cmdk').classList.remove('open'); }
+  function filterCmdk(q){
+    q=q.trim().toLowerCase();
+    cmdkShown=q?CMDS.filter(c=>(c.label+' '+c.kw).toLowerCase().includes(q)):CMDS;
+    cmdkSel=0; renderCmdk();
+  }
+  function renderCmdk(){
+    const list=$('#cmdkList');
+    if(!cmdkShown.length){ list.innerHTML='<div class="cmdk-empty">No matches</div>'; return; }
+    list.innerHTML=cmdkShown.map((c,i)=>`<div class="cmdk-item${i===cmdkSel?' sel':''}" data-i="${i}"><span class="cic">${c.ic}</span><span>${esc(c.label)}</span></div>`).join('');
+    $$('#cmdkList .cmdk-item').forEach(el=>{ el.addEventListener('click',()=>runCmdk(+el.dataset.i)); el.addEventListener('mousemove',()=>{ cmdkSel=+el.dataset.i; $$('#cmdkList .cmdk-item').forEach(x=>x.classList.toggle('sel',x===el)); }); });
+  }
+  function runCmdk(i){ const c=cmdkShown[i]; if(!c)return; closeCmdk(); c.act(); }
+  $('#cmdkIn').addEventListener('input',e=>filterCmdk(e.target.value));
+  $('#cmdkIn').addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); cmdkSel=Math.min(cmdkSel+1,cmdkShown.length-1); renderCmdk(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); cmdkSel=Math.max(cmdkSel-1,0); renderCmdk(); }
+    else if(e.key==='Enter'){ e.preventDefault(); runCmdk(cmdkSel); }
+    else if(e.key==='Escape'){ closeCmdk(); }
+  });
+  $('#cmdk').addEventListener('mousedown',e=>{ if(e.target===$('#cmdk')) closeCmdk(); });
+
+  /* ---------------- global keys ---------------- */
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){ e.preventDefault(); $('#cmdk').classList.contains('open')?closeCmdk():openCmdk(); return; }
+    if(e.key==='Escape'){ closeCover(); closeCmdk(); closeHeroBg(); }
+  });
+
+  checkAccess();
+})();
+</script>
+</body>
+</html>
