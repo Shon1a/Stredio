@@ -19,6 +19,7 @@ import { promises as dns } from 'node:dns';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import * as storage from './storage.js';
 
 const scrypt = promisify(_scrypt);
 
@@ -54,11 +55,18 @@ export const googleClientId = () => GOOGLE_CLIENT_ID;
  *  Tiny JSON-file store (mirrors the pattern already used in server.js)
  * ------------------------------------------------------------------ */
 async function readJson(file, fallback) {
+  // Postgres-backed in production (durable across Render's ephemeral restarts),
+  // local file in dev. See storage.js.
+  if (storage.dbEnabled) {
+    try { return await storage.readDoc(file, fallback); }
+    catch (e) { console.warn(`KV read failed (${file}):`, e.message); return fallback; }
+  }
   if (!existsSync(file)) return fallback;
   try { return JSON.parse(await readFile(file, 'utf8')); }
   catch { return fallback; }
 }
 async function writeJson(file, value) {
+  if (storage.dbEnabled) return storage.writeDoc(file, value);
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(file, JSON.stringify(value, null, 2));
 }

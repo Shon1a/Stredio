@@ -20,6 +20,7 @@ import {
 import * as covers from './covers.js';
 import * as glossary from './glossary.js';
 import { saveJson, readJsonSafe } from './jsonstore.js';
+import * as storage from './storage.js';
 
 // ------------------------------------------------------------------ //
 //  Activity ring buffer — a lightweight, in-memory event log surfaced
@@ -209,7 +210,7 @@ export function createAdminRouter(deps) {
       covers: cstats,
       addons,
       debrid: Object.keys(debrid).filter(p => debrid[p] && debrid[p].token),
-      system: systemInfo(hasTmdb, dataDir),
+      system: await systemInfo(hasTmdb, dataDir),
       alerts: reliability ? computeAlerts({ cstats, debrid, hasTmdb, reliability }) : [],
     });
   }));
@@ -795,8 +796,11 @@ export function createAdminRouter(deps) {
     const files = ['users.json', 'sessions.json', 'settings.json', 'addons.json', 'ka-cache.json', 'covers.json', 'glossary.json', 'ka-locks.json'];
     const bundle = {};
     for (const name of files) {
-      try { bundle[name] = JSON.parse(await readFile(join(dataDir, name), 'utf8')); }
-      catch { bundle[name] = null; }
+      try {
+        bundle[name] = storage.dbEnabled
+          ? await storage.readDoc(name, null)
+          : JSON.parse(await readFile(join(dataDir, name), 'utf8'));
+      } catch { bundle[name] = null; }
     }
     redactBackup(bundle);
     res.set('Content-Type', 'application/json; charset=utf-8');
@@ -835,16 +839,26 @@ async function fetchPosterAudit(tmdb, IMG, m, type) {
   }
 }
 
-function systemInfo(hasTmdb, dataDir) {
+async function systemInfo(hasTmdb, dataDir) {
   const mem = process.memoryUsage();
-  const files = ['users.json', 'sessions.json', 'settings.json', 'addons.json', 'ka-cache.json', 'covers.json', 'glossary.json', 'ka-locks.json']
-    .map(name => {
+  const names = ['users.json', 'sessions.json', 'settings.json', 'addons.json', 'ka-cache.json', 'covers.json', 'glossary.json', 'ka-locks.json'];
+  let files;
+  if (storage.dbEnabled) {
+    // No files on disk — size each document from its stored JSON length instead.
+    files = await Promise.all(names.map(async name => {
+      try { const v = await storage.readDoc(name, null); return { name, sizeKB: v == null ? 0 : +(Buffer.byteLength(JSON.stringify(v)) / 1024).toFixed(1) }; }
+      catch { return { name, sizeKB: 0 }; }
+    }));
+  } else {
+    files = names.map(name => {
       try { return { name, sizeKB: +(statSync(join(dataDir, name)).size / 1024).toFixed(1) }; }
       catch { return { name, sizeKB: 0 }; }
     });
+  }
   return {
     tmdb: !!hasTmdb,
     translation: 'Google Translate',
+    storage: storage.dbEnabled ? 'Postgres (persistent)' : 'local files',
     node: process.version,
     uptimeSec: Math.floor(process.uptime()),
     memoryMB: +(mem.rss / 1048576).toFixed(1),

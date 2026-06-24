@@ -11,6 +11,7 @@
 
 import { writeFile, rename, mkdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { dbEnabled, readDoc, writeDoc, keyFor } from './storage.js';
 
 const chains = new Map(); // file -> Promise (tail of that file's write queue)
 
@@ -21,7 +22,11 @@ const chains = new Map(); // file -> Promise (tail of that file's write queue)
  */
 export function saveJson(file, dir, getData) {
   const prev = chains.get(file) || Promise.resolve();
+  // Persist to Postgres (durable, atomic upsert) when configured, else to disk.
+  // The per-file chain is kept in both modes so writes to one store still apply
+  // strictly in call order (last-write-wins races can't reorder).
   const next = prev.catch(() => {}).then(async () => {
+    if (dbEnabled) { await writeDoc(file, getData()); return; }
     await mkdir(dir, { recursive: true });
     const tmp = `${file}.tmp`;
     await writeFile(tmp, JSON.stringify(getData(), null, 2), 'utf8');
@@ -40,6 +45,10 @@ export function saveJson(file, dir, getData) {
  * state on the next save.
  */
 export async function readJsonSafe(file, fallback) {
+  if (dbEnabled) {
+    try { return await readDoc(file, fallback); }
+    catch (e) { console.warn(`KV read failed (${keyFor(file)}): ${e.message}`); return fallback; }
+  }
   if (!existsSync(file)) return fallback;
   try {
     return JSON.parse(await readFile(file, 'utf8'));

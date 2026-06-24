@@ -20,6 +20,7 @@ import {
 import * as covers from './covers.js';
 import * as logoStore from './logos.js';
 import * as glossary from './glossary.js';
+import * as storage from './storage.js';
 import { createAdminRouter, recordActivity } from './admin.js';
 import { start as startGeorgianAddon } from './georgian-addon.js';
 
@@ -450,15 +451,22 @@ const kaCache = new Map();
 // un-awaited IIFE (which could fire redundant translate calls and overwrite the
 // disk cache with a near-empty snapshot during the boot window).
 async function loadKaCache() {
-  try { const raw = JSON.parse(await readFile(KA_CACHE_FILE, 'utf8')); for (const [k, v] of Object.entries(raw)) kaCache.set(k, v); }
-  catch { /* no cache yet */ }
+  try {
+    const raw = storage.dbEnabled
+      ? (await storage.readDoc(KA_CACHE_FILE, {}))
+      : JSON.parse(await readFile(KA_CACHE_FILE, 'utf8'));
+    for (const [k, v] of Object.entries(raw || {})) kaCache.set(k, v);
+  } catch { /* no cache yet */ }
 }
 let cacheSaveTimer = null;
 function scheduleCacheSave() {
   if (cacheSaveTimer) return;
   cacheSaveTimer = setTimeout(async () => {
     cacheSaveTimer = null;
-    try { await mkdir(DATA_DIR, { recursive: true }); await writeFile(KA_CACHE_FILE, JSON.stringify(Object.fromEntries(kaCache)), 'utf8'); }
+    try {
+      if (storage.dbEnabled) { await storage.writeDoc(KA_CACHE_FILE, Object.fromEntries(kaCache)); return; }
+      await mkdir(DATA_DIR, { recursive: true }); await writeFile(KA_CACHE_FILE, JSON.stringify(Object.fromEntries(kaCache)), 'utf8');
+    }
     catch (e) { console.warn('ka-cache save failed:', e.message); }
   }, 1500);
 }
@@ -1328,11 +1336,15 @@ app.get('/api/hero', async (req, res) => {
  *  Addon engine — install by manifest URL (Stremio-style)
  * ------------------------------------------------------------------ */
 async function readAddons() {
+  if (storage.dbEnabled) {
+    try { return await storage.readDoc(ADDONS_FILE, []); } catch { return []; }
+  }
   if (!existsSync(ADDONS_FILE)) return [];
   try { return JSON.parse(await readFile(ADDONS_FILE, 'utf8')); }
   catch { return []; }
 }
 async function writeAddons(list) {
+  if (storage.dbEnabled) return storage.writeDoc(ADDONS_FILE, list);
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(ADDONS_FILE, JSON.stringify(list, null, 2));
 }
@@ -1603,11 +1615,15 @@ function mapStremioMeta(m) {
  * ------------------------------------------------------------------ */
 const SETTINGS_FILE = join(DATA_DIR, 'settings.json');
 async function readSettings() {
+  if (storage.dbEnabled) {
+    try { return await storage.readDoc(SETTINGS_FILE, {}); } catch { return {}; }
+  }
   if (!existsSync(SETTINGS_FILE)) return {};
   try { return JSON.parse(await readFile(SETTINGS_FILE, 'utf8')); }
   catch { return {}; }
 }
 async function writeSettings(s) {
+  if (storage.dbEnabled) return storage.writeDoc(SETTINGS_FILE, s);
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(SETTINGS_FILE, JSON.stringify(s, null, 2));
 }
@@ -2340,6 +2356,15 @@ app.use((err, req, res, _next) => {
  * and continues so the catalog still serves even if, say, an admin promotion
  * write fails. */
 async function boot() {
+  // Connect + create the kv table before any store reads. If DATABASE_URL is set
+  // but unreachable, fail loudly here rather than silently degrading to empty
+  // (ephemeral) state — that would look like "all my data vanished" in prod.
+  if (storage.dbEnabled) {
+    try { await storage.init(); console.log('  Storage            → Postgres (persistent) ✓'); }
+    catch (e) { console.error('  Storage            → Postgres connect FAILED:', e.message); throw e; }
+  } else {
+    console.log('  Storage            → local JSON files (set DATABASE_URL for persistence)');
+  }
   await Promise.all([
     loadKaCache(),
     covers.init().catch(e => console.warn('covers init:', e.message)),
