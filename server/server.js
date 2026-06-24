@@ -1413,7 +1413,10 @@ async function fetchAddonResource(base, path) {
   if (!isSafeFetchUrl(base)) throw Object.assign(new Error('Addon host not allowed'), { status: 400 });
   const r = await fetch(base + path, {
     headers: { accept: 'application/json' },
-    signal: AbortSignal.timeout(10000),
+    // 20s (was 10s): a split-deployed addon on a free host can be slow right after
+    // waking, or take a moment on a heavy title. A keep-warm pinger prevents full
+    // cold starts; this just stops a warm-but-slow scrape from being cut short.
+    signal: AbortSignal.timeout(20000),
   });
   if (!r.ok) throw Object.assign(new Error(`Addon responded ${r.status}`), { status: r.status });
   return r.json();
