@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>STREDIO — Stream Movies &amp; Series</title>
 <meta name="description" content="STREDIO is a terminal-styled streaming front-end: browse a live movie catalog, filter by genre, year and rating, install Stremio addons by URL, and play sources via third-party platforms in a built-in player." />
 <meta name="theme-color" content="#101016" />
@@ -135,7 +135,7 @@
 
   /* sidebar = main menu */
   aside{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;padding:24px 18px;
-    border-right:1px solid var(--border);background:rgba(8,7,15,.96);z-index:30;
+    border-right:1px solid var(--border);background:rgba(0, 0, 0, 0.96);z-index:30;
     display:flex;flex-direction:column;gap:28px;transition:transform .32s cubic-bezier(.2,.8,.2,1)}
   .brand{font-size:18px;letter-spacing:.18em;font-weight:300}
   .brand b{font-weight:500;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
@@ -211,7 +211,7 @@
     padding:0;transition:width .28s ease,opacity .2s ease,border-color .2s ease}
   header.search-open .search{width:min(300px,46vw);opacity:1;overflow:visible;pointer-events:auto;
     padding:0 14px;margin-left:8px;border-color:rgba(255,255,255,.4)}
-  .search input{order:1;flex:1;min-width:0;background:none;border:none;outline:none;color:#fff;font-family:inherit;font-size:15px}
+  .search input{order:1;flex:1;min-width:0;background:none;border:none;outline:none;color:#fff;font-family:inherit;font-size:11.5px}
   .search input::placeholder{color:rgba(255,255,255,.45)}
   .search .mono{display:none}                       /* hide the decorative magnifier / enter glyphs */
   .search .filter-toggle{order:2;flex-shrink:0;color:rgba(255,255,255,.55)}
@@ -248,7 +248,7 @@
        #topbar.search-open (id) so it outranks the collapsed #topbar .search above */
     #topbar.search-open .search{display:flex;order:9;flex:1 0 100%;width:auto;opacity:1;overflow:visible;pointer-events:auto;
       height:auto;margin:7px 0 0;padding:9px 14px;
-      background:#0d0d10;border:1px solid rgba(255,255,255,.18);border-radius:10px}
+      background:#0d0d105c;border:1px solid rgba(255,255,255,.18);border-radius:10px}
     /* touch ergonomics: bigger tap targets across phones + tablets (was 34px icons /
        26px-tall language buttons — below the ~44px guidance). #topbar prefix outranks
        the later max-width:520px shrink so these hold on the smallest phones too. */
@@ -1447,7 +1447,7 @@
   }
   @media(max-width:640px){
     .enter{display:none}                          /* search applies live + filters apply on change */
-    .grid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:13px}
     .fp-row{flex-wrap:wrap}
     .fp-row input[type=range]{width:160px}
     .stream-row{flex-wrap:wrap}
@@ -1457,13 +1457,19 @@
     .vp-icon{min-width:40px;height:40px}
     .vignette{opacity:.55}
     .section-title{padding-top:24px}
-    /* trim the swipe-row covers so phones show more than two-and-a-peek */
-    .strip-row{gap:11px}
-    .poster{width:142px;height:213px}
+    /* movie cards track desktop proportions (2:3), only slightly smaller than the 160×240
+       desktop cover so larger phones still feel cinematic (user request) */
+    .strip-row{gap:12px}
+    /* .pcard is a fixed-width wrapper whose `.pcard .poster{width:100%}` outranks the
+       .poster width — so resize the wrapper too, or the cover keeps the 160px desktop
+       width against the shorter mobile height and the 2:3 ratio shears */
+    .poster{width:156px;height:234px}
+    .pcard{width:156px}
   }
   @media(max-width:420px){
-    .grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
-    .poster{width:128px;height:192px}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:11px}
+    .poster{width:144px;height:216px}
+    .pcard{width:144px}
     .poster .ov{padding:10px}
   }
 
@@ -1484,6 +1490,12 @@
   .lang-btn:hover{color:#fff}
   .lang-btn.on{background:#fff;color:#000}
   @media (max-width:520px){ .lang-btn{padding:7px 9px;font-size:12px} .lang-toggle{margin-right:6px} }
+  /* SIGN IN crowds the single mobile row alongside the logo, language toggle and search
+     magnifier — trim its horizontal bulk + type on phones. #topbar prefix beats the
+     #topbar .signin-btn{padding:11px 18px} rule in the max-width:900px block. The 44px
+     min-height from the (pointer:coarse) block still holds the tap target. */
+  @media (max-width:520px){ #topbar .signin-btn{padding:11px 14px;font-size:13px;letter-spacing:.05em} }
+  @media (max-width:420px){ #topbar .signin-btn{padding:10px 12px;font-size:12px;letter-spacing:.03em} }
   .auth-control{display:flex;align-items:center;flex-shrink:0;margin-left:2px}
   /* sign-in: rounded pill with a dim→bright crimson gradient hairline (matches the search bar) */
   .signin-btn{background:var(--accent);border:none;border-radius:5px;color:#fff;letter-spacing:.08em;
@@ -1747,6 +1759,271 @@
   }
   /* motion-averse visitors skip the sting — the overlay never shows */
   @media (prefers-reduced-motion: reduce){ #intro{display:none!important} }
+
+  /* ==========================================================================
+     MOBILE & iOS OPTIMIZATION — phone / tablet / touch refinements (2026).
+     Appended last so equal-specificity mobile rules win the cascade cleanly.
+     Everything here is gated on touch / small viewports / iOS; the desktop
+     layout (>=901px, fine pointer) is intentionally untouched. env(safe-area-*)
+     insets resolve to 0 on non-notch displays and dvh==vh where unsupported, so
+     every rule degrades safely on older browsers and on the desktop.
+     ========================================================================== */
+
+  /* global iOS hygiene: stop rotation font-inflation + the default dark
+     tap-flash (both no-ops with a desktop mouse) */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  @supports(height:100dvh){ #intro{background-size:100vw 100dvh} }
+
+  /* ---- touch ergonomics (no hover / coarse pointer) ---- */
+  @media (hover:none),(pointer:coarse){
+    body{overscroll-behavior-y:none}
+    /* a tap shouldn't leave a stuck focus ring; desktop keyboard focus keeps it,
+       and text fields keep it here for accessibility */
+    a:focus-visible,button:focus-visible,select:focus-visible,[role=button]:focus-visible,
+    [tabindex]:focus-visible,.nav-item:focus-visible,.poster:focus-visible,.topnav-link:focus-visible{outline:none}
+    input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    /* search field uses a softer, semi-transparent crimson focus ring (id beats `input`) */
+    #searchInput:focus-visible{outline-color:#941c288c}
+
+    /* 44px tap targets: drawer rows + close, sign-in, navigable section headers */
+    .nav-item{padding:12px 12px;min-height:44px}
+    .nav-group{gap:4px}
+    aside .aside-close{top:calc(10px + env(safe-area-inset-top,0px));right:10px;width:44px;height:44px;
+      display:flex;align-items:center;justify-content:center;font-size:20px;border-radius:10px}
+    aside .aside-close:active{background:rgba(255,255,255,.08)}
+    #topbar .signin-btn{min-height:44px}
+    .topnav-link{min-height:44px;display:flex;align-items:center}
+    .strip-title:not(.static){min-height:44px;padding-top:8px;padding-bottom:8px}
+
+    /* posters: drop the sticky hover lift/zoom that hangs after a tap on iOS */
+    .poster:hover{box-shadow:none;border-color:var(--border)}
+    .poster:hover .art img,.poster:focus-within .art img{transform:none}
+    .poster .cw-remove{padding:7px 11px}
+    .poster .cw-remove svg{width:16px;height:16px}
+    .strip-row{scroll-snap-type:x proximity}
+
+    /* hero dots: a transparent overlay extends the tap area without touching the
+       painted 6px bar or its fill animation */
+    .hero-dots{gap:14px}
+    .hero-dot::before{content:"";position:absolute;left:-4px;right:-4px;top:-10px;bottom:-10px}
+
+    /* upcoming marquee labels never get a hover on touch — keep them shown */
+    .upcoming-card .uc-title{opacity:1;transform:none}
+    .upcoming-card .uc-info{max-height:28px;opacity:1;transform:none}
+    .upcoming-card .uc-grad{background:linear-gradient(180deg,rgba(10,8,18,0) 8%,rgba(10,8,18,.92) 100%)}
+
+    /* detail-modal hero discs */
+    .modal .close.m-disc,.m-mute{width:46px;height:46px}
+
+    /* video player: a visible scrub handle + thumb-sized controls */
+    .vp-progress{padding:14px 0}
+    .vp-bar{height:6px}
+    .vp-thumb{width:18px;height:18px;transform:translate(-50%,-50%) scale(1)}
+    .s-btn{min-height:40px;padding:9px 14px;display:inline-flex;align-items:center}
+    .season-tab{min-height:40px;display:inline-flex;align-items:center}
+    .lang-opt{min-height:44px;display:flex;align-items:center}
+    .lang-select-trigger{min-height:44px}
+    .ext-item{min-height:44px}
+    .vp-speed{min-height:40px}
+
+    /* auth / sheet small targets */
+    .auth-dismiss{width:44px;height:44px;display:flex;align-items:center;justify-content:center;top:6px;right:6px}
+    .saturn-disconnect{min-height:44px;display:inline-flex;align-items:center;padding:8px 6px}
+    .saturn-verify-row .auth-submit{min-height:44px}
+  }
+
+  /* ---- phones + tablets (<=900px): safe-area insets, dvh, iOS input-zoom ---- */
+  @media (max-width:900px){
+    /* every text field >=16px so iOS never zooms the page on focus (the collapsed
+       search input was 15px; auth fields are already 17px and keep their size) */
+    input,textarea,select,#searchInput,.search input{font-size:16px}
+
+    /* shell + drawer track the visible viewport and clear the notch / home bar */
+    .shell{min-height:100vh;min-height:100dvh}
+    aside{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding-top:calc(24px + env(safe-area-inset-top,0px));
+      padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+      padding-left:calc(18px + env(safe-area-inset-left,0px))}
+
+    /* topbar clears the Dynamic Island (portrait) and the left notch (landscape) */
+    #topbar{padding-top:calc(9px + env(safe-area-inset-top,0px));
+      padding-left:calc(12px + env(safe-area-inset-left,0px));
+      padding-right:calc(12px + env(safe-area-inset-right,0px))}
+
+    /* category strip: edge breathing room, both-side fade + clean swipe snap so
+       "My List" no longer rests half-cut at the row edge */
+    .topnav{padding-left:14px;padding-right:14px;scroll-snap-type:x proximity;scroll-padding-left:14px;
+      -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 88%,transparent 100%);
+      mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 88%,transparent 100%)}
+    .topnav-link{scroll-snap-align:start}
+
+    /* hero pull-up = real two-row header height (logo/icons row + 44px-tap
+       category strip = 128px, measured stable across phone widths) + the island
+       inset on device, so no black sliver shows above the backdrop */
+    .hero{--topbar-h:calc(128px + env(safe-area-inset-top,0px))}
+
+    /* detail modal lifts off the iOS toolbar */
+    .modal{max-height:92vh;max-height:92dvh}
+    .m-hero{max-height:56vh;max-height:56dvh}
+
+    /* video-player chrome clears the home indicator + side notches */
+    .vp-bottom{padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+    .vp-progress,.vp-controls{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+    .vp-top{padding:calc(16px + env(safe-area-inset-top,0px)) calc(18px + env(safe-area-inset-right,0px)) 16px calc(18px + env(safe-area-inset-left,0px))}
+    .vp-menu{max-height:60vh;max-height:min(60dvh,calc(100dvh - 150px));width:min(264px,calc(100vw - 24px));margin-right:env(safe-area-inset-right,0px)}
+
+    /* auth + sheet overlays scroll and respect insets (keyboard / short / notch) */
+    .auth-overlay{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding:calc(24px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(24px + env(safe-area-inset-left,0px))}
+    .auth-card{max-height:none;margin:auto}
+    .sources-list{max-height:min(56vh,440px);max-height:min(56dvh,440px);-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,0px)}
+  }
+
+  /* ---- small phones (<=640px) ---- */
+  @media (max-width:640px){
+    .hero-logo{height:clamp(46px,12vw,66px);max-width:86%;margin-bottom:12px}
+    .hero-dots{bottom:calc(clamp(18px,3vh,30px) + env(safe-area-inset-bottom,0px))}
+    /* player */
+    .vp-icon.cc{height:40px;min-width:40px;padding:3px 8px}
+    .vp-skip{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+    .vp-eppanel{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+    .vp-eppanel-list{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+    /* footer: stack links left, generous tap rows, clear the home bar */
+    .site-footer{padding:22px 0 calc(34px + env(safe-area-inset-bottom,0px));gap:16px 18px}
+    .site-footer .sf-disclaimer{flex:1 1 100%}
+    .site-footer .sf-links{margin-left:0;flex:1 1 100%;gap:6px 22px}
+    .site-footer .sf-links a{padding:8px 0;display:inline-flex;align-items:center;min-height:40px}
+    /* add-on catalog action buttons fill the wrapped row at 44px */
+    .addon .acts{justify-content:stretch}
+    .addon .acts .minibtn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:11px 15px;max-width:none}
+  }
+
+  /* ---- phones (<=520px): full-bleed detail sheet + filter panel + install ---- */
+  @media (max-width:520px){
+    .overlay{padding:0;align-items:stretch;justify-content:stretch}
+    .modal{width:100%;max-width:100%;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;border-radius:0}
+    .m-scroll{flex:1 1 auto;min-height:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+    .modal .close.m-disc{top:calc(12px + env(safe-area-inset-top,0px))}
+    .m-body{padding-bottom:calc(clamp(20px,3vw,32px) + env(safe-area-inset-bottom,0px))}
+    .filter-panel{max-height:calc(100dvh - 160px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+    .install-box input,.install-box button{min-height:44px}
+  }
+
+  /* ---- compact / smallest phones ---- */
+  @media (max-width:420px){
+    .m-hero-actions .hero-add{width:44px;height:44px}
+    .m-hero-actions .hero-play{min-height:44px;padding:11px 18px}
+  }
+  @media (max-width:375px){
+    .saturn-verify-row{flex-direction:column}
+    .saturn-verify-row .auth-submit{width:100%}
+  }
+
+  /* ---- landscape phones / short windows ---- */
+  @media (max-width:900px) and (orientation:landscape){
+    body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  }
+  @media (max-height:560px){
+    .auth-overlay{align-items:flex-start}
+    .auth-card{max-height:100vh;max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  }
+  @media (max-height:430px) and (orientation:landscape){
+    .m-hero{max-height:62vh;max-height:62dvh}
+    .m-hero-inner{bottom:10px}
+    .m-hero-actions .hero-play{padding:9px 18px;font-size:14px}
+    .auth-card{padding-top:20px;padding-bottom:18px}
+    .auth-kicker{margin:2px 0 12px}
+    .auth-tabs{margin-bottom:12px}
+    .auth-field{margin-bottom:10px}
+    .auth-foot{margin-top:12px}
+  }
+
+  /* ==========================================================================
+     PHONE LAYOUT REFINEMENTS (2026 pass) — folds the category nav into the
+     slide-out drawer, gives the detail-modal hero a full portrait media area,
+     calms the hero type, and adds a "Read more" synopsis. Phones only
+     (<=900 / <=640 / portrait). Desktop + tablet (>900px) are untouched.
+     Appended last so these win the cascade over the earlier mobile blocks.
+     ========================================================================== */
+
+  /* ---- category nav folds into the slide-out drawer on phones ---- */
+  /* desktop/tablet keep the header strip → the drawer category group is hidden there */
+  .nav-cat-group{display:none}
+  .m-readmore{display:inline-flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;
+    padding:0;margin-top:9px;font-family:var(--font-mono);font-size:12.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--accent);transition:color .2s}
+  :root[data-lang="ka"] .m-readmore{text-transform:none;letter-spacing:.04em}
+  .m-readmore:hover{color:var(--accent-h)}
+  .m-readmore::after{content:"▾";font-size:11px;line-height:1}
+  .m-readmore.is-less::after{content:"▴"}
+
+  /* #mPoster carries BOTH .poster and .m-hero-bg — the responsive .poster{width/height}
+     overrides above (same specificity, later in source) were shrinking the modal hero
+     backdrop into a small ~144px card ("small movie card size cover"). Pin it to fill the
+     hero with a higher-specificity selector so the backdrop/trailer spans full-bleed. */
+  .m-hero .m-hero-bg{width:100%;height:100%}
+
+  @media (max-width:900px){
+    /* hide the horizontal STREDIO strip — categories now live in the drawer */
+    #topbar .topnav{display:none}
+    /* surface the hamburger (display:none everywhere by default) as the drawer opener,
+       pinned to the far left ahead of the wordmark */
+    #topbar .menu-btn{display:flex;order:-2;align-items:center;justify-content:center;
+      width:42px;height:42px;margin:0 2px 0 -2px;padding:0;background:none;border:none;cursor:pointer;
+      color:#fff;font-size:22px;line-height:1;border-radius:10px;flex-shrink:0;
+      -webkit-tap-highlight-color:transparent;transition:background .2s}
+    #topbar .menu-btn:active{background:rgba(255,255,255,.08)}
+    /* the header is now a single control row (~56px), not the old two-row strip — re-point
+       the homepage hero pull-up so its backdrop still meets the top with no black sliver */
+    .hero{--topbar-h:calc(56px + env(safe-area-inset-top,0px))}
+    /* tapping the search icon adds a full-width second header row (~53px). Grow the hero
+       pull-up by that row so the backdrop still meets the top instead of dropping a dark
+       band ("cut") at the top while search is open (before the topnav was hidden, opening
+       search just replaced the category row, so the height — and the hero — never moved) */
+    #topbar.search-open ~ .page .hero{--topbar-h:calc(109px + env(safe-area-inset-top,0px))}
+    /* the animated placeholder reads oversized at the 16px the input needs to dodge iOS
+       focus-zoom — shrink just the placeholder text (the input value itself stays 16px) */
+    #searchInput::placeholder{font-size:13.5px}
+    /* reveal the drawer category group; it reuses the existing .nav-item styling */
+    .nav-cat-group{display:flex}
+    /* the BROWSE page list (Catalog/Addons/Settings/Admin) is redundant on phones — "Home"
+       in the WATCH group + the logo reach the catalog, and Settings/Addons live in the
+       account ▾ menu — so drop it; the drawer shows just the category nav */
+    aside .nav-group:not(.nav-cat-group){display:none}
+  }
+
+  /* ---- detail-modal hero: calmer, readable type on phones ---- */
+  @media (max-width:640px){
+    .m-hero-inner{left:clamp(14px,4vw,22px);right:clamp(14px,4vw,22px);
+      bottom:clamp(14px,3.4vw,20px);max-width:100%}
+    .m-kicker{font-size:10.5px;letter-spacing:.2em;margin-bottom:8px}
+    .m-kicker::before{width:16px}
+    #mTitle{font-size:clamp(20px,6.2vw,30px);line-height:1.12;margin:0 0 9px;letter-spacing:.03em}
+    #mTitle .title-logo{height:clamp(34px,11vw,52px);max-width:min(76%,260px)}
+    .m-meta{font-size:11.5px;gap:8px;margin:0 0 8px}
+    .m-genres{gap:6px;margin:0 0 12px}
+    .m-genres .chip{font-size:10px;padding:2px 7px;letter-spacing:.05em}
+    .m-hero-actions{gap:10px}
+    .m-hero-actions .hero-play{padding:10px 20px;font-size:13.5px}
+    /* synopsis: smaller body + a 5-line clamp the JS toggles on overflow */
+    .m-plot{font-size:14.5px;line-height:1.6}
+    .m-plot.clamped{display:-webkit-box;-webkit-line-clamp:5;line-clamp:5;
+      -webkit-box-orient:vertical;overflow:hidden}
+  }
+
+  /* ---- portrait phones: tall full-bleed hero media (the 16:9 cap made it a thin band
+     where the cover looked like a small card and the text piled up over it). Every hero
+     child is absolutely positioned, so min-height alone drives the media size. ---- */
+  @media (max-width:640px) and (orientation:portrait){
+    .m-hero{aspect-ratio:auto;height:auto;
+      min-height:clamp(420px,62vh,600px);min-height:clamp(420px,62dvh,600px);max-height:none}
+    /* taller, stronger bottom fade: trailer/backdrop reads full-size up top, the title
+       block sits in a legible band, and the media dissolves into the body below */
+    .m-hero-scrim{background:
+      linear-gradient(0deg,var(--bg-2) 0%,var(--bg-2) 5%,rgba(0,0,0,.82) 28%,rgba(0,0,0,.34) 50%,rgba(0,0,0,.06) 70%,transparent 84%),
+      linear-gradient(90deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.14) 46%,transparent 72%)}
+  }
 </style>
 <!-- hls.js (vendored locally, served from /assets so it passes our CSP script-src 'self'):
      play HLS (.m3u8) streams in browsers without native support (Georgian ge.movie sources) -->
@@ -1916,6 +2193,17 @@
   <aside data-i18n-aria="ui.main_nav" aria-label="Main navigation">
     <button class="aside-close" id="asideClose" data-i18n-title="ui.aside_close" data-i18n-aria="ui.aside_close" title="Close menu" aria-label="Close menu">✕</button>
     <span class="brand display" aria-label="stredio" style="pointer-events:none"><img src="/assets/stredio-logo.svg?v=2" alt="stredio" /></span>
+    <!-- mobile-only: the horizontal STREDIO category nav folds into the drawer on phones
+         (the top strip is hidden <=900px). data-nav routes through topNav(); on desktop this
+         group is display:none and the header strip is used instead. -->
+    <div class="nav-group nav-cat-group">
+      <h4 data-i18n="nav.watch_head">WATCH</h4>
+      <a class="nav-item nav-cat active" role="button" tabindex="0" data-nav="home" href="#browse"><span class="dot" aria-hidden="true"></span><span data-i18n="nav.home">Home</span></a>
+      <a class="nav-item nav-cat" role="button" tabindex="0" data-nav="tv" href="#browse"><span class="dot" aria-hidden="true"></span><span data-i18n="nav.tv_shows">TV Shows</span></a>
+      <a class="nav-item nav-cat" role="button" tabindex="0" data-nav="movies" href="#browse"><span class="dot" aria-hidden="true"></span><span data-i18n="nav.movies">Movies</span></a>
+      <a class="nav-item nav-cat" role="button" tabindex="0" data-nav="new" href="#browse"><span class="dot" aria-hidden="true"></span><span data-i18n="nav.new_popular">New &amp; Popular</span></a>
+      <a class="nav-item nav-cat" role="button" tabindex="0" data-nav="mylist" href="#browse"><span class="dot" aria-hidden="true"></span><span data-i18n="nav.my_list">My List</span></a>
+    </div>
     <div class="nav-group">
       <h4 data-i18n="nav.menu">BROWSE</h4>
       <a class="nav-item active" data-page="browse" href="#browse"><span class="dot" aria-hidden="true"></span><span data-i18n="nav.catalog">Catalog</span></a>
@@ -2548,6 +2836,8 @@
         <div class="m-main">
           <div class="m-tagline" id="mTagline" hidden></div>
           <p class="plot m-plot" id="mPlot"></p>
+          <!-- phones only: JS clamps #mPlot and reveals this toggle when the synopsis overflows -->
+          <button class="m-readmore" id="mReadMore" type="button" hidden>Read more</button>
 
           <!-- EPISODES (TV only) — ids preserved; #epList becomes a 16:9 card grid via #epList-scoped rules -->
           <div class="ep-chooser" id="epChooser" hidden>
@@ -2687,6 +2977,7 @@ window.I18N=(function(){
   "nav.movies": "Movies",
   "nav.new_popular": "New & Popular",
   "nav.my_list": "My List",
+  "nav.watch_head": "WATCH",
   "mylist.empty": "Your list is empty — add titles with the + button.",
   "nav.admin": "Admin",
   "search.ph": "Search titles, people, genres…",
@@ -2925,6 +3216,8 @@ window.I18N=(function(){
   "modal.loading_synopsis": "Loading synopsis…",
   "modal.synopsis_unavailable": "Synopsis unavailable.",
   "modal.no_synopsis": "No synopsis available.",
+  "modal.read_more": "Read more",
+  "modal.read_less": "Read less",
   "modal.mock_synopsis": "A short synopsis would render here, pulled from catalog metadata for the selected title. (Mock entry — run the backend with a TMDB key for live data.)",
   "player.close": "Close player",
   "player.preparing": "Preparing stream…",
@@ -3170,6 +3463,7 @@ window.I18N=(function(){
   "nav.movies": "ფილმები",
   "nav.new_popular": "ახალი & პოპულარული",
   "nav.my_list": "ჩემი სია",
+  "nav.watch_head": "ყურება",
   "mylist.empty": "თქვენი სია ცარიელია — დაამატეთ + ღილაკით.",
   "nav.admin": "ადმინი",
   "search.ph": "ძიება: სათაურები, ადამიანები, ჟანრები…",
@@ -3408,6 +3702,8 @@ window.I18N=(function(){
   "modal.loading_synopsis": "აღწერის ჩატვირთვა…",
   "modal.synopsis_unavailable": "აღწერა მიუწვდომელია.",
   "modal.no_synopsis": "აღწერა არ არის ხელმისაწვდომი.",
+  "modal.read_more": "ვრცლად",
+  "modal.read_less": "ნაკლები",
   "modal.mock_synopsis": "აქ გამოჩნდება მოკლე აღწერა, რომელიც აღებულია არჩეული სათაურის კატალოგის მეტამონაცემებიდან. (დემო ჩანაწერი — გაუშვით ბექენდი TMDB გასაღებით რეალური მონაცემებისთვის.)",
   "player.close": "პლეერის დახურვა",
   "player.preparing": "სტრიმის მომზადება…",
@@ -4721,7 +5017,8 @@ function openMyList(){
   setCatPager('hidden'); try{ markRevealsInView(); }catch(e){} window.scrollTo(0,0);
 }
 function setTopNavActive(nav){
-  document.querySelectorAll('#topnav .topnav-link').forEach(a=>a.classList.toggle('active',a.dataset.nav===nav));
+  // keep the header strip AND the drawer category items (phones) in sync
+  document.querySelectorAll('#topnav .topnav-link,aside .nav-cat').forEach(a=>a.classList.toggle('active',a.dataset.nav===nav));
 }
 function topNav(nav){
   if(window.__page!=='browse'&&typeof gotoPage==='function') gotoPage('browse');
@@ -4741,6 +5038,45 @@ function topNav(nav){
   const nav=document.getElementById('topnav'); if(!nav) return;
   nav.addEventListener('click',e=>{ const a=e.target.closest('.topnav-link'); if(!a) return; e.preventDefault(); topNav(a.dataset.nav); });
   nav.addEventListener('keydown',e=>{ if(e.key!=='Enter'&&e.key!==' ') return; const a=e.target.closest('.topnav-link'); if(!a) return; e.preventDefault(); topNav(a.dataset.nav); });
+})();
+
+/* ---------- drawer category links (phones): route through topNav() + close the drawer ---------- */
+(function wireDrawerCats(){
+  document.querySelectorAll('aside .nav-cat[data-nav]').forEach(a=>{
+    const go=e=>{ e.preventDefault();
+      if(typeof topNav==='function') topNav(a.dataset.nav);
+      document.body.classList.add('nav-closed');                       // mirror the drawer's apply(false)
+      const bd=document.getElementById('navBackdrop'); if(bd) bd.classList.remove('show'); };
+    a.addEventListener('click',go);
+    a.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') go(e); });
+  });
+})();
+
+/* ---------- detail-modal synopsis "Read more" (phones only) ----------
+   Clamps #mPlot to 5 lines on small screens and reveals the toggle only when the
+   synopsis actually overflows. A MutationObserver re-checks on every rewrite of the
+   text (loading → enriched → fallbacks) so a fast title-switch never leaves stale state. */
+(function plotReadMore(){
+  const plot=document.getElementById('mPlot'), btn=document.getElementById('mReadMore');
+  if(!plot||!btn) return;
+  const mq=matchMedia('(max-width:640px)');
+  let expanded=false;
+  function refresh(){
+    if(!mq.matches){ plot.classList.remove('clamped'); btn.hidden=true; btn.classList.remove('is-less'); return; }
+    if(expanded){
+      plot.classList.remove('clamped');
+      btn.hidden=false; btn.classList.add('is-less'); btn.textContent=t('modal.read_less');
+      return;
+    }
+    plot.classList.add('clamped'); btn.classList.remove('is-less');
+    const overflowing = plot.scrollHeight > plot.clientHeight + 2;
+    if(overflowing){ btn.hidden=false; btn.textContent=t('modal.read_more'); }
+    else { plot.classList.remove('clamped'); btn.hidden=true; }
+  }
+  btn.addEventListener('click',()=>{ expanded=!expanded; refresh(); });
+  new MutationObserver(()=>{ expanded=false; refresh(); }).observe(plot,{childList:true,characterData:true,subtree:true});
+  if(mq.addEventListener) mq.addEventListener('change',()=>{ expanded=false; refresh(); });
+  refresh();
 })();
 
 /* ---------- header / studio / back wiring (delegated on the home rows) ---------- */
@@ -5008,8 +5344,10 @@ function buildTopbarFrame(){
 })();
 
 /* ---- typewriter placeholder: cycles popular titles, "typing" them into the box
-   (à la 1shows.org). Pauses while the field is focused or already has text, and
-   honours prefers-reduced-motion by leaving the static i18n placeholder alone. ---- */
+   (à la 1shows.org). The search bay is collapsed behind the magnifier on every viewport
+   and opening it focuses the input — so pausing on focus meant the animation was never
+   seen. We pause ONLY once the field has real text, so the animation plays the moment the
+   user opens (and focuses) the empty box. Honours prefers-reduced-motion (static i18n ph). ---- */
 (function typewriterPlaceholder(){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   /* two phrases (localized via i18n), each with its own hold time, looped forever */
@@ -5018,8 +5356,9 @@ function buildTopbarFrame(){
     { key:'search.type2', hold:10000 },
   ];
   let wi=0, ci=0, deleting=false, timer;
-  /* leave the box alone the moment the user engages with it */
-  const busy=()=> document.activeElement===searchInput || searchInput.value.length>0;
+  /* leave the box alone only once the user has actually typed something — being focused
+     (which happens automatically when the bay opens) must NOT stop the animation */
+  const busy=()=> searchInput.value.length>0;
   const schedule=ms=>{ timer=setTimeout(tick,ms); };
   function tick(){
     if(busy()){ searchInput.setAttribute('placeholder',t('search.ph')); return schedule(900); }
@@ -5033,6 +5372,14 @@ function buildTopbarFrame(){
     deleting=false; wi=(wi+1)%PHRASES.length; return schedule(400); // next phrase
   }
   schedule(700);
+  /* restart the typing from the top each time the empty bay opens (the search icon focuses
+     it) so the user actually SEES it start typing, instead of catching it mid-hold */
+  searchInput.addEventListener('focus',()=>{
+    if(busy()) return;
+    clearTimeout(timer); wi=0; ci=0; deleting=false;
+    searchInput.setAttribute('placeholder','');     // blank instantly → no flash of the held phrase
+    schedule(180);
+  });
 })();
 
 /* document title reflects the current page, re-applied on language change */
