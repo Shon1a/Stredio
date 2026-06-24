@@ -1760,6 +1760,38 @@
   addEventListener('load',function(){ window.scrollTo(0,0); });
 </script>
 <script>
+  /* ------------------------------------------------------------------ *
+   *  Backend wiring (split deployment)
+   *  Frontend is hosted on Vercel (stredio.vercel.app); the API lives on a
+   *  DIFFERENT origin (Render, stredio.onrender.com). So every /api/* call must
+   *  target the backend explicitly AND send the auth cookie cross-site. We do
+   *  both in one place by wrapping window.fetch, so the dozens of relative
+   *  fetch('/api/…') calls scattered through the app need no edits.
+   *
+   *  When the backend serves this file itself (local dev on localhost:8787) the
+   *  base stays empty, so calls remain same-origin exactly as before.
+   *  Override at build/deploy time with <meta name="api-base" content="…">.
+   * ------------------------------------------------------------------ */
+  (function(){
+    var meta = document.querySelector('meta[name="api-base"]');
+    var isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+    window.API_BASE = (meta && meta.content.trim()) || (isLocal ? '' : 'https://stredio.onrender.com');
+    var native = window.fetch.bind(window);
+    window.fetch = function(input, init){
+      var url = (typeof input === 'string') ? input : (input && input.url);
+      if (window.API_BASE && typeof url === 'string' && url.lastIndexOf('/api/', 0) === 0){
+        init = init || {};
+        // browsers only attach the cross-site auth cookie when asked to
+        if (init.credentials === undefined) init.credentials = 'include';
+        input = (typeof input === 'string') ? (window.API_BASE + input) : new Request(window.API_BASE + url, input);
+      }
+      return native(input, init);
+    };
+    // Same-origin element loads (the <track> subtitle src) also need the backend base.
+    window.apiUrl = function(path){ return (window.API_BASE || '') + path; };
+  })();
+</script>
+<script>
 (function(){
   function loadHls(){ if(window.__hlsLoading) return; window.__hlsLoading=true;
     var s=document.createElement('script'); s.src='/assets/hls.min.js'; s.async=true; document.head.appendChild(s); }
@@ -5671,7 +5703,9 @@ const VP=(function(){
     s.subtitles.forEach(sub=>{ if(!sub||!sub.url)return;
       const tr=document.createElement('track'); tr.kind='subtitles';
       tr.label=sub.lang||'Subtitle'; tr.srclang=String(sub.lang||'und').slice(0,3);
-      tr.src='/api/subtitle?src='+encodeURIComponent(sub.url); v.appendChild(tr); });
+      // Cross-origin <track> requires CORS; the backend sends the headers for our origin.
+      tr.crossOrigin='anonymous';
+      tr.src=window.apiUrl('/api/subtitle?src='+encodeURIComponent(sub.url)); v.appendChild(tr); });
   }
   // Settings › Advanced "Play in external player": hand a real http(s) stream off
   // to a native app via its deep-link scheme. In-browser playback continues as a

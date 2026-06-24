@@ -378,20 +378,29 @@ function isSecure(req) {
   const xf = (req.headers?.['x-forwarded-proto'] || '').split(',')[0].trim();
   return xf ? xf === 'https' : !!req.socket?.encrypted;
 }
+// Cross-site cookie policy: the frontend (Vercel) and this API (Render) are
+// separate origins in production, so the session cookie must be SameSite=None to
+// ride along on those cross-site fetches — and browsers only honor SameSite=None
+// when Secure is set. Local same-origin dev runs over plain http (isSecure false),
+// where Secure cookies are dropped, so fall back to SameSite=Lax there.
+function sameSiteAttr(secure) { return secure ? 'SameSite=None' : 'SameSite=Lax'; }
 export function sessionCookie(req, token, maxAgeSec) {
+  const secure = isSecure(req);
   const attrs = [
     `${COOKIE_NAME}=${token}`,
     'Path=/',
     'HttpOnly',
-    'SameSite=Lax',
+    sameSiteAttr(secure),
     `Max-Age=${maxAgeSec}`,
   ];
-  if (isSecure(req)) attrs.push('Secure');
+  if (secure) attrs.push('Secure');
   return attrs.join('; ');
 }
 export function clearCookie(req) {
-  const attrs = [`${COOKIE_NAME}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0'];
-  if (isSecure(req)) attrs.push('Secure');
+  const secure = isSecure(req);
+  // Attributes must match the set cookie (SameSite/Secure) for the browser to clear it.
+  const attrs = [`${COOKIE_NAME}=`, 'Path=/', 'HttpOnly', sameSiteAttr(secure), 'Max-Age=0'];
+  if (secure) attrs.push('Secure');
   return attrs.join('; ');
 }
 

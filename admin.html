@@ -29,7 +29,7 @@
     --card:rgba(208,35,52,0.06); --card-2:rgba(208,35,52,0.035);
     --border:rgba(208,35,52,0.18); --border-2:rgba(208,35,52,0.30);
     --text:#ffffff; --text-muted:#a9a8b2; --text-dim:#6f6a72;
-    /* the deep-crimson brand ramp (matches stredio.html's cinematic reference grade) */
+    /* the deep-crimson brand ramp (matches index.html's cinematic reference grade) */
     --indigo-deep:#3a0c0c; --violet:#b9212e; --violet-bright:#d02334; --lavender:#e0586a;
     --accent:#d02334; --accent-h:#e0455a; --highlight:#ffe0e0;
     --accent-rgb:208,35,52; --violet-rgb:185,33,46;
@@ -39,7 +39,7 @@
     --success:#5cd2a0; --warn:#e6c264; --danger:#ea6479; --info:#6aa3e8;
     --success-rgb:92,210,160; --danger-rgb:234,100,121; --warn-rgb:230,194,100;
     /* Gotham is the Latin/English face, ArchyEDT the ქართული (Georgian) face — matching
-       stredio.html. Gotham leads each stack; Georgian glyphs it lacks fall through to
+       index.html. Gotham leads each stack; Georgian glyphs it lacks fall through to
        ArchyEDT, then Noto Sans Georgian + system fonts. --font-display is kept as an
        alias so the heading rules (.brand/.view-head h1/.stat .v/etc.) need no change. */
     --font-display:"Gotham","ArchyEDT","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -88,7 +88,7 @@
   aside .foot .foot-user{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;color:var(--text-muted);min-width:0}
   aside .foot .foot-user .fu-ic{color:var(--accent);font-size:13px;flex:none}
   aside .foot .foot-user .em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-  /* primary footer action — mirrors stredio.html's solid-crimson sign-in pill */
+  /* primary footer action — mirrors index.html's solid-crimson sign-in pill */
   aside .foot .site-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);border:none;border-radius:6px;
     color:#fff;font-weight:700;font-size:13.5px;letter-spacing:.06em;padding:10px 16px;cursor:pointer;transition:.2s;
     box-shadow:0 6px 18px rgba(var(--accent-rgb),.28)}
@@ -184,7 +184,7 @@
 
   /* ---------- buttons / inputs ---------- */
   button{font-family:inherit}
-  /* every button mirrors stredio.html's sign-in pill — a solid-crimson, white, bold fill */
+  /* every button mirrors index.html's sign-in pill — a solid-crimson, white, bold fill */
   .btn{font-family:inherit;font-weight:700;font-size:14px;letter-spacing:.06em;padding:9px 18px;border-radius:6px;border:none;
     background:var(--accent);color:#fff;cursor:pointer;transition:.2s;white-space:nowrap;box-shadow:0 4px 14px rgba(var(--accent-rgb),.24)}
   .btn:hover{background:var(--accent-h);color:#fff;box-shadow:0 6px 18px rgba(var(--accent-rgb),.4)}
@@ -473,7 +473,7 @@
     <div class="nav-item" data-view="system"><span class="ic">&#9881;</span>System</div>
     <div class="foot">
       <div class="foot-user"><span class="fu-ic mono">&#937;</span><span class="em" id="footUser"></span></div>
-      <a class="site-btn" href="/stredio.html">&#8592; Back to site</a>
+      <a class="site-btn" href="/index.html">&#8592; Back to site</a>
     </div>
   </aside>
 
@@ -483,7 +483,7 @@
       <span class="crumb" id="crumb">Overview</span>
       <span class="spacer"></span>
       <button class="btn sm" id="refreshBtn" title="Reload current view">&#10227; Refresh</button>
-      <a class="back-link" href="/stredio.html">&#8599; Site</a>
+      <a class="back-link" href="/index.html">&#8599; Site</a>
       <div class="user-chip"><span class="om mono">&#937;</span><span class="em" id="topUser"></span></div>
     </div>
 
@@ -496,7 +496,7 @@
         <h1>Overview</h1>
         <p>Your site at a glance — what's healthy, what needs you, and quick jumps to the things you manage most.</p>
         <span class="spacer"></span>
-        <a class="btn" href="/stredio.html" target="_blank" rel="noopener">&#8599; Open site</a>
+        <a class="btn" href="/index.html" target="_blank" rel="noopener">&#8599; Open site</a>
       </div>
 
       <!-- system health strip: is everything up? -->
@@ -821,9 +821,9 @@
     catch(e){
       $('#gate').hidden=false; $('#app').hidden=true;
       if(e.status===401){ $('#gateTitle').textContent='Sign in required'; $('#gateMsg').textContent='This console needs an admin account.';
-        $('#gateActions').innerHTML='<a class="btn primary" href="/stredio.html">Go to STREDIO to sign in &#8594;</a>'; }
+        $('#gateActions').innerHTML='<a class="btn primary" href="/index.html">Go to STREDIO to sign in &#8594;</a>'; }
       else if(e.status===403){ $('#gateTitle').textContent='Access denied'; $('#gateMsg').textContent='Your account is not an admin.';
-        $('#gateActions').innerHTML='<a class="btn" href="/stredio.html">&#8592; Back to site</a>'; }
+        $('#gateActions').innerHTML='<a class="btn" href="/index.html">&#8592; Back to site</a>'; }
       else { $('#gateTitle').textContent='Backend unreachable'; $('#gateMsg').textContent=e.message||'error';
         $('#gateActions').innerHTML='<button class="btn" onclick="location.reload()">Retry</button>'; }
     }

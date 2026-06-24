@@ -1,5 +1,5 @@
 // STREDIO backend — TMDB catalog/search proxy + addon install-by-URL engine.
-// Single-origin: also serves the static frontend (stredio.html) so the browser
+// Single-origin: also serves the static frontend (index.html) so the browser
 // can call /api/* without any CORS configuration.
 
 import express from 'express';
@@ -54,6 +54,35 @@ app.disable('x-powered-by');
 // compressed, so `compression` skips them via its default content-type filter.
 app.use(compression());
 app.use(express.json({ limit: '64kb' }));
+
+/* ------------------------------------------------------------------ *
+ *  CORS — split deployment
+ *  The frontend is hosted on a DIFFERENT origin (Vercel) than this API (Render),
+ *  so browsers require explicit CORS. Auth rides an HttpOnly cookie, so we must
+ *  also allow credentials — which forbids the "*" wildcard and means we echo back
+ *  only the specific allowed origin. Configure the allowed frontend origin(s) with
+ *  CORS_ORIGINS (comma-separated); defaults to the production Vercel origin. When
+ *  the backend serves the frontend itself (local dev) requests are same-origin and
+ *  carry no Origin header, so this is a no-op there.
+ * ------------------------------------------------------------------ */
+const ALLOWED_ORIGINS = new Set(
+  (process.env.CORS_ORIGINS || 'https://stredio.vercel.app')
+    .split(',').map(s => s.trim()).filter(Boolean)
+);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Access-Control-Allow-Credentials', 'true');
+    res.set('Vary', 'Origin');
+    res.set('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Access-Control-Max-Age', '86400');
+  }
+  // Answer preflight before auth/rate-limit middleware so it never 401s or 429s.
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 /* ------------------------------------------------------------------ *
  *  Security + cache headers
@@ -2264,9 +2293,11 @@ function sendErr(res, e) {
  * sufficient. Anything else under / returns 404. */
 function sendFrontend(req, res) {
   res.set('Cache-Control', 'no-cache');
-  res.sendFile(join(ROOT, 'stredio.html'));
+  res.sendFile(join(ROOT, 'index.html'));
 }
 app.get('/', sendFrontend);
+app.get('/index.html', sendFrontend);
+// Keep the old path working so existing bookmarks/links to /stredio.html still load.
 app.get('/stredio.html', sendFrontend);
 /* Admin dashboard shell. The HTML carries no secrets — every data call goes
  * through /api/admin, which requireAdmin gates — so serving the static file to
@@ -2322,7 +2353,7 @@ async function boot() {
   startGeorgianAddon().catch(e => console.warn('georgian addon supervise:', e.message));
   app.listen(PORT, () => {
     console.log(`\n  STREDIO backend → http://localhost:${PORT}`);
-    console.log(`  Frontend           → http://localhost:${PORT}/stredio.html`);
+    console.log(`  Frontend           → http://localhost:${PORT}/`);
     console.log(`  Admin              → http://localhost:${PORT}/admin`);
     console.log(`  TMDB               → ${HAS_TMDB ? 'configured ✓' : 'NOT set (catalog falls back to mock data)'}`);
     console.log(`  Translation        → Google Translate (free, no key) ${MT_ENABLED ? '✓' : '— DISABLED (DISABLE_KA_TRANSLATE)'}`);
