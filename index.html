@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>STREDIO — Stream Movies &amp; Series</title>
 <meta name="description" content="STREDIO is a terminal-styled streaming front-end: browse a live movie catalog, filter by genre, year and rating, install Stremio addons by URL, and play sources via third-party platforms in a built-in player." />
 <meta name="theme-color" content="#101016" />
@@ -325,13 +325,24 @@
   /* prefer the small-viewport unit where supported so the mobile URL bar can't shove
      the upcoming rows below the fold */
   @supports (height:100svh){ .hero{min-height:clamp(410px,calc(100svh - 352px),820px)} }
-  /* stacked crossfading slides */
-  .hero-slide{position:absolute;inset:0;opacity:0;visibility:hidden;
-    transition:opacity 1.1s ease,visibility 0s linear 1.1s;display:flex;align-items:flex-end}
-  .hero-slide.active{opacity:1;visibility:visible;transition:opacity 1.1s ease;z-index:1}
+  /* horizontal scroll-snap track — the slides sit side-by-side in one flex row and the
+     whole row translates so exactly one slide fills the viewport at a time. (Was a stacked
+     opacity crossfade; now a real draggable, snapping, parallax track à la a scroll gallery.)
+     The track is positioned in px by JS (heroPlace); the .animating class supplies the
+     snap/auto-advance glide and is removed inline while a finger drag is in flight. */
+  .hero-track{position:absolute;inset:0;display:flex;will-change:transform;
+    transform:translate3d(0,0,0)}
+  .hero-track.animating,
+  .hero-track.animating .hero-media{transition:transform .62s cubic-bezier(.22,.61,.36,1)}
+  .hero-slide{position:relative;flex:0 0 100%;height:100%;display:flex;align-items:flex-end;
+    overflow:hidden}
+  /* parallax layer: the bg lives inside an oversized frame (116% wide, centred) that JS
+     pans a fraction of the track distance, so the backdrop trails the scroll for depth.
+     The 8% overscan each side keeps the frame's edges off-screen at the ±7% max pan. */
+  .hero-media{position:absolute;top:0;bottom:0;left:-8%;width:116%;will-change:transform;z-index:0}
   /* base transform = the Ken Burns END frame, so a slide that loses .active HOLDS the
-     zoomed frame through the crossfade instead of snapping back out. The active
-     animation's `from{scale(1.06)}` overrides this while it's drifting in. */
+     zoomed frame instead of snapping back out. The active animation's `from{scale(1.06)}`
+     overrides this while it's drifting in. */
   .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center 20%;
     transform:scale(1.14) translate3d(-1.4%,-1.6%,0);will-change:transform}
   /* neutral cinematic grade: a soft near-black wash in opposite corners so the
@@ -353,14 +364,17 @@
       linear-gradient(90deg,rgba(0,0,0,.92) 0%,rgba(0,0,0,.5) 40%,rgba(0,0,0,.05) 70%,transparent 100%),
       radial-gradient(120% 90% at 80% 8%,transparent 45%,rgba(0,0,0,.5) 100%)}
   .hero::before{content:none}
+  /* the foreground copy is PINNED — a sibling of the scrolling track (not inside a slide), so
+     it stays put while the backdrops scroll/parallax behind it. heroFillContent swaps its copy
+     on each slide change; z-index lifts it above the track. */
   .hero-inner{position:relative;z-index:2;max-width:660px;padding:0 var(--page-pad) clamp(30px,5vh,58px)}
-  /* content rises + fades in as each slide becomes active */
-  .hero-slide.active .hero-inner > *{animation:heroRise .7s cubic-bezier(.2,.7,.2,1) both}
-  .hero-slide.active .hero-kicker{animation-delay:.04s}
-  .hero-slide.active .hero-title{animation-delay:.10s}
-  .hero-slide.active .hero-meta{animation-delay:.16s}
-  .hero-slide.active .hero-plot{animation-delay:.22s}
-  .hero-slide.active .hero-actions{animation-delay:.28s}
+  /* the text cross-fades + rises in on every slide swap (new nodes auto-run this). The action
+     BUTTONS are deliberately excluded so PLAY / MY LIST never flicker — they hold dead still. */
+  .hero-inner > *{animation:heroRise .55s cubic-bezier(.2,.7,.2,1) both}
+  .hero-inner .hero-title{animation-delay:.04s}
+  .hero-inner .hero-meta{animation-delay:.10s}
+  .hero-inner .hero-plot{animation-delay:.14s}
+  .hero-inner .hero-actions{animation:none}
   @keyframes heroRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
   .hero-kicker{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);
     font-size:15px;letter-spacing:.28em;color:var(--accent);margin-bottom:14px;text-transform:uppercase}
@@ -462,7 +476,8 @@
   @media(prefers-reduced-motion:reduce){
     .hero-slide.active .hero-bg{animation:none}
     .hero-bg{transform:scale(1.06)}   /* no drift → keep the gentle static frame, not the zoomed end */
-    .hero-slide.active .hero-inner > *{animation:none}
+    .hero-media{transform:none!important}   /* no parallax pan */
+    .hero-inner > *{animation:none}
     .hero-dot.active::after{animation:none;transform:scaleX(1)}
   }
 
@@ -573,6 +588,15 @@
   .poster:hover .cw-remove,.poster:focus-within .cw-remove,.cw-remove:focus-visible{opacity:1;transform:scale(1)}
   .cw-remove:hover{background:var(--accent,#d02334)}
   @media (hover:none){ .cw-remove{opacity:1;transform:scale(1)} }
+  /* Continue Watching — a thin crimson resume bar pinned to the bottom edge of the
+     cover, showing how far through the title you are. Only rendered on cards that
+     carry a saved timecode (posterHTML opts.progress). Sits ABOVE the frosted hover
+     panel (z-index 5 > .ov's 3) so the progress stays visible while hovering. The
+     poster's own overflow:hidden + 4px radius clip it cleanly into the corners. */
+  .poster .cw-progress{position:absolute;left:0;right:0;bottom:0;height:5px;z-index:5;
+    background:rgba(0,0,0,.55);border-radius:0 0 4px 4px;overflow:hidden;pointer-events:none}
+  .poster .cw-progress>i{display:block;height:100%;min-width:3px;
+    background:var(--accent,#d02334);box-shadow:0 0 6px rgba(208,35,52,.6);transition:width .3s ease}
   /* hover: a frosted info panel slides up from the bottom (CodePen "Movie Poster
      Interaction") while the cover image gently zooms (see .poster:hover .art img). */
   .poster .ov{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);
@@ -969,7 +993,7 @@
   .m-hero{position:relative;width:100%;aspect-ratio:16/9;max-height:56vh;background:var(--bg-3);overflow:hidden;flex:0 0 auto}
   /* #mPoster repurposed as the media bg — neutralise the grid .poster hover/lift/border */
   .m-hero-bg{position:absolute!important;inset:0;width:100%;height:100%;border:0;border-radius:0;cursor:default;
-    animation:heroKen 12s ease-out forwards;transform-origin:50% 42%;transition:opacity .6s ease}
+    animation:heroKen 12s ease-out forwards;transform-origin:50% 42%;transition:opacity 1.1s cubic-bezier(.4,0,.2,1)}
   .m-hero-bg:hover{transform:none;box-shadow:none;border-color:transparent}
   .m-hero-bg .art{position:absolute;inset:0;padding:0}
   .m-hero-bg .art img,.m-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -978,7 +1002,7 @@
      the 16:9 hero (the slot is overflow:hidden). Keeps the muted trailer chrome-free. */
   .m-hero-trailer-slot iframe{position:absolute;top:50%;left:50%;width:100%;height:100%;border:0;
     transform:translate(-50%,-50%) scale(1.35);transform-origin:center;
-    opacity:0;transition:opacity .6s ease;pointer-events:none}
+    opacity:0;transition:opacity 1.1s cubic-bezier(.4,0,.2,1);pointer-events:none}
   .m-hero-trailer-slot iframe.on{opacity:1}
   .m-hero-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;background:
     linear-gradient(0deg,var(--bg-2) 2%,rgba(0,0,0,.72) 26%,rgba(0,0,0,.1) 60%,transparent 88%),
@@ -1052,14 +1076,14 @@
     transition:transform .35s cubic-bezier(.2,.7,.2,1)}
   #epList.ep-grid .ep-row:hover .ep-still img{transform:scale(1.05)}
   #epList.ep-grid .ep-row.on .ep-still img{filter:brightness(1.06)}
-  #epList.ep-grid .ep-still.no-still{display:grid;place-items:center;background:linear-gradient(150deg,var(--bg-3),#1a1730)}
-  #epList.ep-grid .ep-still.no-still::after{content:attr(data-n);font-family:var(--font-mono);font-size:32px;color:rgba(var(--accent-rgb),.35)}
+  #epList.ep-grid .ep-still.no-still{display:grid;place-items:center;background:linear-gradient(150deg,#000000,#160000)}
+  #epList.ep-grid .ep-still.no-still::after{content:attr(data-n);font-family:var(--font-mono);font-size:32px;color:rgb(49 0 0 / 61%)}
   #epList.ep-grid .ep-num{position:absolute;top:8px;left:8px;z-index:2;font-family:var(--font-mono);font-size:12px;
-    letter-spacing:.06em;color:var(--accent);background:rgba(10,8,20,.62);border:1px solid var(--border);
+    letter-spacing:.06em;color:#ffffff;background:rgba(10,8,20,.62);border:1px solid var(--border);
     padding:2px 8px;border-radius:4px;backdrop-filter:blur(4px)}
   #epList.ep-grid .ep-row.on .ep-num{background:var(--accent);color:var(--ink);border-color:var(--accent)}
   #epList.ep-grid .ep-body{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:18px 10px 9px;text-align:left;display:block;
-    background:linear-gradient(to top,rgba(10,8,20,.94),rgba(10,8,20,.55) 55%,transparent)}
+    background:linear-gradient(to top,rgba(0, 0, 0, 0),rgba(0, 0, 0, 0) 55%,transparent)}
   #epList.ep-grid .ep-name{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;
     font-size:12.5px;color:var(--text);line-height:1.28;white-space:normal;overflow:hidden}
   #epList.ep-grid .ep-sub{display:block;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);
@@ -1292,9 +1316,12 @@
   .vp-ui{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;justify-content:space-between;
     opacity:1;transition:opacity .25s ease;pointer-events:none}
   /* only capture pointer events while the player is actually open — otherwise the
-     invisible (opacity:0) control bars would intercept clicks on the real topbar */
+     invisible (opacity:0) control bars would intercept clicks on the real topbar.
+     NOTE: .vp-menu is deliberately NOT listed here — it would force pointer-events:auto on
+     the CLOSED (opacity:0) dropdown, whose 264px box floats over the progress bar and would
+     eat scrub clicks. Its own .vp-menu / .vp-menu.open rules gate pointer-events correctly. */
   .vp-overlay.open .vp-top,.vp-overlay.open .vp-bottom,
-  .vp-overlay.open .vp-center,.vp-overlay.open .vp-menu,
+  .vp-overlay.open .vp-center,
   .vp-overlay.open .vp-skip,.vp-overlay.open .vp-eppanel{pointer-events:auto}
   .vp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 26px;
     background:linear-gradient(180deg,rgba(0,0,0,.7),transparent);transition:opacity .25s ease}
@@ -1349,7 +1376,7 @@
   .vp-menu-wrap{position:relative}
   .vp-menu{position:absolute;bottom:calc(100% + 12px);right:0;width:264px;max-height:72vh;overflow-y:auto;
     overscroll-behavior:contain;
-    background:rgba(15,14,22,.97);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;
+    background:rgb(0, 0, 0);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;
     padding:6px;opacity:0;pointer-events:none;transform:translateY(8px) scale(.98);transform-origin:bottom right;
     transition:.18s cubic-bezier(.2,.8,.2,1);box-shadow:0 24px 70px rgba(0,0,0,.6);z-index:6}
   .vp-menu.open{opacity:1;pointer-events:all;transform:none}
@@ -1361,7 +1388,7 @@
   /* accordion sections — each collapses behind a gear-icon header */
   .vp-acc + .vp-acc{border-top:1px solid rgba(255,255,255,.06)}
   .vp-acc-head{position:sticky;top:-6px;z-index:2;display:flex;align-items:center;gap:10px;width:100%;
-    padding:11px 10px;background:rgba(15,14,22,.99);border:none;cursor:pointer;color:#dad9e0;
+    padding:11px 10px;background:rgba(1, 1, 2, 0.99);border:none;cursor:pointer;color:#dad9e0;
     font-family:var(--font);font-size:14px;text-align:left;border-radius:8px;transition:background .12s,color .12s}
   .vp-acc-head:hover{background:rgba(255,255,255,.06);color:#fff}
   .vp-acc-ic{width:15px;height:15px;flex-shrink:0;color:var(--text-muted);transition:transform .25s cubic-bezier(.2,.8,.2,1),color .15s}
@@ -1398,12 +1425,45 @@
     border-radius:6px;z-index:7;opacity:0;transition:opacity .2s;pointer-events:none}
   .vp-toast.show{opacity:1}
 
+  /* ---- mobile gesture layer (touch only; enabled by JS via .gestures-on) ---- */
+  /* surface sits above the video (z2), below .vp-loading (z3) + .vp-ui (z4) */
+  .vp-gestures{position:absolute;inset:0;z-index:2;display:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+  .vp-overlay.gestures-on .vp-gestures{display:block}
+  .vp-gestures *{pointer-events:none}   /* only the container itself takes touches */
+  /* brightness dimmer — web can't set device brightness, so we darken the frame (0 … ~.85) */
+  .vp-bright{position:absolute;inset:0;background:#000;opacity:0;transition:opacity .08s linear}
+  /* double-tap seek ripple + side label */
+  .vp-seekpulse{position:absolute;top:0;bottom:0;width:38%;display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .25s ease}
+  .vp-seekpulse.left{left:0;border-radius:0 50% 50% 0/0 50% 50% 0}
+  .vp-seekpulse.right{right:0;border-radius:50% 0 0 50%/50% 0 0 50%}
+  .vp-seekpulse.show{opacity:1}
+  .vp-seekpulse.show .rip{animation:vpRip .5s ease-out}
+  .vp-seekpulse .rip{position:absolute;width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.22),rgba(255,255,255,0) 70%)}
+  .vp-seekpulse .lbl{position:relative;z-index:1;font-family:var(--font-mono);font-size:15px;font-weight:700;
+    color:#fff;letter-spacing:.04em;text-shadow:0 1px 8px rgba(0,0,0,.7);display:flex;align-items:center;gap:6px}
+  @keyframes vpRip{0%{transform:scale(.4);opacity:0}30%{opacity:1}100%{transform:scale(1.25);opacity:0}}
+  /* vertical-drag HUD (volume / brightness) */
+  .vp-vhud{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:12px;
+    background:rgba(15,14,22,.9);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 18px;
+    opacity:0;transition:opacity .15s ease;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .vp-vhud.show{opacity:1}
+  .vp-vhud .ic{font-size:22px;line-height:1;color:#fff}
+  .vp-vhud .bar{position:relative;width:120px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);overflow:hidden}
+  .vp-vhud .bar i{position:absolute;left:0;top:0;bottom:0;width:50%;border-radius:3px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-h))}
+
   /* episode label under the player title (series) */
-  .vp-subtitle{font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;color:var(--accent);
+  .vp-subtitle{font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;color:#a9a9a9;
     margin-top:4px;text-shadow:0 1px 6px rgba(0,0,0,.6);display:none}
 
-  /* skip intro / next episode — floating contextual button (vidking-style) */
-  .vp-skip{position:absolute;right:32px;bottom:108px;z-index:5;display:none;align-items:center;gap:9px;
+  /* skip intro / next episode — floating contextual button (vidking-style).
+     Sits bottom-right, clearing the control bar via --vp-skip-bottom so the same rule
+     re-targets on every breakpoint (the bar grows taller as controls wrap on phones). */
+  .vp-skip{--vp-skip-bottom:112px;
+    position:absolute;right:32px;bottom:var(--vp-skip-bottom);z-index:5;display:none;
+    white-space:nowrap;align-items:center;justify-content:center;
     background:rgba(15,14,22,.78);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.24);
     color:#fff;font-family:var(--font-mono);font-size:15px;letter-spacing:.04em;padding:11px 19px;border-radius:9px;
     cursor:pointer;opacity:0;transform:translateY(10px);
@@ -1411,7 +1471,6 @@
     box-shadow:0 10px 36px rgba(0,0,0,.5)}
   .vp-skip.show{display:flex;opacity:1;transform:none}
   .vp-skip:hover{background:var(--accent);color:var(--ink);border-color:var(--accent);transform:translateY(-1px)}
-  .vp-skip .ic{font-size:16px;line-height:1}
 
   /* in-player episodes panel — slides in from the right */
   .vp-eppanel{position:absolute;top:0;right:0;bottom:0;width:min(384px,86vw);z-index:8;
@@ -1442,7 +1501,7 @@
     transition:transform .3s cubic-bezier(.2,.7,.2,1)}
   .vp-eppanel-list .ep-row:hover .ep-still img{transform:scale(1.06)}
   .vp-eppanel-list .ep-row.on .ep-still img{filter:brightness(1.07)}
-  .vp-eppanel-list .ep-still.no-still{display:grid;place-items:center;background:linear-gradient(150deg,var(--bg-3),#241015)}
+  .vp-eppanel-list .ep-still.no-still{display:grid;place-items:center;background:linear-gradient(150deg,#140202,#000000)}
   .vp-eppanel-list .ep-still.no-still::after{content:attr(data-n);font-family:var(--font-mono);font-size:18px;color:rgba(var(--accent-rgb),.4)}
   .vp-eppanel-list .ep-num{position:absolute;top:5px;left:5px;z-index:2;flex:none;min-width:0;
     font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:#fff;
@@ -1453,7 +1512,9 @@
     -webkit-box-orient:vertical;overflow:hidden;font-size:14px;line-height:1.3}
   .vp-eppanel-list .ep-row.on .ep-name{color:var(--highlight)}
   @media(max-width:640px){
-    .vp-skip{right:16px;bottom:96px;font-size:13px;padding:9px 15px}
+    /* phones: control bar is taller (time gets its own line + the icon row can wrap),
+       so lift the button higher to clear it; tighten the chip itself */
+    .vp-skip{--vp-skip-bottom:132px;right:16px;font-size:13px;padding:9px 15px;max-width:calc(100vw - 32px)}
     .vp-eppanel{padding:16px 12px 12px}
   }
 
@@ -1937,8 +1998,9 @@
          · ⧉ PiP — phones expose OS-level Picture-in-Picture gestures instead. */
     .vp-controls{flex-wrap:wrap;gap:3px;row-gap:6px}
     .vp-time{order:-1;flex:0 0 100%;text-align:center;font-size:14px;padding:0 0 3px;color:#dadada}
-    .vp-vol,#vpPip{display:none}
-    .vp-skip{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+    /* #vpBack/#vpFwd dropped on phones — double-tap-left/right gestures replace them */
+    .vp-vol,#vpPip,#vpBack,#vpFwd{display:none}
+    .vp-skip{--vp-skip-bottom:calc(132px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px))}
     .vp-eppanel{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
     .vp-eppanel-list{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
     /* footer: stack links left, generous tap rows, clear the home bar */
@@ -2049,7 +2111,7 @@
   /* ---- detail-modal hero: calmer, readable type on phones ---- */
   @media (max-width:640px){
     .m-hero-inner{left:clamp(14px,4vw,22px);right:clamp(14px,4vw,22px);
-      bottom:clamp(14px,3.4vw,20px);max-width:100%}
+      bottom:clamp(26px,6vw,40px);max-width:100%}
     .m-kicker{font-size:10.5px;letter-spacing:.2em;margin-bottom:8px}
     .m-kicker::before{width:16px}
     #mTitle{font-size:clamp(20px,6.2vw,30px);line-height:1.12;margin:0 0 9px;letter-spacing:.03em}
@@ -2069,7 +2131,12 @@
      where the cover looked like a small card and the text piled up over it). Every hero
      child is absolutely positioned, so min-height alone drives the media size. ---- */
   @media (max-width:640px) and (orientation:portrait){
-    .m-hero{aspect-ratio:auto;height:auto;
+    /* base the tall hero on the modal black --bg-2 (not the default --bg-3 purple-grey). The
+       backdrop band's ::after dissolves its 16:9 bottom edge into --bg-2; without a trailer the
+       base stayed --bg-3, so the poster faded to black and then seam-jumped back to grey under
+       the title. Painting the base --bg-2 here makes the no-trailer backdrop melt into one
+       continuous surface — i.e. the poster now "has a bg" exactly like the trailer case below. */
+    .m-hero{aspect-ratio:auto;height:auto;background:var(--bg-2);
       min-height:clamp(420px,62vh,600px);min-height:clamp(420px,62dvh,600px);max-height:none}
     /* The tall portrait hero made the 16:9 trailer letterbox itself: filling the full hero
        height vertically-centred left a fat black band ABOVE the video (with the close ✕
@@ -2079,13 +2146,27 @@
        iframe's bottom bleed exactly at the 16:9 line so there's one fixed, predictable
        trailer-bottom to fade from (independent of the fluid hero height). */
     .m-hero-trailer-slot{inset:0 0 auto;height:auto;aspect-ratio:16/9;overflow:hidden}
+    /* pin the backdrop to the SAME 16:9 top band as the trailer (not the full tall hero) so
+       the poster is framed identically to the video — the cross-dissolve lands pixel-aligned
+       with no crop "jump", making the trailer fade in smoothly. The hero base below the band
+       is the modal black --bg-2, which the poster fades into when the trailer reveals. */
+    /* kill the Ken-Burns zoom/pan here: its scale(1.06→1.14)+drift transform inflated the
+       poster (~7% bigger) and slid it off the trailer slot, so the two bands never aligned.
+       Static = the poster is a 16:9 band pixel-identical to the trailer, for a clean fade. */
+    .m-hero .m-hero-bg{inset:0 0 auto;height:auto;aspect-ratio:16/9;animation:none;transform:none}
+    /* same bottom-dissolve gradient as the trailer so the poster band's hard 16:9 bottom edge
+       melts into --bg-2 identically — the backdrop and the trailer share one continuous
+       bottom fade, so the cross-dissolve never reveals a mismatched hard edge. */
+    .m-hero .m-hero-bg::after{content:"";position:absolute;left:0;right:0;bottom:0;
+      height:66%;z-index:2;pointer-events:none;background:linear-gradient(180deg,
+        transparent 0%,rgba(7,7,7,.15) 38%,rgba(7,7,7,.5) 64%,rgba(7,7,7,.86) 84%,var(--bg-2) 100%)}
     /* the trailer only covers the top 16:9 band here, so the backdrop kept showing (a second
        still frame) behind the title below it. Fade the backdrop out once the trailer reveals,
        and recolour the exposed hero base from --bg-3 (#161419, a lighter purple-grey) to the
        modal black --bg-2 — so the trailer fade, the area under it and the body below are ONE
        continuous black with no lighter seam. */
     .m-hero.has-trailer{background:var(--bg-2)}
-    .m-hero.has-trailer .m-hero-bg{opacity:0}
+    .m-hero.has-trailer .m-hero-bg{opacity:0;transition:opacity 1.3s cubic-bezier(.4,0,.2,1) .15s}
     /* the natural smooth dissolve: an eased multi-stop black gradient rising out of the
        trailer's lower third into that same --bg-2, so the hard rectangular bottom edge melts
        and trailer → background reads as a single surface. Anchored to the slot (fixed 16:9),
@@ -2960,6 +3041,16 @@
 <div class="vp-overlay" id="playerOverlay">
   <video id="playerVideo" playsinline></video>
 
+  <!-- mobile gesture surface (touch only; JS adds .gestures-on). Sits ABOVE the video (z2)
+       but BELOW the loading overlay (z3) and the chrome (.vp-ui z4), so controls/progress bar
+       still own their own taps; only the empty video area routes to gestures. -->
+  <div class="vp-gestures" id="vpGestures" aria-hidden="true">
+    <div class="vp-bright" id="vpBright"></div>
+    <div class="vp-seekpulse left" id="vpPulseL"><span class="rip"></span><span class="lbl">&#10226; 10</span></div>
+    <div class="vp-seekpulse right" id="vpPulseR"><span class="rip"></span><span class="lbl">10 &#10227;</span></div>
+    <div class="vp-vhud" id="vpVHud"><span class="ic" id="vpVHudIc">&#9788;</span><div class="bar"><i id="vpVHudFill"></i></div></div>
+  </div>
+
   <div class="vp-loading" id="vpLoading" role="status" aria-live="polite">
     <span class="sf-loader" aria-hidden="true"></span>
     <div class="lt" id="vpLoadingText" data-i18n="player.preparing">Preparing stream…</div>
@@ -2981,7 +3072,7 @@
     </div>
 
     <button class="vp-center hidden" id="vpCenter" data-i18n-aria="ctl.center_a" aria-label="Play / Pause">
-      <span class="ic" id="vpCenterIc">▶</span><span class="ring"></span>
+      <span class="ic" id="vpCenterIc"><svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span><span class="ring"></span>
     </button>
 
     <!-- contextual skip-intro / next-episode button (series) -->
@@ -2997,23 +3088,23 @@
         </div>
       </div>
       <div class="vp-controls">
-        <button class="vp-icon" id="vpPlay" data-i18n-title="ctl.play_t" data-i18n-aria="ctl.play_a" title="Play / Pause (k)" aria-label="Play or pause">▶</button>
-        <button class="vp-icon" id="vpBack" data-i18n-title="ctl.back_t" data-i18n-aria="ctl.back_a" title="Back 10s (←)" aria-label="Back 10 seconds">⤺</button>
-        <button class="vp-icon" id="vpFwd" data-i18n-title="ctl.fwd_t" data-i18n-aria="ctl.fwd_a" title="Forward 10s (→)" aria-label="Forward 10 seconds">⤻</button>
+        <button class="vp-icon" id="vpPlay" data-i18n-title="ctl.play_t" data-i18n-aria="ctl.play_a" title="Play / Pause (k)" aria-label="Play or pause"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="vp-icon" id="vpBack" data-i18n-title="ctl.back_t" data-i18n-aria="ctl.back_a" title="Back 10s (←)" aria-label="Back 10 seconds"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12.5 7V4l-5 5 5 5V11a4.5 4.5 0 1 1-4.5 4.5H6A6 6 0 1 0 12.5 7z"/></svg></button>
+        <button class="vp-icon" id="vpFwd" data-i18n-title="ctl.fwd_t" data-i18n-aria="ctl.fwd_a" title="Forward 10s (→)" aria-label="Forward 10 seconds"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M11.5 7V4l5 5-5 5V11A4.5 4.5 0 1 0 16 15.5h1.5A6 6 0 1 1 11.5 7z"/></svg></button>
         <div class="vp-vol">
-          <button class="vp-icon" id="vpMute" data-i18n-title="ctl.mute_t" data-i18n-aria="ctl.mute_a" title="Mute (m)" aria-label="Mute" aria-pressed="false">🔊</button>
+          <button class="vp-icon" id="vpMute" data-i18n-title="ctl.mute_t" data-i18n-aria="ctl.mute_a" title="Mute (m)" aria-label="Mute" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M16 8.5a4 4 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 6a7 7 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
           <input type="range" class="vp-vol-slider" id="vpVol" min="0" max="1" step="0.02" value="1" data-i18n-aria="ctl.vol_a" aria-label="Volume"/>
         </div>
         <div class="vp-time"><span id="vpCur">0:00</span> / <span id="vpDur">0:00</span></div>
         <div class="vp-spacer"></div>
-        <button class="vp-icon" id="vpEpisodes" style="display:none" data-i18n-title="ctl.episodes_t" data-i18n-aria="ctl.episodes_a" title="Episodes (e)" aria-label="Episodes">▦</button>
+        <button class="vp-icon" id="vpEpisodes" style="display:none" data-i18n-title="ctl.episodes_t" data-i18n-aria="ctl.episodes_a" title="Episodes (e)" aria-label="Episodes"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M4 5h16v2H4zM4 11h16v2H4zM4 17h10v2H4z"/></svg></button>
         <button class="vp-icon cc" id="vpCC" data-i18n-title="ctl.subs_t" data-i18n-aria="ctl.subs_a" title="Subtitles (c)" aria-label="Toggle subtitles" aria-pressed="false">CC</button>
         <div class="vp-menu-wrap">
-          <button class="vp-icon" id="vpGear" data-i18n-title="ctl.settings_t" data-i18n-aria="ctl.settings_a" title="Settings" aria-label="Playback settings" aria-haspopup="menu" aria-expanded="false" aria-controls="vpMenu">⚙</button>
+          <button class="vp-icon" id="vpGear" data-i18n-title="ctl.settings_t" data-i18n-aria="ctl.settings_a" title="Settings" aria-label="Playback settings" aria-haspopup="menu" aria-expanded="false" aria-controls="vpMenu"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1l-.4-2.6h-3.8l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4L4.6 11a7.8 7.8 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 1.7 1l.4 2.6h3.8l.4-2.6a7.6 7.6 0 0 0 1.7-1l2.4 1 2-3.4zM12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4z"/></svg></button>
           <div class="vp-menu" id="vpMenu" role="menu"></div>
         </div>
-        <button class="vp-icon" id="vpPip" data-i18n-title="ctl.pip_t" data-i18n-aria="ctl.pip_a" title="Picture in picture" aria-label="Picture in picture">⧉</button>
-        <button class="vp-icon" id="vpFs" data-i18n-title="ctl.fs_t" data-i18n-aria="ctl.fs_a" title="Fullscreen (f)" aria-label="Toggle fullscreen">⛶</button>
+        <button class="vp-icon" id="vpPip" data-i18n-title="ctl.pip_t" data-i18n-aria="ctl.pip_a" title="Picture in picture" aria-label="Picture in picture"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M3 5h18v14H3V5zm2 2v10h14V7H5zm6 4h7v5h-7v-5z"/></svg></button>
+        <button class="vp-icon" id="vpFs" data-i18n-title="ctl.fs_t" data-i18n-aria="ctl.fs_a" title="Fullscreen (f)" aria-label="Toggle fullscreen"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM6 15v3h3v2H4v-5h2zm12 0h2v5h-5v-2h3v-3z"/></svg></button>
       </div>
     </div>
 
@@ -3388,6 +3479,9 @@ window.I18N=(function(){
   "modal.show_all": "SHOW ALL",
   "modal.show_less": "SHOW LESS",
   "modal.watch": "WATCH",
+  "cta.resume_time": "RESUME · {time}",
+  "cta.resume_ep": "RESUME {ep} · {time}",
+  "player.resuming": "▸ Resuming from {time}",
   "modal.trailer_title": "{title} — trailer",
   "modal.mute": "Mute trailer",
   "modal.unmute": "Unmute trailer",
@@ -3858,6 +3952,9 @@ window.I18N=(function(){
   "modal.show_all": "ყველას ჩვენება",
   "modal.show_less": "ნაკლების ჩვენება",
   "modal.watch": "ყურება",
+  "cta.resume_time": "გაგრძელება · {time}",
+  "cta.resume_ep": "გაგრძელება {ep} · {time}",
+  "player.resuming": "▸ გაგრძელება {time}-დან",
   "modal.trailer_title": "{title} — ანონსი",
   "modal.mute": "ხმის გათიშვა",
   "modal.unmute": "ხმის ჩართვა",
@@ -4064,6 +4161,10 @@ function posterHTML(it,seed,opts){
   // Continue Watching posters carry a corner ✕ that drops the title from watch history
   // (handled in the global click listener, which stops the card from opening the modal).
   const removeBtn=(opts&&opts.removable)?`<button type="button" class="cw-remove" data-remove-id="${esc(it.id)}" aria-label="${esc(t('continue.remove'))}" title="${esc(t('continue.remove'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`:'';
+  // Continue Watching cards carry a resume timecode (0–1) → a thin crimson bar at the
+  // bottom edge. Only drawn when there's meaningful progress to show.
+  const pct=(opts&&+opts.progress>0)?Math.max(0,Math.min(1,+opts.progress)):0;
+  const progBar=pct>0.01?`<div class="cw-progress" aria-hidden="true"><i style="width:${(pct*100).toFixed(1)}%"></i></div>`:'';
   return `<div class="poster" tabindex="0" role="button" aria-label="${esc(it.title)} (${esc(it.year)}) — ${esc(t('poster.view_details'))}" data-id="${esc(it.id)}" data-type="${esc(it.type||'movie')}" data-t="${esc(it.title)}" data-y="${esc(it.year)}" data-r="${esc(it.rating)}" data-g="${esc(it.genre)}" data-p="${esc(img)}" data-s="${seed}"${addonAttrs}>
     ${removeBtn}
     <div class="art" style="background:${bg}">
@@ -4072,6 +4173,7 @@ function posterHTML(it,seed,opts){
     </div>
     ${(it.type==='tv'||it.type==='series')?`<div class="tvtag mono" aria-label="Series">TV</div>`:''}
     <div class="rate mono ${rateClass(it.rating)}">${esc(rateText(it.rating))}</div>
+    ${progBar}
     <div class="ov">
       <div class="ov-title">${esc(it.title)}</div>
       <div class="ov-meta"><span>${esc(it.year)}</span>${it.rating?`<span class="ov-star">★ ${esc(it.rating)}</span>`:''}</div>
@@ -4571,8 +4673,10 @@ function renderContinueWatching(){
   const paint=()=>{
     const cards=list.map((m,i)=>{
       const loc=cwLocCache[m.id+'|'+lang];   // localized cover+name when we have it; else the snapshot
+      const r=entryResume(m);                // saved timecode → resume bar (null when none)
       return pcard({ id:m.id, title:(loc&&loc.title)||m.title, year:m.year, type:m.type,
-        genre:m.genre, rating:m.rating, poster:(loc&&loc.poster)||m.poster },i,{removable:true});
+        genre:m.genre, rating:m.rating, poster:(loc&&loc.poster)||m.poster },i,
+        {removable:true, progress:r?r.pct:0});
     }).join('');
     host.innerHTML=`<div class="strip reveal in" data-row="continue">`+
       `<div class="strip-head"><span class="strip-title static mono">${esc(t('sec.continue'))}</span></div>`+
@@ -4622,10 +4726,58 @@ function recordWatch(){
   if(!(window.AUTH&&AUTH.user)) return;                 // history is a signed-in feature
   const m=window.currentTitleMeta; if(!m||!m.id) return;
   const list=watchHistory().filter(x=>x.id!==m.id);     // an existing entry floats back to the top
+  const isSeries=window.currentMediaType==='series'&&window.seriesCtx&&seriesCtx.active&&seriesCtx.season!=null&&seriesCtx.ep!=null;
+  // `key` is the resume media-key (movie id, or id:S#E# for the exact episode) so the rail
+  // bar + the player's auto-resume read the same position; season/episode let RESUME jump
+  // straight back into the right episode of a series.
   list.unshift({ id:m.id, title:m.title||'', poster:m.poster||'', year:m.year||'', type:m.type||'movie',
-                 genre:m.genre||'', rating:m.rating||'', ep:window.currentEpLabel||'' });
+                 genre:m.genre||'', rating:m.rating||'', ep:window.currentEpLabel||'',
+                 key:curMediaKey(),
+                 season:isSeries?seriesCtx.season:null, episode:isSeries?seriesCtx.ep:null });
   saveHistory(list.slice(0,HISTORY_CAP));
 }
+
+/* ---------- resume progress (timecode) — per-account, on-device ----------
+   A sibling store to watch history: a map of mediaKey → {pos, dur, at}. mediaKey is the
+   title id for a movie, or `${id}:S${season}E${ep}` for one series episode — so a show
+   resumes the exact episode you stopped on. Drives BOTH the Continue Watching progress
+   bars AND the player's auto-resume seek. Namespaced by the signed-in email, like history. */
+const PROGRESS_MIN=8;        // ignore the first few seconds (accidental opens / quick peeks)
+const PROGRESS_DONE=0.94;    // ≥94% watched (or within the last ~12s) counts as finished
+function progressStoreKey(){ const u=(window.AUTH&&AUTH.user&&AUTH.user.email)||'guest'; return 'sf:progress:'+u; }
+function progressAll(){ try{ return JSON.parse(localStorage.getItem(progressStoreKey())||'{}'); }catch(e){ return {}; } }
+function progressSaveAll(map){ try{ localStorage.setItem(progressStoreKey(),JSON.stringify(map)); }catch(e){} }
+function getProgress(key){ if(!key) return null; const p=progressAll()[key]; return (p&&p.pos>0)?p:null; }
+function putProgress(key,pos,dur){
+  if(!key||!(pos>0)) return;
+  const map=progressAll(); map[key]={pos:Math.round(pos),dur:Math.round(dur||0),at:Date.now()};
+  // bound the store: keep the 240 most-recently-updated keys so it can't grow without limit
+  const keys=Object.keys(map);
+  if(keys.length>240){ keys.sort((a,b)=>(map[b].at||0)-(map[a].at||0)).slice(240).forEach(k=>delete map[k]); }
+  progressSaveAll(map);
+}
+function delProgress(key){ if(!key) return; const map=progressAll(); if(map[key]!=null){ delete map[key]; progressSaveAll(map); } }
+/* media key for whatever is playing right now (movie id, or id:S#E# for a series episode) */
+function curMediaKey(){
+  const m=window.currentTitleMeta; if(!m||!m.id) return '';
+  if(window.currentMediaType==='series'&&window.seriesCtx&&seriesCtx.active&&seriesCtx.season!=null&&seriesCtx.ep!=null)
+    return m.id+':S'+seriesCtx.season+'E'+seriesCtx.ep;
+  return String(m.id);
+}
+/* resume info for a Continue Watching entry → {pos,dur,pct,key} or null when there's
+   nothing meaningful to resume (no duration, barely started, or already finished). */
+function entryResume(e){
+  if(!e) return null;
+  const key=e.key||String(e.id||'');
+  const p=getProgress(key); if(!p||!(p.dur>0)) return null;
+  const pct=p.pos/p.dur;
+  if(pct<0.01||pct>PROGRESS_DONE) return null;
+  return { pos:p.pos, dur:p.dur, pct:pct, key:key };
+}
+/* clock formatter for the modal RESUME label (the player has its own private fmt()) */
+function fmtClock(t){ if(!isFinite(t)||t<0)t=0; t=Math.floor(t);
+  const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;
+  return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0'); }
 
 /* ============================================================
    USER SETTINGS — Stremio-style player / interface preferences.
@@ -4712,7 +4864,7 @@ function initSettingsControls(){
 /* the hero is an auto-rotating carousel; the active dot's CSS fill animation IS
    the clock — advancing on its animationend keeps the progress bar and the slide
    change perfectly in sync, and hover-pause is just `animation-play-state` */
-const HERO={ slides:[], i:0, delay:4000 };
+const HERO={ slides:[], i:0, delay:4000, pos:0, w:0, looped:false, rm:false };
 /* Max slides in the featured-hero carousel — matches the server's /api/hero cap and
    the admin picker (HERO_MAX), so every hand-picked / trending title actually shows. */
 const HERO_MAX=8;
@@ -4774,7 +4926,29 @@ function dedupeFeatured(list,n=8){
   for(const m of (list||[])){ if(!m||seen.has(m.title))continue; seen.add(m.title); out.push(m); if(out.length>=n)break; }
   return out;
 }
-function heroSlideHTML(it,idx,defer){
+// A track slide is now image-ONLY — the foreground copy/buttons live in a single pinned
+// overlay (heroInnerHTML) that stays put while the backdrops scroll behind it. opts:
+// {defer, active, clone}; `dataI` is the LOGICAL index (a clone mirrors its real twin's).
+function heroSlideHTML(it,dataI,opts){
+  opts=opts||{};
+  const defer=!!opts.defer, active=!!opts.active, clone=!!opts.clone;
+  // Only the live first slide paints its art inline for the fastest first paint; every other
+  // slide (and all clones) defers its often-multi-MB backdrop via data-bg, which ensureSlideBg()
+  // decodes-then-paints just before the slide scrolls in — so first paint stays a single image
+  // and a swapped-in (uncached) backdrop never flashes a half-decoded frame.
+  const bg=heroBg(it);
+  const eager=(active&&!defer);
+  const bgAttr=(bg&&!eager)?` data-bg="${esc(bg)}"`:'';
+  const bgStyle=(bg&&eager)?`background-image:url('${esc(bg)}')`:heroBgFallback(it);
+  // slides carry no text now → always decorative / hidden from assistive tech
+  return `<div class="hero-slide${active?' active':''}${clone?' hero-clone':''}" data-i="${dataI}" aria-hidden="true">
+      <div class="hero-media"><div class="hero-bg"${bgAttr} style="${bgStyle}"></div></div>
+    </div>`;
+}
+// the pinned foreground copy for one title — title/plot/meta + PLAY / MY LIST. Lives once in
+// #hero (heroFillContent swaps it in on each slide change); replacing the nodes re-runs the
+// rise-in animation so the content cross-fades in place rather than scrolling with the image.
+function heroInnerHTML(it){
   const plot=it.overview||t('hero.plot_fallback');
   // plain inline "rating  year" — no badge boxes, no genre chip (per the crimson brand)
   const meta=`<span>${esc(it.year)}</span><span>${it.rating?('★ '+esc(it.rating)):''}</span><span>${esc(I18N.genre(it.genre))||''}</span>`;
@@ -4784,29 +4958,31 @@ function heroSlideHTML(it,idx,defer){
   const titleInner=it.titleLogo
     ? `<img class="hero-logo" src="${esc(it.titleLogo)}" alt="${esc(it.title)}" onerror="this.parentNode.classList.remove('has-logo');this.parentNode.textContent=this.alt"/>`
     : esc(it.title);
-  // Only the first slide loads its art immediately; the rest defer their (often
-  // multi-MB) backdrop via data-bg so it never competes with first paint —
-  // ensureSlideBg() pulls it in just before the slide is shown.
-  // Slide 0 normally paints its art inline for the fastest first paint. On a re-render
-  // (`defer` — e.g. a language switch that swaps in a fresh, uncached backdrop) it instead
-  // defers like the rest, so ensureSlideBg() decodes the image before paint and no
-  // half-decoded streaky frame ever shows.
-  const bg=heroBg(it);
-  const eager=(idx===0&&!defer);
-  const bgAttr=(bg&&!eager)?` data-bg="${esc(bg)}"`:'';
-  const bgStyle=(bg&&eager)?`background-image:url('${esc(bg)}')`:heroBgFallback(it);
-  return `<div class="hero-slide${idx===0?' active':''}" data-i="${idx}"${idx===0?'':' aria-hidden="true"'}>
-      <div class="hero-bg"${bgAttr} style="${bgStyle}"></div>
-      <div class="hero-inner">
-        <h2 class="hero-title${it.titleLogo?' has-logo':''}">${titleInner}</h2>
+  return `<h2 class="hero-title${it.titleLogo?' has-logo':''}">${titleInner}</h2>
         <p class="hero-plot">${esc(plot)}</p>
         <div class="hero-meta">${meta}</div>
         <div class="hero-actions">
           <button class="hero-btn hero-play" type="button"><span class="ic" aria-hidden="true">▶</span> ${esc(t('hero.play'))}</button>
           <button class="hero-btn hero-add${added?' on':''}" type="button"
             aria-label="${esc(added?t('mylist.remove'):t('mylist.add'))}" aria-pressed="${added}"><span class="ic" aria-hidden="true">${added?'✓':'+'}</span> <span class="hero-add-t">${esc(t('nav.my_list'))}</span></button>
-        </div>
-      </div></div>`;
+        </div>`;
+}
+// swap the pinned overlay to a title's copy and (re)bind PLAY / MY LIST to it
+function heroFillContent(it){
+  const el=heroEl(); if(!el||!it) return;
+  const box=el.querySelector('.hero-inner'); if(!box) return;
+  box.innerHTML=heroInnerHTML(it);
+  box.querySelector('.hero-play').onclick=()=>openInfoModal({
+    id:it.id, type:it.type||'movie', t:it.title, y:it.year, r:it.rating, g:it.genre, p:it.poster||'', s:0
+  });
+  const add=box.querySelector('.hero-add');
+  add.onclick=()=>{
+    const on=toggleMyList(it);
+    add.classList.toggle('on',on);
+    const ic=add.querySelector('.ic'); if(ic) ic.textContent=on?'✓':'+';
+    add.setAttribute('aria-pressed',on); add.setAttribute('aria-label',on?t('mylist.remove'):t('mylist.add'));
+    toast(on?t('toast.added',{t:it.title}):t('toast.removed',{t:it.title}), on?'var(--accent)':'var(--danger)');
+  };
 }
 function renderHero(list,opts){
   const el=heroEl(); if(!el) return;
@@ -4820,36 +4996,32 @@ function renderHero(list,opts){
   const slides=(opts&&opts.ordered)?dedupeFeatured(list,HERO_MAX):pickFeatured(list,HERO_MAX);
   if(!slides.length){ el.hidden=true; el.innerHTML=''; return; }
   el.hidden=false;
-  HERO.slides=slides; HERO.i=0;
+  const N=slides.length, looped=N>1;
+  HERO.slides=slides; HERO.i=0; HERO.looped=looped;
+  HERO.pos=looped?1:0;   // cell 0 is the clone of the last slide; the real first slide is cell 1
+  HERO.rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
   el.style.setProperty('--hero-delay',(HERO.delay/1000)+'s');
-  const dots=slides.length>1
+  const dots=looped
     ? `<div class="hero-dots" role="tablist" aria-label="${esc(t('ui.featured_titles'))}">`+
         slides.map((s,i)=>`<button class="hero-dot${i===0?' active':''}" type="button" role="tab" data-i="${i}" aria-selected="${i===0}" aria-label="${esc(t('ui.show')+' '+s.title)}"></button>`).join('')+
       `</div>` : '';
-  el.innerHTML=slides.map((s,i)=>heroSlideHTML(s,i,reRender)).join('')+dots;
-  // wire every slide's Play / + (all slides live in the DOM, stacked + crossfading)
-  el.querySelectorAll('.hero-slide').forEach(sl=>{
-    const it=slides[+sl.dataset.i];
-    sl.querySelector('.hero-play').onclick=()=>openInfoModal({
-      id:it.id, type:it.type||'movie', t:it.title, y:it.year, r:it.rating, g:it.genre,
-      p:it.poster||'', s:0
-    });
-    const add=sl.querySelector('.hero-add');
-    add.onclick=()=>{
-      const on=toggleMyList(it);
-      add.classList.toggle('on',on);
-      const ic=add.querySelector('.ic'); if(ic) ic.textContent=on?'✓':'+';
-      add.setAttribute('aria-pressed',on); add.setAttribute('aria-label',on?t('mylist.remove'):t('mylist.add'));
-      toast(on?t('toast.added',{t:it.title}):t('toast.removed',{t:it.title}), on?'var(--accent)':'var(--danger)');
-    };
-  });
+  // assemble the flex track: [clone(last)] real0..realN-1 [clone(first)]. The two edge
+  // clones make the loop seamless — autoplay/drag glides onto a clone, then JS teleports
+  // (no transition) to its identical real twin. Clones defer their art + are non-interactive.
+  const cells=[];
+  if(looped) cells.push(heroSlideHTML(slides[N-1],N-1,{defer:true,clone:true}));
+  slides.forEach((s,i)=>cells.push(heroSlideHTML(s,i,{active:i===0,defer:reRender||i!==0})));
+  if(looped) cells.push(heroSlideHTML(slides[0],0,{defer:true,clone:true}));
+  // start the row pre-shifted to the real first slide so first paint shows it, not the clone.
+  // The .hero-inner overlay is a SIBLING of the track (not inside a slide) so it stays pinned
+  // while the backdrops scroll behind it; heroFillContent swaps its copy on each slide change.
+  el.innerHTML=`<div class="hero-track" style="transform:translateX(${looped?'-100%':'0'})">`+cells.join('')+`</div>`+
+    `<div class="hero-inner">${heroInnerHTML(slides[0])}</div>`+dots;
   el.querySelectorAll('.hero-dot').forEach(d=>d.addEventListener('click',()=>heroGo(+d.dataset.i)));
-  // warm the next slide's backdrop in the background so the first crossfade is
-  // ready — slide 0 already loaded its art inline; the rest stay deferred. On a
-  // re-render slide 0 is deferred too, so decode-then-paint it before it shows.
-  const slideEls=el.querySelectorAll('.hero-slide');
-  if(reRender) ensureSlideBg(slideEls[0]);
-  ensureSlideBg(slideEls[1]);
+  // set the live slide + dots + pinned copy, warm neighbour backdrops (clone-aware), then
+  // measure the viewport and pin the track in px.
+  heroSetActive(0);
+  requestAnimationFrame(heroLayout);
   // wire the carousel clock + hover/focus pause exactly once per element
   if(!el.__heroWired){
     el.__heroWired=true;
@@ -4860,20 +5032,23 @@ function renderHero(list,opts){
     el.addEventListener('focusin',()=>pause(true));
     el.addEventListener('focusout',()=>pause(false));
 
-    // ---- swipe / drag to change slides (finger + mouse cursor) ----
+    // re-pin the track in px when the viewport resizes (slide width changes)
+    addEventListener('resize',heroLayout,{passive:true});
+
+    // ---- drag / swipe the whole track (finger + mouse cursor) ----
     // One Pointer Events path covers touch, mouse and pen. touch-action:pan-y (CSS) lets a
-    // vertical drag scroll the page natively while we own the horizontal axis. The active
-    // slide follows the pointer for tactile feedback, then crossfades to the neighbour (or
-    // eases back) on release. A committed drag swallows the trailing click so PLAY / + never
-    // fire mid-swipe. Disabled while there's only one slide.
-    const RM=matchMedia('(prefers-reduced-motion:reduce)');
-    const DRAG_MIN=8, SWIPE_GO=46;
-    let dx0=0,dy0=0,drag=false,axis=null,ddx=0,pType='';
-    const liveSlide=()=>el.querySelector('.hero-slide.active');
+    // vertical drag scroll the page natively while we own the horizontal axis. The track
+    // follows the finger 1:1 (rubber-banded past ~0.9 of a slide so a single gesture can't
+    // out-run the lone edge clone), then a velocity-aware snap commits to a neighbour or
+    // eases back. A committed/over-threshold drag swallows the trailing click so PLAY / +
+    // never fire mid-swipe. Disabled while there's only one slide.
+    const DRAG_MIN=8, GO_DIST=0.18, GO_VEL=0.5;   // commit past 18% of a slide, or a flick
+    let dx0=0,dy0=0,drag=false,axis=null,ddx=0,pType='',lastX=0,lastT=0,vx=0;
     el.addEventListener('pointerdown',e=>{
       if(HERO.slides.length<2) return;
       if(e.pointerType==='mouse'&&e.button!==0) return;
-      dx0=e.clientX; dy0=e.clientY; drag=true; axis=null; ddx=0; pType=e.pointerType;
+      dx0=e.clientX; dy0=e.clientY; drag=true; axis=null; ddx=0; vx=0;
+      lastX=e.clientX; lastT=e.timeStamp||0; pType=e.pointerType;
     });
     el.addEventListener('pointermove',e=>{
       if(!drag) return;
@@ -4886,28 +5061,30 @@ function renderHero(list,opts){
       if(axis!=='x') return;                 // vertical → hand it back to the page scroll
       e.preventDefault();
       ddx=dx;
-      const sl=liveSlide();
-      if(sl&&!RM.matches){ sl.style.transition='none'; sl.style.transform='translateX('+(dx*0.32).toFixed(1)+'px)'; }
+      const t=e.timeStamp||0;                // running velocity (px/ms) for flick detection
+      if(t>lastT){ vx=(e.clientX-lastX)/(t-lastT); lastX=e.clientX; lastT=t; }
+      heroPlace(HERO.pos,false,heroRubber(dx));
     },{passive:false});
     const endDrag=()=>{
       if(!drag) return; drag=false;
-      const sl=liveSlide(), wasX=axis==='x', commit=wasX&&Math.abs(ddx)>SWIPE_GO;
+      const wasX=axis==='x';
       el.classList.remove('dragging');
-      if(commit){
-        if(sl){ sl.style.transition='none'; sl.style.transform=''; }   // the crossfade hides the snap
-        heroGo(HERO.i+(ddx<0?1:-1));
-      }else if(sl){
-        sl.style.transition=RM.matches?'none':'transform .3s cubic-bezier(.2,.7,.2,1)';
-        sl.style.transform='';
-        const clr=()=>{ sl.style.transition=''; sl.removeEventListener('transitionend',clr); };
-        sl.addEventListener('transitionend',clr); setTimeout(clr,340);
+      if(wasX){
+        const W=HERO.w||el.clientWidth||1;
+        const far=Math.abs(ddx)>W*GO_DIST, flick=Math.abs(vx)>GO_VEL;
+        if((far||flick)&&Math.sign(ddx||-vx)!==0){
+          const dir=(ddx<0||(ddx===0&&vx<0))?1:-1;   // dragged left → next
+          heroGo(HERO.i+dir);
+        }else{
+          heroPlace(HERO.pos,true);                  // snap back to the current slide
+        }
       }
       if(wasX&&Math.abs(ddx)>DRAG_MIN){       // kill the click a drag would otherwise emit
         const supp=ev=>{ ev.stopPropagation(); ev.preventDefault(); };
         el.addEventListener('click',supp,{capture:true,once:true});
         setTimeout(()=>el.removeEventListener('click',supp,true),350);
       }
-      axis=null; ddx=0;
+      axis=null; ddx=0; vx=0;
       el.classList.toggle('paused', pType==='mouse'&&(el.matches(':hover')||el.contains(document.activeElement)));
     };
     el.addEventListener('pointerup',endDrag);
@@ -4915,16 +5092,79 @@ function renderHero(list,opts){
   }
   el.classList.remove('paused');
 }
-function heroGo(n){
-  const s=HERO.slides; if(s.length<2) return;
+/* ---- hero track engine ----
+   The track is a flex row translated in px. `pos` is the current CELL (clone(last)=0,
+   real slides=1..N, clone(first)=N+1); the live LOGICAL index is HERO.i. Parallax pans
+   each slide's .hero-media a fraction of the track distance for depth. */
+const HERO_PARALLAX=0.07;   // bg trails the scroll by ~7% of a slide width → depth
+function heroTrack(){ const el=heroEl(); return el&&el.querySelector('.hero-track'); }
+// measure the viewport and re-pin the track (no animation) — first paint + resize
+function heroLayout(){
+  const el=heroEl(), tr=heroTrack(); if(!el||!tr) return;
+  HERO.w=el.clientWidth||tr.clientWidth||1;
+  heroPlace(HERO.pos,false);
+}
+// translate the track to `pos` (+ optional live drag offset); when animate, the .animating
+// CSS glide carries both the track and each media layer to their targets in lockstep.
+function heroPlace(pos,animate,dragPx){
+  const el=heroEl(), tr=heroTrack(); if(!tr) return;
+  HERO.pos=pos;
+  const W=HERO.w||(el&&el.clientWidth)||1;
+  const base=-pos*W+(dragPx||0);
+  tr.classList.toggle('animating',!!animate);
+  tr.style.transform='translate3d('+base.toFixed(2)+'px,0,0)';
+  heroParallax(base);
+}
+// per-cell parallax: media translate = -k·rel·W, so the backdrop moves at (1-k)× the
+// foreground — same direction, slower — for both the incoming and outgoing slide.
+function heroParallax(basePx){
+  const tr=heroTrack(); if(!tr) return;
+  const W=HERO.w||1, maxRel=1;
+  tr.querySelectorAll(':scope > .hero-slide').forEach((sl,c)=>{
+    const media=sl.querySelector('.hero-media'); if(!media) return;
+    if(HERO.rm){ media.style.transform=''; return; }
+    let rel=(c*W+basePx)/W;                          // 0 when this cell is centred in view
+    rel=Math.max(-maxRel,Math.min(maxRel,rel));
+    media.style.transform='translate3d('+(-HERO_PARALLAX*rel*W).toFixed(2)+'px,0,0)';
+  });
+}
+// soft-cap the live drag: ~1:1 with the finger for normal swipes, but asymptotes to ±W so a
+// single gesture can never out-run the lone edge clone (which would expose a black gap), and
+// naturally limits a swipe to one slide — the snap commits the rest.
+function heroRubber(px){
+  const W=HERO.w||1;
+  return W*Math.tanh(px/W);
+}
+// set the live LOGICAL slide: active class (for Ken Burns) + dots + warm this/prev/next
+// backdrops, and swap the pinned copy to this title (which re-runs its rise-in animation)
+function heroSetActive(L){
+  const el=heroEl(), tr=heroTrack(); if(!tr) return;
+  const cells=tr.querySelectorAll(':scope > .hero-slide');
+  const ac=L+(HERO.looped?1:0);
+  ensureSlideBg(cells[ac]); ensureSlideBg(cells[ac+1]); ensureSlideBg(cells[ac-1]);
+  cells.forEach((sl,c)=>sl.classList.toggle('active',c===ac));
+  el.querySelectorAll('.hero-dot').forEach((d,i)=>{ d.classList.toggle('active',i===L); d.setAttribute('aria-selected',i===L); });
+  heroFillContent(HERO.slides[L]);
+}
+// animate the track to a target cell; if it's an edge clone, teleport to the real twin on landing
+function heroAnimateTo(cell,wrapTo){
+  const tr=heroTrack(); if(!tr) return;
+  heroPlace(cell,true);
+  if(wrapTo==null) return;
+  const land=()=>{ tr.removeEventListener('transitionend',onEnd); heroPlace(wrapTo+1,false); };
+  const onEnd=e=>{ if(e.target===tr&&e.propertyName==='transform') land(); };
+  tr.addEventListener('transitionend',onEnd);
+  setTimeout(()=>{ if(HERO.pos===cell){ tr.removeEventListener('transitionend',onEnd); land(); } },820);
+}
+// go to logical slide `rawL`; rawL may be -1 or N to glide through an edge clone and wrap
+function heroGo(rawL){
+  const s=HERO.slides, N=s.length; if(N<2) return;
   const el=heroEl(); if(!el) return;
-  const next=((n%s.length)+s.length)%s.length;
-  const slidesEls=el.querySelectorAll('.hero-slide');
-  ensureSlideBg(slidesEls[next]);                       // the slide we're showing now
-  ensureSlideBg(slidesEls[(next+1)%s.length]);          // and warm the one after it
-  slidesEls.forEach((sl,i)=>{ sl.classList.toggle('active',i===next); if(i===next)sl.removeAttribute('aria-hidden'); else sl.setAttribute('aria-hidden','true'); });
-  el.querySelectorAll('.hero-dot').forEach((d,i)=>{ d.classList.toggle('active',i===next); d.setAttribute('aria-selected',i===next); });
-  HERO.i=next;   // re-adding .active restarts the active dot's fill → next animationend in `delay` ms
+  const realL=((rawL%N)+N)%N;
+  const wrap=(rawL<0||rawL>N-1);
+  heroSetActive(realL);                 // content/dots/clock update immediately (restarts the fill)
+  HERO.i=realL;
+  heroAnimateTo(rawL+1, wrap?realL:null);
 }
 
 /* ---------- skeleton placeholders ----------
@@ -6066,8 +6306,34 @@ function wireModalActions(ds){
   addBtn.onclick=()=>{ const on=toggleMyList({id:ds.id,title:ds.t}); setAdd(on);
     toast(on?t('toast.added',{t:ds.t}):t('toast.removed',{t:ds.t}), on?'var(--accent)':'var(--danger)'); };
   const watch=document.getElementById('mWatch');
+  const watchLabel=watch.querySelector('[data-i18n="modal.watch"]');
+  // Reset to the default WATCH label every open (a previous title may have set RESUME).
+  if(watchLabel) watchLabel.textContent=I18N.t('modal.watch');
+  watch.classList.remove('resume');
+  // Saved timecode for THIS title? Relabel WATCH → RESUME and remember which episode to
+  // jump back into. The auto-resume seek does the actual positioning once playback starts,
+  // so even if the label can't show (e.g. mid language-switch), resume still works.
+  const histEntry=(window.AUTH&&AUTH.user)?watchHistory().find(x=>String(x.id)===String(ds.id)):null;
+  const rsm=histEntry?entryResume(histEntry):null;
+  // for a series, the saved season/episode lets RESUME jump straight to the right episode
+  window.__resumeEp=(rsm&&histEntry&&histEntry.season!=null&&histEntry.episode!=null)
+    ? {season:histEntry.season, ep:histEntry.episode} : null;
+  if(rsm&&watchLabel){
+    const time=fmtClock(rsm.pos);
+    // build the episode token deliberately from the numeric fields (consistent with the
+    // __resumeEp gate above) rather than leaking the internal currentEpLabel snapshot
+    watchLabel.textContent=(histEntry.season!=null&&histEntry.episode!=null)
+      ? I18N.t('cta.resume_ep',{ep:'S'+histEntry.season+'E'+histEntry.episode, time:time})
+      : I18N.t('cta.resume_time',{time:time});
+    watch.classList.add('resume');
+  }
   watch.onclick=()=>{
     const series=window.currentMediaType==='series';
+    // series with a saved episode + the chooser already initialised → resume that exact
+    // episode in one tap (auto-seek restores the position). Falls through otherwise.
+    if(series&&window.__resumeEp&&window.seriesCtx&&seriesCtx.active){
+      const re=window.__resumeEp; playEpisode(re.season,re.ep); return;
+    }
     const tgt=document.getElementById(series?'epChooser':'streamList');
     if(tgt&&tgt.scrollIntoView)tgt.scrollIntoView({behavior:'smooth',block:'start'});
     // movies: kick off the best stream for the active language; series: user picks an episode
@@ -6147,9 +6413,13 @@ const VP=(function(){
   const v=document.getElementById('playerVideo');
   const $=id=>document.getElementById(id);
   const DEMO_SRC='/assets/demo.mp4';   // bundled sample (H.264 + AAC) so the demo player has real video + sound
-  let hideTimer,currentSub=-1,curStream=null,dragging=false,scrubX=null,audioHintShown=false,hls=null;
+  let hideTimer,currentSub=-1,curStream=null,dragging=false,scrubX=null,audioHintShown=false,hls=null,subsLoading=false;
   // automatic source fallback (EN/RU torrent chain — see playCurrentCandidate)
   let cand=[],candI=0,candTried=null,audioFailed=null,playGen=0,stallTimer=null,lastProg=0,lastProgClock=0,resolving=false,cacheRetried=false;
+  // resume-by-timecode: the position the next source-load should seek to (survives auto-
+  // fallback swaps + manual quality switches), the last-persisted position, and a one-time
+  // "Resuming from…" toast latch
+  let resumeTarget=0,lastSavePos=0,resumeToastPending=false;
 
   function fmt(t){ if(!isFinite(t)||t<0)t=0; t=Math.floor(t);
     const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;
@@ -6162,12 +6432,64 @@ const VP=(function(){
   function hideLoading(){ $('vpLoading').classList.remove('show'); }
 
   function open(title){ overlay.classList.remove('open'); ov.classList.add('open'); $('playerTitle').textContent=title||''; showUI();
+    try{ const _g=$('vpGestures'); if(_g&&_g._resetBright)_g._resetBright(); }catch(e){}   // clear the gesture brightness dimmer per title
     refreshSeriesUI();
     if(window.__bg)window.__bg.stop(); }   // pause the background canvas while a video plays
-  function close(){ ov.classList.remove('open','hide-ui'); try{v.pause()}catch(e){} destroyHls(); clearStallWatch(); v.removeAttribute('src');
+  function close(){ try{ saveResume(); }catch(e){}   // flush the stop position before tearing the source down
+    ov.classList.remove('open','hide-ui'); try{v.pause()}catch(e){} destroyHls(); clearStallWatch(); v.removeAttribute('src');
     clearSubs(); try{v.load()}catch(e){} closeMenu(); closeEpPanel(); hideSkip();
+    dragging=false; scrubX=null;   // never leak an in-flight scrub across player sessions (freezes the next bar)
     if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+    try{ renderContinueWatching(); }catch(e){}      // returning home shows the freshly-advanced resume bar
     if(window.__bg)window.__bg.start(); }
+
+  /* ---- resume by timecode ----------------------------------------------------
+   * resumeTarget is the position the NEXT source-load should seek to. armResume() seeds
+   * it from the saved progress on a fresh start; applyResume() (fired from 'loadedmetadata'
+   * for EVERY source load) restores it — so the position survives an auto-fallback candidate
+   * swap or a manual quality switch, not just the first load. While playing, maybeSaveResume
+   * keeps resumeTarget tracking the LIVE position (so a mid-watch swap resumes where the user
+   * actually is) and persists it every few seconds; reaching the end clears it. On-device,
+   * signed-in only — mirrors the watch-history store. */
+  function armResume(){
+    lastSavePos=0;
+    const key=curMediaKey(); const p=key?getProgress(key):null;
+    resumeTarget=(p&&p.pos>PROGRESS_MIN)?p.pos:0;    // 0 → start from the beginning
+    resumeToastPending=resumeTarget>0;               // show "Resuming from…" once, on the first restore
+  }
+  function applyResume(){
+    if(v.loop) return;                               // demo clip — nothing to restore
+    if(!(resumeTarget>PROGRESS_MIN)) return;
+    const d=v.duration||0;
+    if(d&&resumeTarget>=d-15){ resumeTarget=0; resumeToastPending=false; return; }  // essentially finished → from start
+    try{ v.currentTime=resumeTarget; }catch(e){}
+    if(resumeToastPending){ resumeToastPending=false; vpToast(t('player.resuming',{time:fmt(resumeTarget)})); }
+  }
+  function saveResume(){
+    if(!(window.AUTH&&AUTH.user)) return;            // resume/history is a signed-in feature
+    if(!curStream||v.loop) return;                   // skip the looping demo clip / no real source
+    const d=v.duration||0, pos=v.currentTime||0;
+    if(!d||pos<PROGRESS_MIN) return;
+    if(pos>=d-12||pos/d>=PROGRESS_DONE){ finishResume(); return; }   // near the end → mark finished
+    putProgress(curMediaKey(), pos, d);
+  }
+  function maybeSaveResume(){
+    if(v.paused||v.seeking) return;
+    const pos=v.currentTime||0;
+    if(pos>1) resumeTarget=pos;                      // track live position so a source swap resumes HERE, not the stale point
+    if(Math.abs(pos-lastSavePos)<4.5) return;        // throttle: persist ~once per 4–5s of playback
+    lastSavePos=pos; saveResume();
+  }
+  function finishResume(){
+    const key=curMediaKey(); if(key) delProgress(key);
+    lastSavePos=0; resumeTarget=0; resumeToastPending=false;
+    // a finished MOVIE leaves Continue Watching; a SERIES stays on the rail (you'll likely
+    // roll into / pick the next episode) — just drop its now-stale progress bar.
+    try{
+      if(window.currentMediaType!=='series'){ if(window.currentTitleMeta&&currentTitleMeta.id) removeFromHistory(currentTitleMeta.id); }
+      else renderContinueWatching();
+    }catch(e){}
+  }
 
   /* ---- source loading ---- */
   function destroyHls(){ if(hls){ try{hls.destroy();}catch(e){} hls=null; } }
@@ -6379,12 +6701,14 @@ const VP=(function(){
   async function playStream(s){
     curStream=s; open(titleLabel());
     try{ recordWatch(); }catch(e){}
+    try{ armResume(); }catch(e){}        // resume from the saved timecode once metadata loads
     setupCandidates(s);
     await playCurrentCandidate();
   }
   function openDemo(){
     open(`${currentTitle} (${currentYear})`);
     try{ recordWatch(); }catch(e){}
+    try{ resumeTarget=0; lastSavePos=0; resumeToastPending=false; }catch(e){}   // demo loops a 30s clip — nothing to resume/persist
     curStream=null; clearStallWatch();   // demo clip — no real source, so no fallback machinery
     setStatus(t('status.demo'));
     // No real source (no debrid key / addon) → play the bundled sample clip so the
@@ -6394,18 +6718,23 @@ const VP=(function(){
     vpToast(t('player.demo_sub'));      // make clear it's a sample; real sources need a debrid key + addon
   }
   async function switchStream(s){
-    if(!s||s===curStream)return; const t=v.currentTime,wasPlaying=!v.paused; curStream=s;
+    if(!s||s===curStream)return; const wasPlaying=!v.paused; curStream=s;
+    // Capture the live position into resumeTarget (incl. a fresh scrub); applyResume() will
+    // restore it on the new source's metadata — so we no longer need our own seek listener,
+    // and it can't race/clobber the auto-resume seek. >1 guard keeps a saved-but-not-yet-
+    // started resume point intact when switching during the initial resolve.
+    if(v.currentTime>1) resumeTarget=v.currentTime;
     // re-anchor the fallback chain on the manually chosen source so a later stall still
     // auto-advances from here onward; ++playGen cancels any in-flight auto-resolve, and gen
     // guards this manual resolve against an out-of-order earlier switch clobbering it.
     const gen=++playGen; setupCandidates(s); candTried.add(0); clearStallWatch();
-    const resume=()=>{ try{v.currentTime=t}catch(e){} if(wasPlaying)v.play().catch(()=>{}); v.removeEventListener('loadedmetadata',resume); };
-    v.addEventListener('loadedmetadata',resume);
+    const resumePlay=()=>{ if(wasPlaying)v.play().catch(()=>{}); v.removeEventListener('loadedmetadata',resumePlay); };
+    v.addEventListener('loadedmetadata',resumePlay);
     if(s.kind==='hls'){ loadHls(s.url,$('playerTitle').textContent,s.audioLang); }
     else if(s.kind==='url'){ load(s.url,$('playerTitle').textContent); armStallWatch(); }
     else { const out=await resolveTorrent(s.url);
-      if(gen!==playGen){ v.removeEventListener('loadedmetadata',resume); return; }   // a newer switch took over
-      if(out&&out.url){ load(out.url,$('playerTitle').textContent); armStallWatch(); } else v.removeEventListener('loadedmetadata',resume); }
+      if(gen!==playGen){ v.removeEventListener('loadedmetadata',resumePlay); return; }   // a newer switch took over
+      if(out&&out.url){ load(out.url,$('playerTitle').textContent); armStallWatch(); } else v.removeEventListener('loadedmetadata',resumePlay); }
     vpToast(I18N.t('player.source')+(s.quality||'SD')+' · '+s.source);
   }
 
@@ -6414,6 +6743,7 @@ const VP=(function(){
   function clearSubs(){ [...v.querySelectorAll('track')].forEach(t=>t.remove()); currentSub=-1; $('vpCC').classList.remove('active'); }
   async function loadSubs(){
     const id=window.currentImdb; if(!id){ buildMenu(); return; }
+    subsLoading=true;
     try{
       const data=await fetch('/api/subtitles/'+encodeURIComponent(id)+'?type='+encodeURIComponent(window.currentMediaType||'movie')).then(r=>r.json());
       const seen=new Set();
@@ -6421,8 +6751,9 @@ const VP=(function(){
         const tr=document.createElement('track'); tr.kind='subtitles'; tr.label=s.label||s.lang||'Subtitle';
         tr.srclang=(s.lang||'und').slice(0,3); tr.src=s.url; v.appendChild(tr); });
     }catch(e){}
-    autoSelectSub();   // honour Settings › "Default subtitles language"
-    buildMenu();
+    // finally so the flag always clears (incl. the early-return path) — honour Settings ›
+    // "Default subtitles language" then rebuild the menu with the freshly loaded tracks
+    finally{ subsLoading=false; autoSelectSub(); buildMenu(); }
   }
   // language matchers for the "Default subtitles language" preference
   const SUB_LANG_RE={
@@ -6439,6 +6770,7 @@ const VP=(function(){
   function applySub(idx){ const tts=subTracks(); tts.forEach((tt,i)=>tt.mode=(i===idx?'showing':'disabled'));
     currentSub=idx; $('vpCC').classList.toggle('active',idx>=0); $('vpCC').setAttribute('aria-pressed',String(idx>=0)); buildMenu(); }
   function toggleCC(){ const tts=subTracks();
+    if(currentSub<0 && !tts.length && subsLoading){ vpToast(t('status.buffering')); return; }   // addon subs still loading — don't claim "none"
     if(currentSub>=0){ applySub(-1); vpToast(t('player.subs_off')); }
     else if(tts.length){ let i=tts.findIndex(tt=>/eng|english/i.test((tt.label||'')+(tt.language||''))); if(i<0)i=0; applySub(i); vpToast(t('player.subs_on')+(tts[i].label||'on')); }
     else vpToast(window.currentImdb?t('player.no_subs_install'):t('player.no_subs')); }
@@ -6499,7 +6831,7 @@ const VP=(function(){
     const nextAt=(outroStart!=null)?outroStart:dur-creditsTail();
     if(curNextEp&&ct>=nextAt&&dur-ct>0.5){
       if(skipMode!=='next'){ skipMode='next'; b.dataset.mode='next';
-        b.innerHTML=`<span>${esc(t('player.next_episode'))}</span><span class="ic">⏭</span>`; b.classList.add('show'); }
+        b.textContent=t('player.next_episode'); b.classList.add('show'); }
       return;
     }
     // Skip Intro: inside the real intro range, else the heuristic window.
@@ -6507,7 +6839,7 @@ const VP=(function(){
     if(inIntro){
       if(skipMode!=='intro'){ skipMode='intro'; b.dataset.mode='intro';
         b.dataset.to=intro?intro.end:INTRO_TO;   // where onSkipClick jumps to
-        b.innerHTML=`<span class="ic">⏭</span><span>${esc(t('player.skip_intro'))}</span>`; b.classList.add('show'); }
+        b.textContent=t('player.skip_intro'); b.classList.add('show'); }
       return;
     }
     if(skipMode)hideSkip();
@@ -6542,7 +6874,6 @@ const VP=(function(){
     list.innerHTML=eps.map(e=>{
       const on=ctx().season===n&&ctx().ep===e.episode;
       const watched=isEpWatched(ctx().imdb,n,e.episode);
-      const meta=[e.air_date,e.runtime].filter(Boolean).join('  ·  ');
       const nm=esc(e.name||('Episode '+e.episode));
       const still=e.still
         ? `<span class="ep-still"><img src="${esc(e.still)}" loading="lazy" decoding="async" alt="" onerror="this.parentNode.classList.add('no-still');this.parentNode.setAttribute('data-n','E'+${e.episode});this.remove()"/></span>`
@@ -6550,7 +6881,7 @@ const VP=(function(){
       return `<button class="ep-row ${on?'on':''} ${watched?'watched':''}" type="button" data-season="${n}" data-ep="${e.episode}">
         ${still}
         <span class="ep-num">E${e.episode}</span>
-        <span class="ep-body"><span class="ep-name">${nm}</span>${meta?`<span class="ep-sub">${esc(meta)}</span>`:''}</span>
+        <span class="ep-body"><span class="ep-name">${nm}</span></span>
       </button>`;
     }).join('');
   }
@@ -6599,9 +6930,16 @@ const VP=(function(){
     tts.forEach((tt,i)=>subBody+=optRow(i===currentSub,tt.label||tt.language||(t('menu.track')+(i+1)),`data-act="sub" data-i="${i}"`));
     const subVal=currentSub<0?t('menu.off'):(tts[currentSub]&&(tts[currentSub].label||tts[currentSub].language))||'';
     h+=accSection('subs',t('menu.subtitles'),subVal,subBody);
-    /* native audio tracks only — language selection lives in the modal's lang tabs */
+    /* audio language — HLS renditions (hls.js) live on hls.audioTracks, not v.audioTracks
+       (hls.js attaches a single rendition to the media element), so prefer the HLS list when
+       streaming HLS and fall back to the native track list otherwise. */
     const ats=audioTracks();
-    if(ats.length>1){
+    if(hls&&hls.audioTracks&&hls.audioTracks.length>1){
+      let aBody='',aVal='';
+      hls.audioTracks.forEach((a,i)=>{ const lbl=audioLabel(a,i); const on=hls.audioTrack===i; if(on)aVal=lbl;
+        aBody+=optRow(on,lbl,`data-act="hlsaudio" data-i="${i}"`); });
+      h+=accSection('audio',t('menu.audio_lang'),aVal,aBody);
+    } else if(ats.length>1){
       let aBody=''; let aVal='';
       ats.forEach((a,i)=>{ const lbl=a.label||a.language||(t('menu.track')+(i+1)); if(a.enabled)aVal=lbl;
         aBody+=optRow(a.enabled,lbl,`data-act="audio" data-i="${i}"`); });
@@ -6644,11 +6982,21 @@ const VP=(function(){
 
   /* ---- transport ---- */
   function togglePlay(){ if(v.paused)v.play().catch(()=>{}); else v.pause(); }
-  function syncPlay(){ const playing=!v.paused&&!v.ended; $('vpPlay').textContent=playing?'⏸':'▶';
-    $('vpCenterIc').textContent=playing?'⏸':'▶'; $('vpCenter').classList.toggle('hidden',playing&&!$('vpCenter').classList.contains('buffering')); }
-  function syncVol(){ const vol=v.muted?0:v.volume; $('vpVol').value=vol; $('vpMute').textContent=vol===0?'🔇':vol<.5?'🔉':'🔊';
+  function syncPlay(){ const playing=!v.paused&&!v.ended;
+    var _pause='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
+    var _play='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+    $('vpPlay').innerHTML=playing?_pause:_play;
+    $('vpCenterIc').innerHTML=playing?_pause.replace(/width="18" height="18"/,'width="34" height="34"'):_play.replace(/width="18" height="18"/,'width="34" height="34"'); $('vpCenter').classList.toggle('hidden',playing&&!$('vpCenter').classList.contains('buffering')); }
+  function syncVol(){ const vol=v.muted?0:v.volume; $('vpVol').value=vol;
+    var _spk='<path d="M4 9v6h4l5 5V4L8 9H4z"/>';
+    var _muted='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">'+_spk+'<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    var _low='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">'+_spk+'<path d="M16 8.5a4 4 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    var _high='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">'+_spk+'<path d="M16 8.5a4 4 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 6a7 7 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    $('vpMute').innerHTML=vol===0?_muted:vol<.5?_low:_high;
     $('vpMute').setAttribute('aria-pressed',String(v.muted||vol===0)); }
-  function toggleFs(){ if(document.fullscreenElement)document.exitFullscreen(); else (ov.requestFullscreen?ov.requestFullscreen():Promise.reject()).catch(()=>{}); $('vpFs').classList.toggle('active',!document.fullscreenElement); }
+  function toggleFs(){ if(document.fullscreenElement)document.exitFullscreen(); else (ov.requestFullscreen?ov.requestFullscreen():Promise.reject()).catch(()=>{}); }
+  // the fullscreenchange listener (below) is the single source of truth for #vpFs .active —
+  // toggling it synchronously here read a stale state and stuck 'active' on a rejected request
   function seekAt(x){
     if(!v.duration||!isFinite(v.duration))return;
     const r=$('vpProgress').getBoundingClientRect();
@@ -6676,7 +7024,9 @@ const VP=(function(){
 
   /* ---- wiring (once) ---- */
   $('vpPlay').onclick=togglePlay; $('vpCenter').onclick=togglePlay;
-  v.addEventListener('click',()=>{ if($('vpEpPanel').classList.contains('open')||$('vpMenu').classList.contains('open'))return; togglePlay(); });
+  v.addEventListener('click',()=>{ if($('vpEpPanel').classList.contains('open')||$('vpMenu').classList.contains('open'))return;
+    if(ov.classList.contains('hide-ui')){ showUI(); return; }   // first tap on hidden chrome reveals it, doesn't toggle
+    togglePlay(); });
   $('vpBack').onclick=()=>{v.currentTime=Math.max(0,v.currentTime-10);showUI();};
   $('vpFwd').onclick=()=>{v.currentTime=Math.min(v.duration||1e9,v.currentTime+10);showUI();};
   $('vpMute').onclick=()=>{v.muted=!v.muted;syncVol();};
@@ -6697,6 +7047,7 @@ const VP=(function(){
     if(a==='acc'){ const s=o.dataset.sec; accOpen.has(s)?accOpen.delete(s):accOpen.add(s); buildMenu(); return; }
     if(a==='sub')applySub(+o.dataset.i);
     else if(a==='audio')applyAudio(+o.dataset.i);
+    else if(a==='hlsaudio'){ if(hls){ try{hls.audioTrack=+o.dataset.i;}catch(e){} } buildMenu(); }
     else if(a==='hlslevel'){ if(hls){ const i=+o.dataset.i; hls.currentLevel=i; vpToast(i<0?t('menu.auto'):levelLabel(hls.levels[i]||{})); } buildMenu(); }
     else if(a==='speed'){v.playbackRate=+o.dataset.v;buildMenu();vpToast(o.dataset.v+'×');}
     else if(a==='quality'){switchStream((window.currentQualityList||window.currentStreams||[])[+o.dataset.i]);closeMenu();} });
@@ -6718,16 +7069,121 @@ const VP=(function(){
   function scrubPreview(x){ const r=prog.getBoundingClientRect(); const p=Math.max(0,Math.min(1,(x-r.left)/r.width));
     scrubX=x; $('vpPlayed').style.width=(p*100)+'%'; $('vpThumb').style.left=(p*100)+'%';
     const tip=$('vpTooltip'); tip.style.left=(p*100)+'%'; tip.textContent=fmt((v.duration||0)*p); }
-  prog.addEventListener('mousedown',e=>{e.preventDefault();dragging=true;scrubPreview(e.clientX);});
-  addEventListener('mousemove',e=>{ if(dragging)scrubPreview(e.clientX); });
-  addEventListener('mouseup',()=>{ if(!dragging)return; dragging=false; if(scrubX!=null)seekAt(scrubX); scrubX=null; });
-  // hover (not dragging) just moves the time tooltip
-  prog.addEventListener('mousemove',e=>{ if(dragging)return; const r=prog.getBoundingClientRect(); let p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+  // Scrub via Pointer Events (mouse + touch + pen on ONE code path) with pointer capture, so
+  // the drag tracks outside the bar and a release anywhere commits cleanly — and so touch
+  // devices (which never fire mousedown/mousemove) can finally scrub at all. closeMenu() on
+  // press so an open settings menu can't sit over the bar mid-seek.
+  prog.style.touchAction='none';
+  prog.addEventListener('pointerdown',e=>{ if(e.pointerType==='mouse'&&e.button!==0)return; e.preventDefault(); closeMenu(); dragging=true; try{prog.setPointerCapture(e.pointerId);}catch(_){} scrubPreview(e.clientX); });
+  prog.addEventListener('pointermove',e=>{
+    if(dragging){ scrubPreview(e.clientX); return; }
+    if(e.pointerType!=='mouse')return;                 // hover tooltip is desktop-only
+    const r=prog.getBoundingClientRect(); let p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
     const tip=$('vpTooltip'); tip.style.left=(p*100)+'%'; tip.textContent=fmt((v.duration||0)*p); });
+  const endScrub=()=>{ if(!dragging)return; dragging=false; if(scrubX!=null)seekAt(scrubX); scrubX=null; };
+  prog.addEventListener('pointerup',endScrub);
+  prog.addEventListener('pointercancel',endScrub);
+  // BUG (user-reported): an OPEN settings menu floats up over the RIGHT of the progress bar;
+  // a press meant to rewind there lands on a speed pill and changes playback SPEED. Intercept
+  // in the CAPTURE phase: if the menu is open and the press falls geometrically inside the bar,
+  // swallow it before the pill sees it, close the menu, and start a scrub from that x — so the
+  // press seeks, never changes speed.
+  // preventDefault()ing the pointerdown does NOT cancel the browser's synthesised click, so the
+  // pill's bubble-phase click handler (changing speed) still fired. Stamp the intercept and
+  // swallow the trailing click in capture, before it reaches the menu.
+  let progInterceptTs=0;
+  ov.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse'&&e.button!==0)return;   // ignore right/middle-click (matches the direct scrub path)
+    if(!$('vpMenu').classList.contains('open'))return;
+    const r=prog.getBoundingClientRect();
+    if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
+      e.stopPropagation(); e.preventDefault(); progInterceptTs=e.timeStamp; closeMenu();
+      dragging=true; try{prog.setPointerCapture(e.pointerId);}catch(_){} scrubPreview(e.clientX);
+    } },true);
+  ov.addEventListener('click',e=>{
+    if(progInterceptTs&&e.timeStamp-progInterceptTs<700){ progInterceptTs=0; e.stopPropagation(); e.preventDefault(); }
+  },true);
   ov.addEventListener('mousemove',showUI);
 
-  v.addEventListener('loadedmetadata',()=>{ $('vpDur').textContent=fmt(v.duration); syncVol(); buildMenu(); });
+  /* ===== mobile gesture layer (touch only) ============================================
+     Double-tap left/right third = ∓10s (ripple + toast); horizontal drag = seek with live
+     preview then ONE commit (shares the scrub path → no HLS jump-back); vertical drag on the
+     RIGHT half = volume, LEFT half = brightness (CSS dimmer — web can't set device brightness);
+     single tap = reveal chrome (if hidden) else toggle play. Desktop is untouched: the layer
+     only acts on pointerType==='touch'; the mouse scrub still owns mouse/pen. ============= */
+  (function initGestures(){
+    const isTouch=matchMedia('(pointer:coarse)').matches||('ontouchstart' in window);
+    if(!isTouch) return;
+    ov.classList.add('gestures-on');
+    const g=$('vpGestures'); if(!g) return;
+    const briv=$('vpBright'),hud=$('vpVHud'),hudIc=$('vpVHudIc'),hudFill=$('vpVHudFill'),pulL=$('vpPulseL'),pulR=$('vpPulseR');
+    let bright=1;
+    function applyBright(){ briv.style.opacity=String(Math.min(.85,1-bright)); }
+    const TAP_MS=260, MOVE_PX=10, DT_SLOP=28;
+    let active=null,lastTap=0,lastTapX=0,lastTapY=0,singleTimer=null;
+    function chromeBusy(){ return $('vpEpPanel').classList.contains('open')||$('vpMenu').classList.contains('open'); }
+    function showPulse(side){ const el=side<0?pulL:pulR; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+      clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),520); }
+    function doSeek(delta){ if(!isFinite(v.duration))return;
+      v.currentTime=Math.max(0,Math.min((v.duration||1e9)-0.25,v.currentTime+delta));
+      showPulse(delta<0?-1:1); showUI(); vpToast((delta<0?'-':'+')+Math.abs(delta)+'s  ·  '+fmt(v.currentTime)); }
+    function showHud(kind,frac){ hudIc.textContent=kind==='vol'?(frac===0?'🔇':frac<.5?'🔉':'🔊'):'☀';
+      hudFill.style.width=Math.round(frac*100)+'%'; hud.classList.add('show'); clearTimeout(hud._t); hud._t=setTimeout(()=>hud.classList.remove('show'),700); }
+    g.addEventListener('pointerdown',e=>{
+      if(e.pointerType!=='touch'){                // mouse/pen on a touch-capable (hybrid) device: this surface shadows
+        if(chromeBusy())return;                   // the <video>, so its click handler can't fire — reproduce it here
+        if(ov.classList.contains('hide-ui')){ showUI(); return; }
+        togglePlay(); showUI(); return;
+      }
+      if(chromeBusy())return;                      // menu/episode panel open → let taps close them
+      const r=ov.getBoundingClientRect();
+      active={ id:e.pointerId, x0:e.clientX, y0:e.clientY, x:e.clientX, y:e.clientY, mode:null,
+               leftHalf:(e.clientX-r.left)<r.width/2, startVol:(v.muted?0:v.volume), startBright:bright, wasDouble:false };
+      const now=performance.now();
+      if(now-lastTap<TAP_MS && Math.abs(e.clientX-lastTapX)<DT_SLOP && Math.abs(e.clientY-lastTapY)<DT_SLOP){ active.wasDouble=true; clearTimeout(singleTimer); singleTimer=null; }
+      try{ g.setPointerCapture(e.pointerId); }catch(_){}
+    },{passive:false});
+    g.addEventListener('pointermove',e=>{
+      if(!active||e.pointerId!==active.id)return;
+      const dx=e.clientX-active.x0, dy=e.clientY-active.y0; active.x=e.clientX; active.y=e.clientY;
+      if(!active.mode && (Math.abs(dx)>MOVE_PX||Math.abs(dy)>MOVE_PX)){   // a moving 2nd-tap still latches a drag mode
+        if(Math.abs(dx)>Math.abs(dy)){ active.mode='seek'; dragging=true; scrubPreview(e.clientX); }   // horizontal → scrub
+        else active.mode=active.leftHalf?'bright':'vol';                                                // vertical → brightness/volume
+      }
+      if(!active.mode)return;
+      e.preventDefault();
+      if(active.mode==='seek'){ scrubPreview(e.clientX); }
+      else if(active.mode==='vol'){ const dh=ov.getBoundingClientRect().height||1;
+        const nv=Math.max(0,Math.min(1,active.startVol+(-dy/(dh*0.6)))); v.volume=nv; v.muted=(nv===0); syncVol(); showHud('vol',nv); }
+      else if(active.mode==='bright'){ const dh=ov.getBoundingClientRect().height||1;
+        bright=Math.max(.2,Math.min(1,active.startBright+(-dy/(dh*0.6)))); applyBright(); showHud('bright',(bright-.2)/.8); }
+    },{passive:false});
+    function endGesture(e){
+      if(!active||e.pointerId!==active.id)return;
+      const a=active; active=null;
+      try{ g.releasePointerCapture(e.pointerId); }catch(_){}
+      if(a.mode==='seek'){ dragging=false; if(scrubX!=null)seekAt(scrubX); scrubX=null; return; }   // ONE atomic commit
+      if(a.mode==='vol'||a.mode==='bright')return;   // already applied live
+      if(a.wasDouble && Math.abs(a.x-a.x0)<MOVE_PX && Math.abs(a.y-a.y0)<MOVE_PX){   // a genuine 2nd TAP (not a drag)
+        const r=ov.getBoundingClientRect(), rel=(a.x-r.left)/r.width;
+        if(rel<0.40)doSeek(-10); else if(rel>0.60)doSeek(10); else togglePlay();
+        lastTap=0; return; }
+      // potential single tap → wait TAP_MS for a second tap (double-tap) before acting
+      lastTap=performance.now(); lastTapX=a.x; lastTapY=a.y; clearTimeout(singleTimer);
+      singleTimer=setTimeout(()=>{ singleTimer=null; if(!ov.classList.contains('open'))return; if(chromeBusy())return;
+        if(ov.classList.contains('hide-ui')){ showUI(); return; }   // reveal chrome first, don't pause
+        togglePlay(); showUI(); },TAP_MS);
+    }
+    g.addEventListener('pointerup',endGesture,{passive:false});
+    g.addEventListener('pointercancel',e=>{ if(active&&active.mode==='seek'){ dragging=false; scrubX=null; } active=null; });
+    g.addEventListener('dblclick',e=>e.preventDefault());   // kill synthetic double-tap zoom on the surface
+    g._resetBright=()=>{ bright=1; applyBright(); };
+  })();
+
+  v.addEventListener('loadedmetadata',()=>{ $('vpDur').textContent=fmt(v.duration); syncVol(); buildMenu();
+    try{ applyResume(); }catch(e){} });   // restore the saved/live position on EVERY source load (initial, fallback, switch)
   v.addEventListener('timeupdate',()=>{ $('vpCur').textContent=fmt(v.currentTime);
+    try{ maybeSaveResume(); }catch(e){}   // persist the stop position (throttled) for Continue Watching
     // while the user is scrubbing, the fill/thumb track the drag preview — don't let
     // background playback yank them back to the live position mid-drag.
     if(!dragging){ const p=v.duration?v.currentTime/v.duration*100:0; $('vpPlayed').style.width=p+'%'; $('vpThumb').style.left=p+'%'; }
@@ -6754,8 +7210,9 @@ const VP=(function(){
     setStatus('<span class="spinner"></span> '+t('status.buffering')); });
   v.addEventListener('playing',()=>{ $('vpCenter').classList.remove('buffering'); hideLoading(); setStatus(''); syncPlay(); });
   v.addEventListener('canplay',()=>{ $('vpCenter').classList.remove('buffering'); hideLoading(); });
-  v.addEventListener('play',syncPlay); v.addEventListener('pause',()=>{syncPlay();showUI();});
+  v.addEventListener('play',syncPlay); v.addEventListener('pause',()=>{syncPlay();showUI(); try{ saveResume(); }catch(e){}});
   v.addEventListener('ended',()=>{ $('vpCenter').classList.remove('hidden','buffering'); syncPlay();
+    try{ finishResume(); }catch(e){}   // credits rolled → clear this title/episode's resume point
     // series: roll straight into the next episode when the credits finish (demo loops, so v.loop guards it)
     // gated by Settings › Auto-Play "Auto-play next episode"
     if(!v.loop&&ctx().active&&curNextEp&&SETTINGS.autoplayNext){ const nx=curNextEp; playEpisode(nx.season,nx.ep); } });
@@ -6766,19 +7223,26 @@ const VP=(function(){
     // a resolved torrent that won't decode (bad container/codec) → try the next candidate
     if(curStream && curStream.kind==='torrent' && ov.classList.contains('open')){ onPlaybackTrouble('error'); return; }
     showLoading(t('player.cant_play'),t('player.cant_play_sub')); setStatus('✕ '+t('status.playback_error')); });
-  if('onenterpictureinpicture' in v){}
+  if('pictureInPictureEnabled' in document){
+    v.addEventListener('enterpictureinpicture',()=>$('vpPip').classList.add('active'));
+    v.addEventListener('leavepictureinpicture',()=>$('vpPip').classList.remove('active'));
+  }
   document.addEventListener('fullscreenchange',()=>$('vpFs').classList.toggle('active',!!document.fullscreenElement));
   addEventListener('keydown',e=>{ if(!ov.classList.contains('open'))return;
     if(['INPUT','TEXTAREA'].includes((e.target.tagName||'')))return;
+    // playback-mutating LETTER shortcuts shouldn't fire while the gear menu / episode panel
+    // owns focus (those aren't INPUT/TEXTAREA); Space/Escape/arrows stay live so the panel
+    // can still be toggled/closed.
+    const inPanel=e.target.closest&&e.target.closest('.vp-menu, .vp-eppanel');
     switch(e.key){
       case ' ': case 'k': e.preventDefault(); togglePlay(); showUI(); break;
-      case 'ArrowLeft': v.currentTime=Math.max(0,v.currentTime-10); showUI(); break;
-      case 'ArrowRight': v.currentTime=Math.min(v.duration||1e9,v.currentTime+10); showUI(); break;
-      case 'ArrowUp': v.volume=Math.min(1,v.volume+.1); v.muted=false; syncVol(); break;
-      case 'ArrowDown': v.volume=Math.max(0,v.volume-.1); syncVol(); break;
-      case 'm': v.muted=!v.muted; syncVol(); break;
-      case 'f': toggleFs(); break;
-      case 'c': toggleCC(); break;
+      case 'ArrowLeft': e.preventDefault(); v.currentTime=Math.max(0,v.currentTime-10); showUI(); break;
+      case 'ArrowRight': e.preventDefault(); v.currentTime=Math.min(v.duration||1e9,v.currentTime+10); showUI(); break;
+      case 'ArrowUp': e.preventDefault(); v.volume=Math.min(1,v.volume+.1); v.muted=false; syncVol(); break;
+      case 'ArrowDown': e.preventDefault(); v.volume=Math.max(0,v.volume-.1); syncVol(); break;
+      case 'm': if(inPanel)break; v.muted=!v.muted; syncVol(); break;
+      case 'f': if(inPanel)break; toggleFs(); break;
+      case 'c': if(inPanel)break; toggleCC(); break;
       case 'e': if(ctx().active){ $('vpEpPanel').classList.contains('open')?closeEpPanel():openEpPanel(); } break;
       case 'n': if(ctx().active&&curNextEp){ const nx=curNextEp; playEpisode(nx.season,nx.ep); } break;
       case 'Escape': $('vpEpPanel').classList.contains('open')?closeEpPanel():($('vpMenu').classList.contains('open')?closeMenu():close()); break;
@@ -6899,9 +7363,13 @@ function setupSeriesChooser(tvId,meta,token){
     return `<button class="season-tab" type="button" data-season="${s.season}">${esc(label)}</button>`;
   }).join('');
   c.hidden=false;
-  // default to the first real season — skip a season-0 "Specials" block (often dozens of
-  // webisodes) when a regular season exists, so the grid opens on Episode 1.
-  const firstSeason=seasons.find(s=>+s.season>=1)||seasons[0];
+  // If this title has a saved resume episode, open ITS season so RESUME / the highlighted
+  // episode lands where the user left off. Otherwise default to the first real season —
+  // skipping a season-0 "Specials" block (often dozens of webisodes) — so the grid opens
+  // on Episode 1.
+  const want=window.__resumeEp;
+  const wantSeason=want&&seasons.find(s=>+s.season===+want.season);
+  const firstSeason=wantSeason||seasons.find(s=>+s.season>=1)||seasons[0];
   selectSeason(firstSeason.season,token);
 }
 async function selectSeason(n,token){
@@ -6921,7 +7389,6 @@ async function selectSeason(n,token){
     // 16:9 still-card grid. Class stays .ep-row so selectEpisode() + the delegated #epList
     // click listener + the .on highlight all keep working unchanged — only the markup grows a still.
     list.innerHTML=data.episodes.map(e=>{
-      const sub=[e.air_date,e.runtime].filter(Boolean).join('  ·  ');
       const nm=esc(e.name||I18N.t('modal.episode_n',{n:e.episode}));
       const watched=isEpWatched(c._imdb,n,e.episode);
       const still=e.still
@@ -6930,7 +7397,7 @@ async function selectSeason(n,token){
       return `<button class="ep-row ${watched?'watched':''}" type="button" data-season="${n}" data-ep="${e.episode}">
         ${still}
         <span class="ep-num">E${e.episode}</span>
-        <span class="ep-body"><span class="ep-name">${nm}</span>${sub?`<span class="ep-sub">${esc(sub)}</span>`:''}</span>
+        <span class="ep-body"><span class="ep-name">${nm}</span></span>
       </button>`;
     }).join('');
   }catch(e){ if(modalAlive(tok))list.innerHTML=`<div class="ep-empty">${esc(I18N.t('modal.episodes_unavailable'))}</div>`; }
@@ -6938,6 +7405,8 @@ async function selectSeason(n,token){
 function selectEpisode(season,ep){
   const c=document.getElementById('epChooser'); if(!c||!c._imdb)return;
   c._activeEp=ep;
+  window.__resumeEp=null;   // a manual pick supersedes the top RESUME button's saved episode
+
   document.querySelectorAll('#epList .ep-row').forEach(b=>b.classList.toggle('on',+b.dataset.season===season&&+b.dataset.ep===ep));
   // mark watched + clear its blur immediately (for the blur-unwatched feature)
   markEpWatched(c._imdb,season,ep);
