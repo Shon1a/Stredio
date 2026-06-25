@@ -7,9 +7,13 @@
 <meta name="description" content="STREDIO is a terminal-styled streaming front-end: browse a live movie catalog, filter by genre, year and rating, install Stremio addons by URL, and play sources via third-party platforms in a built-in player." />
 <meta name="theme-color" content="#101016" />
 <meta name="color-scheme" content="dark" />
-<link rel="icon" type="image/svg+xml" href="/assets/stredio-icon.svg?v=2" />
-<link rel="alternate icon" href="/assets/stredio-icon.png?v=2" />
-<link rel="apple-touch-icon" href="/assets/stredio-icon.png?v=2" />
+<link rel="icon" type="image/svg+xml" href="/assets/stredio-icon.svg?v=3" />
+<link rel="alternate icon" href="/assets/stredio-icon.png?v=3" />
+<!-- iOS home screen: full-bleed PNG (iOS rounds it itself; SVG isn't supported here) -->
+<link rel="apple-touch-icon" href="/assets/stredio-icon-180.png?v=3" />
+<!-- Android / PWA: manifest with full-bleed maskable icons so the home-screen icon
+     renders the full red brand mark instead of a shrunken glyph on a generated disc -->
+<link rel="manifest" href="/assets/site.webmanifest?v=3" />
 <!-- social preview -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="STREDIO" />
@@ -119,7 +123,7 @@
   /* ---------- focus visibility (keyboard) ---------- */
   a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
   [tabindex]:focus-visible,.nav-item:focus-visible,.poster:focus-visible{
-    outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
   /* keyboard focus ring is always visible */
 
   /* ---------- reduced motion ---------- */
@@ -225,7 +229,7 @@
      beneath. Covers iPad portrait (768/834), split-screen and foldables. */
   @media (max-width:900px){
     /* #topbar (id) so these beat the later max-width:860px header{} block */
-    #topbar{flex-wrap:wrap;gap:7px;height:auto;min-height:0;padding:9px 12px 0}
+    #topbar{flex-wrap:wrap;gap:7px;height:auto;min-height:0;padding:9px 12px}
     .topbar-frame{display:none}
     .brand-logo{height:36px;padding:0 2px;margin-right:auto}   /* push the icon cluster to the right edge */
     /* the account icon only ever appears signed-out (signed-in shows the avatar chip),
@@ -247,8 +251,8 @@
     /* expanded search becomes a full-width bordered row beneath the controls.
        #topbar.search-open (id) so it outranks the collapsed #topbar .search above */
     #topbar.search-open .search{display:flex;order:9;flex:1 0 100%;width:auto;opacity:1;overflow:visible;pointer-events:auto;
-      height:auto;margin:7px 0 0;padding:9px 14px;
-      background:#0d0d105c;border:1px solid rgba(255,255,255,.18);border-radius:10px}
+      height:44px;margin:7px 0 0;padding:9px 14px;
+      background:#0d0d10;border:1px solid rgb(208 35 52);border-radius:10px}
     /* touch ergonomics: bigger tap targets across phones + tablets (was 34px icons /
        26px-tall language buttons — below the ~44px guidance). #topbar prefix outranks
        the later max-width:520px shrink so these hold on the smallest phones too. */
@@ -314,7 +318,10 @@
      just above the fold, keeping Continue Watching / the categorised rows below it. */
   .hero{position:relative;margin:calc((var(--page-top) + var(--topbar-h)) * -1) calc(var(--page-pad) * -1) 22px;
     min-height:clamp(410px,calc(100vh - 352px),820px);display:flex;align-items:flex-end;overflow:hidden;
-    background:#000;isolation:isolate}
+    background:#000;isolation:isolate;touch-action:pan-y;cursor:grab}
+  /* the hero is a draggable carousel — grab affordance on desktop, grabbing while a drag
+     is in flight; suppress text selection so a mouse drag swipes instead of highlighting */
+  .hero.dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
   /* prefer the small-viewport unit where supported so the mobile URL bar can't shove
      the upcoming rows below the fold */
   @supports (height:100svh){ .hero{min-height:clamp(410px,calc(100svh - 352px),820px)} }
@@ -420,12 +427,28 @@
     /* smaller reserve (tighter headings/margins on phones) so both upcoming rows
        still clear the fold under a typical mobile viewport — slimmer rails let the
        hero grow here too */
-    .hero{min-height:clamp(300px,calc(100svh - 374px),540px)}
+    .hero{min-height:clamp(360px,calc(100svh - 320px),620px)}
+    /* The desktop scrim is built for a wide frame — a 90deg left wash up to rgba(0,0,0,.92)
+       plus a diagonal corner grade. On a narrow phone that wash darkens the whole image
+       edge-to-edge, so the backdrop reads as near-black mud behind the copy. Drop the side
+       wash + corner grade here and use a single bottom-anchored gradient: the artwork stays
+       visible through the upper ~60% while the headline/plot/actions keep a legible base. */
+    .hero-bg::after{background:none}
+    .hero-slide::after{background:
+      linear-gradient(0deg,#000 0%,rgba(0,0,0,.9) 14%,rgba(0,0,0,.52) 36%,rgba(0,0,0,.12) 60%,transparent 80%),
+      linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.1) 15%,transparent 28%)}
+    /* dots are pinned to the very bottom edge; the content block reserves enough
+       padding to clear them with a real gap (the progress bar sat right under PLAY on
+       notched phones once the safe-area inset lifted it — both now share that inset so
+       the ~26px gap holds on every device) */
+    .hero-inner{padding-bottom:calc(46px + env(safe-area-inset-bottom,0px))}
+    .hero-plot{font-size:14.5px;line-height:1.5;margin-bottom:16px;max-width:92%}
+    .hero-meta{margin-bottom:16px;font-size:14px}
     .hero-btn{padding:11px 22px;font-size:17px}
     /* collapse "+ My List" to an icon-only disc — the label can't fit a 44px box */
     .hero-add{width:44px;height:44px;padding:0;gap:0;border-radius:50%;justify-content:center}
     .hero-add .hero-add-t{display:none}
-    .hero-dots{right:auto;left:var(--page-pad);bottom:clamp(18px,3vh,30px)}
+    .hero-dots{right:auto;left:var(--page-pad);bottom:calc(14px + env(safe-area-inset-bottom,0px))}
     .hero-dot{width:22px}.hero-dot.active{width:34px}
   }
   /* landscape phones / short windows: the tall hero min-height nearly fills the
@@ -554,9 +577,16 @@
      Interaction") while the cover image gently zooms (see .poster:hover .art img). */
   .poster .ov{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);
     -webkit-backdrop-filter:blur(14px) saturate(120%);backdrop-filter:blur(14px) saturate(120%);
-    transform:translateY(101%);transition:transform .34s cubic-bezier(.2,.7,.2,1);
+    transform:translateY(101%);visibility:hidden;
+    transition:transform .34s cubic-bezier(.2,.7,.2,1),visibility 0s linear .34s;
     display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:13px 13px 15px;z-index:3;color:#fff}
-  .poster:hover .ov,.poster:focus-visible .ov,.poster:focus-within .ov{transform:translateY(0)}
+  /* visibility:hidden while the overlay is parked off-card stops iOS Safari from painting
+     its backdrop-filter layer — Safari does NOT clip a backdrop-filter to an ancestor's
+     overflow:hidden+border-radius, so that blurred dark bar bled across every card's bottom
+     edge (the "black thing"). It flips to visible instantly on reveal, then defers back to
+     hidden only after the .34s slide-out finishes, so the desktop animation is untouched. */
+  .poster:hover .ov,.poster:focus-visible .ov,.poster:focus-within .ov{transform:translateY(0);visibility:visible;
+    transition:transform .34s cubic-bezier(.2,.7,.2,1),visibility 0s}
   .poster .ov .ov-title{font-size:14.5px;font-weight:700;line-height:1.25;color:#fff;
     display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .poster .ov .ov-meta{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75);font-family:var(--font-mono)}
@@ -939,7 +969,7 @@
   .m-hero{position:relative;width:100%;aspect-ratio:16/9;max-height:56vh;background:var(--bg-3);overflow:hidden;flex:0 0 auto}
   /* #mPoster repurposed as the media bg — neutralise the grid .poster hover/lift/border */
   .m-hero-bg{position:absolute!important;inset:0;width:100%;height:100%;border:0;border-radius:0;cursor:default;
-    animation:heroKen 12s ease-out forwards;transform-origin:50% 42%}
+    animation:heroKen 12s ease-out forwards;transform-origin:50% 42%;transition:opacity .6s ease}
   .m-hero-bg:hover{transform:none;box-shadow:none;border-color:transparent}
   .m-hero-bg .art{position:absolute;inset:0;padding:0}
   .m-hero-bg .art img,.m-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -1781,9 +1811,7 @@
        and text fields keep it here for accessibility */
     a:focus-visible,button:focus-visible,select:focus-visible,[role=button]:focus-visible,
     [tabindex]:focus-visible,.nav-item:focus-visible,.poster:focus-visible,.topnav-link:focus-visible{outline:none}
-    input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-    /* search field uses a softer, semi-transparent crimson focus ring (id beats `input`) */
-    #searchInput:focus-visible{outline-color:#941c288c}
+    input:focus-visible,textarea:focus-visible{outline:none}
 
     /* 44px tap targets: drawer rows + close, sign-in, navigable section headers */
     .nav-item{padding:12px 12px;min-height:44px}
@@ -1791,7 +1819,9 @@
     aside .aside-close{top:calc(10px + env(safe-area-inset-top,0px));right:10px;width:44px;height:44px;
       display:flex;align-items:center;justify-content:center;font-size:20px;border-radius:10px}
     aside .aside-close:active{background:rgba(255,255,255,.08)}
-    #topbar .signin-btn{min-height:44px}
+    /* keep a comfortable tap target but don't let the 44px floor make the pill
+       TALLER than the ~36px desktop button — that bulk read as oversized on phones */
+    #topbar .signin-btn{min-height:36px}
     .topnav-link{min-height:44px;display:flex;align-items:center}
     .strip-title:not(.static){min-height:44px;padding-top:8px;padding-bottom:8px}
 
@@ -1800,6 +1830,14 @@
     .poster:hover .art img,.poster:focus-within .art img{transform:none}
     .poster .cw-remove{padding:7px 11px}
     .poster .cw-remove svg{width:16px;height:16px}
+    /* the hover/tap overlay is purely decorative on touch (a tap opens the modal), so kill
+       its blur outright — extra insurance against the iOS backdrop-filter bleed (see .ov)
+       even if a tap leaves :focus-within stuck on a card after the modal closes. */
+    .poster .ov{-webkit-backdrop-filter:none;backdrop-filter:none}
+    /* upcoming-card titles only reveal on hover, which never fires on touch, so the heavy
+       bottom gradient just darkens the backdrop art for no payoff — lighten it so the
+       thumbnails read crisply on phones. */
+    .upcoming-card .uc-grad{background:linear-gradient(180deg,rgba(10,8,18,0) 62%,rgba(10,8,18,.5) 100%)}
     .strip-row{scroll-snap-type:x proximity}
 
     /* hero dots: a transparent overlay extends the tap area without touching the
@@ -1882,9 +1920,24 @@
   /* ---- small phones (<=640px) ---- */
   @media (max-width:640px){
     .hero-logo{height:clamp(46px,12vw,66px);max-width:86%;margin-bottom:12px}
-    .hero-dots{bottom:calc(clamp(18px,3vh,30px) + env(safe-area-inset-bottom,0px))}
+    .hero-dots{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
     /* player */
     .vp-icon.cc{height:40px;min-width:40px;padding:3px 8px}
+    /* Bottom control bar: keep the WHOLE row on-screen on phones. The desktop row packs
+       ~11 controls + a wide "0:00 / 0:00" readout into one non-wrapping line; on a narrow
+       portrait viewport that overflows the right edge and — because .vp-overlay is
+       overflow:hidden — the trailing controls (CC / ⚙ / PiP / ⛶) get clipped off-screen.
+       Fix: give the time its own full-width line above the buttons (also far more legible),
+       let the icon row wrap as a safety net so nothing can ever clip, and drop the two
+       least-essential controls here so the rest (▶ play, ⤺/⤻ seek, ▦ episodes, CC, ⚙, ⛶)
+       sit on ONE clean row at full 40px tap targets:
+         · 🔊 volume — phones control volume with hardware buttons; the inline slider was
+           already hover-only (hidden on touch), so only a redundant mute toggle is dropped.
+           This is exactly how YouTube / Netflix mobile omit a volume control;
+         · ⧉ PiP — phones expose OS-level Picture-in-Picture gestures instead. */
+    .vp-controls{flex-wrap:wrap;gap:3px;row-gap:6px}
+    .vp-time{order:-1;flex:0 0 100%;text-align:center;font-size:14px;padding:0 0 3px;color:#dadada}
+    .vp-vol,#vpPip{display:none}
     .vp-skip{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     .vp-eppanel{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
     .vp-eppanel-list{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -2018,11 +2071,33 @@
   @media (max-width:640px) and (orientation:portrait){
     .m-hero{aspect-ratio:auto;height:auto;
       min-height:clamp(420px,62vh,600px);min-height:clamp(420px,62dvh,600px);max-height:none}
-    /* taller, stronger bottom fade: trailer/backdrop reads full-size up top, the title
-       block sits in a legible band, and the media dissolves into the body below */
+    /* The tall portrait hero made the 16:9 trailer letterbox itself: filling the full hero
+       height vertically-centred left a fat black band ABOVE the video (with the close ✕
+       stranded in it). Pin the trailer slot to a true 16:9 band at the TOP of the hero so the
+       video meets the top edge — the iframe's center+scale crop now happens within that band,
+       and the backdrop+scrim+title fill the space below it. overflow:hidden clips the scaled
+       iframe's bottom bleed exactly at the 16:9 line so there's one fixed, predictable
+       trailer-bottom to fade from (independent of the fluid hero height). */
+    .m-hero-trailer-slot{inset:0 0 auto;height:auto;aspect-ratio:16/9;overflow:hidden}
+    /* the trailer only covers the top 16:9 band here, so the backdrop kept showing (a second
+       still frame) behind the title below it. Fade the backdrop out once the trailer reveals,
+       and recolour the exposed hero base from --bg-3 (#161419, a lighter purple-grey) to the
+       modal black --bg-2 — so the trailer fade, the area under it and the body below are ONE
+       continuous black with no lighter seam. */
+    .m-hero.has-trailer{background:var(--bg-2)}
+    .m-hero.has-trailer .m-hero-bg{opacity:0}
+    /* the natural smooth dissolve: an eased multi-stop black gradient rising out of the
+       trailer's lower third into that same --bg-2, so the hard rectangular bottom edge melts
+       and trailer → background reads as a single surface. Anchored to the slot (fixed 16:9),
+       not the hero, so it lands identically at every phone height. */
+    .m-hero.has-trailer .m-hero-trailer-slot::after{content:"";position:absolute;left:0;right:0;bottom:0;
+      height:66%;z-index:2;pointer-events:none;background:linear-gradient(180deg,
+        transparent 0%,rgba(7,7,7,.15) 38%,rgba(7,7,7,.5) 64%,rgba(7,7,7,.86) 84%,var(--bg-2) 100%)}
+    /* with the trailer fade now owning the dissolve, calm the scrim's vertical ramp so it
+       doesn't double-darken the video; keep the horizontal wash for title legibility */
     .m-hero-scrim{background:
-      linear-gradient(0deg,var(--bg-2) 0%,var(--bg-2) 5%,rgba(0,0,0,.82) 28%,rgba(0,0,0,.34) 50%,rgba(0,0,0,.06) 70%,transparent 84%),
-      linear-gradient(90deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.14) 46%,transparent 72%)}
+      linear-gradient(0deg,var(--bg-2) 0%,var(--bg-2) 3%,rgba(7,7,7,.6) 14%,transparent 34%),
+      linear-gradient(90deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.12) 46%,transparent 72%)}
   }
 </style>
 <!-- hls.js (vendored locally, served from /assets so it passes our CSP script-src 'self'):
@@ -2053,14 +2128,36 @@
     var meta = document.querySelector('meta[name="api-base"]');
     var isLocal = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
     window.API_BASE = (meta && meta.content.trim()) || (isLocal ? '' : 'https://stredio.onrender.com');
+
+    // Session persistence across browser restarts (split-deploy fix).
+    // The auth cookie is cross-site (frontend ≠ API origin), and browsers purge
+    // cross-site cookies when the browser is closed — so users were forced to sign
+    // in again on every reopen. We mirror the session token in localStorage (which
+    // survives restarts) and replay it as `Authorization: Bearer …` on every /api
+    // call; the server (auth.js attachUser) accepts the header or the cookie.
+    var TOKEN_KEY = 'stredio_session';
+    function tokenGet(){ try{ return localStorage.getItem(TOKEN_KEY) || ''; }catch(e){ return ''; } }
+    window.setSessionToken = function(t){
+      try{ if(t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }catch(e){}
+    };
+
     var native = window.fetch.bind(window);
     window.fetch = function(input, init){
       var url = (typeof input === 'string') ? input : (input && input.url);
-      if (window.API_BASE && typeof url === 'string' && url.lastIndexOf('/api/', 0) === 0){
+      if (typeof url === 'string' && url.lastIndexOf('/api/', 0) === 0){
         init = init || {};
         // browsers only attach the cross-site auth cookie when asked to
         if (init.credentials === undefined) init.credentials = 'include';
-        input = (typeof input === 'string') ? (window.API_BASE + input) : new Request(window.API_BASE + url, input);
+        // replay the persisted token as a Bearer header (survives browser restarts)
+        var tok = tokenGet();
+        if (tok){
+          var headers = new Headers((init.headers) || (typeof input !== 'string' && input ? input.headers : undefined) || {});
+          if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + tok);
+          init.headers = headers;
+        }
+        if (window.API_BASE){
+          input = (typeof input === 'string') ? (window.API_BASE + input) : new Request(window.API_BASE + url, input);
+        }
       }
       return native(input, init);
     };
@@ -4762,6 +4859,59 @@ function renderHero(list,opts){
     el.addEventListener('mouseleave',()=>pause(false));
     el.addEventListener('focusin',()=>pause(true));
     el.addEventListener('focusout',()=>pause(false));
+
+    // ---- swipe / drag to change slides (finger + mouse cursor) ----
+    // One Pointer Events path covers touch, mouse and pen. touch-action:pan-y (CSS) lets a
+    // vertical drag scroll the page natively while we own the horizontal axis. The active
+    // slide follows the pointer for tactile feedback, then crossfades to the neighbour (or
+    // eases back) on release. A committed drag swallows the trailing click so PLAY / + never
+    // fire mid-swipe. Disabled while there's only one slide.
+    const RM=matchMedia('(prefers-reduced-motion:reduce)');
+    const DRAG_MIN=8, SWIPE_GO=46;
+    let dx0=0,dy0=0,drag=false,axis=null,ddx=0,pType='';
+    const liveSlide=()=>el.querySelector('.hero-slide.active');
+    el.addEventListener('pointerdown',e=>{
+      if(HERO.slides.length<2) return;
+      if(e.pointerType==='mouse'&&e.button!==0) return;
+      dx0=e.clientX; dy0=e.clientY; drag=true; axis=null; ddx=0; pType=e.pointerType;
+    });
+    el.addEventListener('pointermove',e=>{
+      if(!drag) return;
+      const dx=e.clientX-dx0, dy=e.clientY-dy0;
+      if(axis===null){
+        if(Math.abs(dx)<DRAG_MIN&&Math.abs(dy)<DRAG_MIN) return;
+        axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
+        if(axis==='x'){ el.classList.add('dragging','paused'); try{el.setPointerCapture(e.pointerId);}catch(_){} }
+      }
+      if(axis!=='x') return;                 // vertical → hand it back to the page scroll
+      e.preventDefault();
+      ddx=dx;
+      const sl=liveSlide();
+      if(sl&&!RM.matches){ sl.style.transition='none'; sl.style.transform='translateX('+(dx*0.32).toFixed(1)+'px)'; }
+    },{passive:false});
+    const endDrag=()=>{
+      if(!drag) return; drag=false;
+      const sl=liveSlide(), wasX=axis==='x', commit=wasX&&Math.abs(ddx)>SWIPE_GO;
+      el.classList.remove('dragging');
+      if(commit){
+        if(sl){ sl.style.transition='none'; sl.style.transform=''; }   // the crossfade hides the snap
+        heroGo(HERO.i+(ddx<0?1:-1));
+      }else if(sl){
+        sl.style.transition=RM.matches?'none':'transform .3s cubic-bezier(.2,.7,.2,1)';
+        sl.style.transform='';
+        const clr=()=>{ sl.style.transition=''; sl.removeEventListener('transitionend',clr); };
+        sl.addEventListener('transitionend',clr); setTimeout(clr,340);
+      }
+      if(wasX&&Math.abs(ddx)>DRAG_MIN){       // kill the click a drag would otherwise emit
+        const supp=ev=>{ ev.stopPropagation(); ev.preventDefault(); };
+        el.addEventListener('click',supp,{capture:true,once:true});
+        setTimeout(()=>el.removeEventListener('click',supp,true),350);
+      }
+      axis=null; ddx=0;
+      el.classList.toggle('paused', pType==='mouse'&&(el.matches(':hover')||el.contains(document.activeElement)));
+    };
+    el.addEventListener('pointerup',endDrag);
+    el.addEventListener('pointercancel',endDrag);
   }
   el.classList.remove('paused');
 }
@@ -5215,10 +5365,14 @@ searchInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefaul
 (function wireSearch(){
   const icon=document.getElementById('searchIcon');
   const hdr=document.getElementById('topbar');
-  const openBar=()=>{ if(hdr) hdr.classList.add('search-open'); };
+  // toggle the class AND re-measure the header in the same frame: opening search on a
+  // phone adds a full-width second row, so the header grows ~58px. syncTopbarHeight reads
+  // the new height and updates the hero's --topbar-h synchronously, so the hero's pull-up
+  // grows in lock-step — nothing shifts (a deferred ResizeObserver sync would flash a jump).
+  const openBar=()=>{ if(hdr&&!hdr.classList.contains('search-open')){ hdr.classList.add('search-open'); syncTopbarHeight(); } };
   if(icon) icon.addEventListener('click',()=>{
     unlockSearch(); openBar();
-    if(searchInput.value.trim()) runEnter(); else searchInput.focus();
+    if(searchInput.value.trim()) runEnter(); else searchInput.focus({preventScroll:true});
   });
   searchInput.addEventListener('focus',()=>{ unlockSearch(); openBar(); });   // drop readonly + reveal on first interaction
   // Collapse the empty bay when focus leaves it — BUT the filter panel lives inside
@@ -5229,7 +5383,7 @@ searchInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefaul
   searchInput.addEventListener('blur',e=>{
     if(fPanel.classList.contains('open')) return;
     if(e.relatedTarget&&e.relatedTarget.closest&&e.relatedTarget.closest('.search')) return;
-    if(hdr&&!searchInput.value.trim()) hdr.classList.remove('search-open');
+    if(hdr&&!searchInput.value.trim()){ hdr.classList.remove('search-open'); syncTopbarHeight(); }
   });
   searchInput.addEventListener('keydown',e=>{ if(e.key==='Escape'){ searchInput.value=''; searchInput.blur(); } });
 })();
@@ -5283,11 +5437,24 @@ function buildTopbarFrame(){
     `<path class="tb-flare" d="${lflare}" fill="none" stroke="url(#tbFlare)" stroke-width="2" stroke-linecap="round"/>`+
     `<path class="tb-flare" d="${rflare}" fill="none" stroke="url(#tbFlare)" stroke-width="2" stroke-linecap="round"/>`;
 }
+/* keep the hero's pull-up exactly equal to the live header height. The hero slides up
+   under the sticky header via a negative margin of (page-top + --topbar-h); if --topbar-h
+   doesn't match the real header height the hero shifts (and the backdrop leaves a sliver
+   at the top). The CSS guesses (56/109/114px) drift from reality once the header reflows
+   to a second row when search opens, or with a different locale/font — so measure it and
+   set --topbar-h from the actual height. Inline style outranks every media-query guess. */
+function syncTopbarHeight(){
+  const header=document.getElementById('topbar');
+  if(!header) return;
+  const h=Math.round(header.getBoundingClientRect().height);
+  if(!h) return;
+  document.querySelectorAll('.hero').forEach(el=>el.style.setProperty('--topbar-h',h+'px'));
+}
 (function topbarFrame(){
   const header=document.getElementById('topbar');
   const search=header&&header.querySelector('.search');
   if(!header||!search) return;
-  const draw=()=>requestAnimationFrame(buildTopbarFrame);
+  const draw=()=>requestAnimationFrame(()=>{ syncTopbarHeight(); buildTopbarFrame(); });
   if('ResizeObserver' in window){ const ro=new ResizeObserver(draw); ro.observe(header); ro.observe(search); }
   window.addEventListener('resize',draw);
   if(document.fonts&&document.fonts.ready) document.fonts.ready.then(draw);
@@ -6792,25 +6959,26 @@ document.getElementById('epList').addEventListener('click',e=>{
 });
 function qualClass(q){return q==='4K'?'q-4k':q==='1080p'?'q-1080':'q-720';}
 function realStreamsHTML(streams){
-  const bySource={};
-  streams.forEach(s=>{(bySource[s.source]=bySource[s.source]||[]).push(s);});
-  return Object.entries(bySource).map(([src,list])=>{
-    const rows=list.map(s=>{
-      const q=s.quality||'SD';
-      const detail=[s.size, s.seeds!=null?('👤 '+s.seeds.toLocaleString()+' '+t('stream.seeds')):null,
-        s.kind==='torrent'?t('stream.p2p_magnet'):t('stream.direct_link')].filter(Boolean).join(' · ');
-      const acts=`<button class="s-btn play" data-act="play" data-kind="${esc(s.kind||'url')}" data-url="${esc(s.url)}" aria-label="${esc(t('ui.play_aria')+' '+s.title)}">${esc(t('stream.play'))}</button>`;
-      return `<div class="stream-row">
-        <span class="quality-badge ${qualClass(q)}">${esc(q)}</span>
-        <div class="stream-info">
-          <div class="stream-title">${esc(s.title)}</div>
-          <div class="stream-detail">${esc(detail)}</div>
-        </div>
-        <div class="stream-actions">${acts}</div>
-      </div>`;
-    }).join('');
-    return `<div class="stream-source-label">⬡ ${esc(t('stream.from'))}${esc(src)}</div>${rows}`;
+  // Every row shows the current series/movie title (not the addon-supplied
+  // codec/quality string), so the same name appears across every language tab.
+  // Torrentio + Georgian Dubbed are folded into one card, so the source line is
+  // always "Saturn".
+  const mediaTitle=currentTitle||'';
+  const rows=streams.map(s=>{
+    const q=s.quality||'SD';
+    const detail=[s.size, s.seeds!=null?('👤 '+s.seeds.toLocaleString()+' '+t('stream.seeds')):null,
+      s.kind==='torrent'?t('stream.p2p_magnet'):t('stream.direct_link')].filter(Boolean).join(' · ');
+    const acts=`<button class="s-btn play" data-act="play" data-kind="${esc(s.kind||'url')}" data-url="${esc(s.url)}" aria-label="${esc(t('ui.play_aria')+' '+(mediaTitle||s.title))}">${esc(t('stream.play'))}</button>`;
+    return `<div class="stream-row">
+      <span class="quality-badge ${qualClass(q)}">${esc(q)}</span>
+      <div class="stream-info">
+        <div class="stream-title">${esc(mediaTitle||s.title)}</div>
+        <div class="stream-detail">${esc(detail)}</div>
+      </div>
+      <div class="stream-actions">${acts}</div>
+    </div>`;
   }).join('');
+  return `<div class="stream-source-label">⬡ ${esc(t('stream.from'))}Saturn</div>${rows}`;
 }
 const LANG_DISPLAY={ka:'Georgian',en:'English',ru:'Russian',uk:'Ukrainian'};
 /* Show the language tab bar, exposing only the languages the user enabled in
@@ -7056,7 +7224,7 @@ const ADDONS=[
   {id:'catalog', section:'official', name:'Trending & Top Rated rows addon', iconCls:'puzzle', glyph:'🎞️', ver:'v1.0.0',
    tags:['catalog','metadata'], installed:true},
   {id:'providers', section:'official', name:'Streaming Services rows addon', iconCls:'puzzle', glyph:'📺', ver:'v1.0.0',
-   tags:['catalog','metadata'], installed:true},
+   tags:['catalog','metadata'], installed:false},
   /* — COMMUNITY — */
   {id:'saturn', section:'community', name:'🪐 Saturn', glyph:'🪐', iconCls:'saturn', ver:'v1.0.0',
    tags:['community','streaming'], installed:false},
@@ -7582,6 +7750,9 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       const r=await fetch('/api/auth/me');
       const data=r.ok?await r.json():{user:null};
       AUTH.user=data.user||null;
+      // The server reachably said "no user" → the stored token is expired/invalid;
+      // drop it. (A network error throws below and leaves the token untouched.)
+      if(r.ok && !AUTH.user) window.setSessionToken('');
     }catch(e){ AUTH.user=null; }
     updateAuthUI();
     if(AUTH.user){ try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} }
@@ -7666,6 +7837,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       const data=await r.json().catch(()=>({}));
       if(!r.ok){ $('authError').textContent=data.error||t('auth.err_generic'); setLoading(false); return; }
       AUTH.user=data.user||null;
+      window.setSessionToken(data.token||'');   // persist for cross-restart sign-in
       const intent=authIntent;
       closeAuth(); updateAuthUI();
       try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){}
@@ -7676,6 +7848,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
 
   async function doLogout(){
     try{ await fetch('/api/auth/logout',{method:'POST'}); }catch(e){}
+    window.setSessionToken('');   // drop the persisted token so we don't re-auth
     AUTH.user=null; window.HAS_DEBRID=false; window.saturn={langs:['ka','en','ru','uk']};
     updateAuthUI(); try{renderFooter();}catch(e){}
     const ra=$('remoteAddons'); if(ra) ra.innerHTML='';
@@ -7720,7 +7893,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       const r=await fetch('/api/auth/google',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:resp.credential})});
       const data=await r.json().catch(()=>({}));
       if(!r.ok){ $('authError').textContent=data.error||t('auth.err_generic'); return; }
-      AUTH.user=data.user||null; const intent=authIntent;
+      AUTH.user=data.user||null; window.setSessionToken(data.token||''); const intent=authIntent;
       closeAuth(); updateAuthUI();
       try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){}
       toast(t('auth.signed_in')+(AUTH.user&&AUTH.user.email?(' · '+AUTH.user.email):''),'var(--success)');

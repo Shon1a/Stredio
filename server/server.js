@@ -173,7 +173,10 @@ app.post('/api/auth/signup', authLimiter, async (req, res) => {
   if (result.error) return res.status(result.status || 400).json({ error: result.error });
   const { token, maxAgeSec } = await createSession(result.user.id);
   res.append('Set-Cookie', sessionCookie(req, token, maxAgeSec));
-  res.status(201).json({ user: result.user });
+  // Also return the token so the frontend can persist it in localStorage and
+  // replay it as a Bearer header — keeps the session alive across browser restarts
+  // on the split deploy, where the cross-site cookie gets purged. See auth.js.
+  res.status(201).json({ user: result.user, token });
 });
 
 app.post('/api/auth/login', authLimiter, async (req, res) => {
@@ -182,7 +185,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   if (result.error) return res.status(result.status || 401).json({ error: result.error });
   const { token, maxAgeSec } = await createSession(result.user.id);
   res.append('Set-Cookie', sessionCookie(req, token, maxAgeSec));
-  res.json({ user: result.user });
+  res.json({ user: result.user, token });
 });
 
 // Google Sign-In — verifies the ID token from Google Identity Services, then logs
@@ -195,7 +198,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
   if (result.error) return res.status(result.status || 401).json({ error: result.error });
   const { token, maxAgeSec } = await createSession(result.user.id);
   res.append('Set-Cookie', sessionCookie(req, token, maxAgeSec));
-  res.json({ user: result.user });
+  res.json({ user: result.user, token });
 });
 
 // Public auth config the frontend reads at boot to decide whether to show the

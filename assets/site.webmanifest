@@ -1,0 +1,15 @@
+{
+  "name": "STREDIO",
+  "short_name": "STREDIO",
+  "description": "Stream movies & series.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101016",
+  "theme_color": "#101016",
+  "icons": [
+    { "src": "/assets/stredio-icon-maskable.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" },
+    { "src": "/assets/stredio-icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "/assets/stredio-icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ]
+}

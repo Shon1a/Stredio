@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   hashPassword, verifyPassword, validateEmail, validatePassword,
-  parseCookies, sessionCookie, clearCookie, COOKIE_NAME,
+  parseCookies, sessionCookie, clearCookie, COOKIE_NAME, bearerToken,
 } from './auth.js';
 
 test('validateEmail accepts good and rejects bad addresses', () => {
@@ -56,6 +56,14 @@ test('parseCookies reads the session cookie out of a header', () => {
   assert.equal(c[COOKIE_NAME], 'abc123');
   assert.equal(c.theme, 'dark');
   assert.deepEqual(parseCookies({ headers: {} }), {});
+});
+
+test('bearerToken reads the token from the Authorization header', () => {
+  assert.equal(bearerToken({ headers: { authorization: 'Bearer abc123' } }), 'abc123');
+  assert.equal(bearerToken({ headers: { authorization: 'bearer  abc123 ' } }), 'abc123');
+  assert.equal(bearerToken({ headers: { authorization: 'Basic abc123' } }), null);
+  assert.equal(bearerToken({ headers: {} }), null);
+  assert.equal(bearerToken({}), null);
 });
 
 test('sessionCookie is HttpOnly + SameSite=Lax, Secure only over https', () => {

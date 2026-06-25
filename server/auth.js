@@ -415,10 +415,22 @@ export function clearCookie(req) {
 /* ------------------------------------------------------------------ *
  *  Express middleware
  * ------------------------------------------------------------------ */
-// Attaches req.user (or null) from the session cookie. Never throws.
+// Pull the session token from an `Authorization: Bearer <token>` header.
+// This is the durable path for the split deployment (frontend on Vercel, API on
+// Render are separate origins): the session cookie is cross-site, and browsers
+// purge cross-site cookies on restart regardless of Max-Age — so users get logged
+// out every time they reopen the browser. The frontend therefore also stashes the
+// token in localStorage (which survives restarts) and replays it here.
+export function bearerToken(req) {
+  const h = req.headers?.authorization || '';
+  const m = /^Bearer\s+(.+)$/i.exec(h.trim());
+  return m ? m[1].trim() : null;
+}
+// Attaches req.user (or null) from the Bearer header or the session cookie.
+// Never throws.
 export async function attachUser(req, _res, next) {
   try {
-    const token = parseCookies(req)[COOKIE_NAME];
+    const token = bearerToken(req) || parseCookies(req)[COOKIE_NAME];
     req.sessionToken = token || null;
     req.user = await getSessionUser(token);
   } catch { req.user = null; }
