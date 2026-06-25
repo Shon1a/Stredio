@@ -1503,7 +1503,7 @@ function mapStream(s, addonName) {
   if (url && (proxyRef || isHls)) {
     url = proxify(url, proxyRef || '', isHls);
   }
-  // Audio language tag → drives the modal's language tabs (🇬🇪 / 🇬🇧 / 🇷🇺):
+  // Audio language tag → drives the modal's language tabs (GE / GB / RU):
   //  • ge.movie addon streams carry behaviorHints.lang ('ka').
   //  • torrent streams have no tag → infer from the release name (Russian if it
   //    shows Cyrillic / RUS / dub markers, otherwise treat as English original).
