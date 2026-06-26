@@ -1031,6 +1031,9 @@
     z-index:4;width:40px;height:40px;font-size:16px;display:none}
   .m-hero.has-trailer .m-mute{display:grid}
   .m-mute[aria-pressed="false"]{border-color:var(--accent);color:var(--accent)}
+  /* the speaker glyph is geometrically centred, but its solid cone (left) outweighs the
+     thin ✕ / waves (right), so it reads as pushed left — nudge it right to optically centre */
+  .m-mute .m-mute-ic{display:flex;transform:translateX(1.5px)}
   .m-kicker{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:12px;
     letter-spacing:.28em;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
   .m-kicker::before{content:"";width:22px;height:1px;background:var(--accent);opacity:.7}
@@ -1304,6 +1307,23 @@
        (body{overflow-x:hidden} can't clip a position:fixed descendant) */
   .vp-overlay.open{opacity:1;pointer-events:all}
   .vp-overlay video{position:absolute;inset:0;width:100%;height:100%;background:#000;object-fit:contain}
+  /* picture-enhance: an animated film-grain layer over the video image. Doesn't add real detail
+     (impossible client-side) — it dithers away banding + masks macroblocking on low-bitrate streams
+     so they read sharper. display:none when off so it costs zero; opacity is driven by --grain (set
+     from the intensity slider). Sits above the video image (z1) but below gestures(z2)/loading(z3)/UI.
+     overlay blend leaves the black letterbox bars untouched (it only lifts mid-tones). */
+  .vp-grain{position:absolute;inset:0;z-index:1;pointer-events:none;display:none;opacity:var(--grain,0);
+    mix-blend-mode:overlay;background-size:160px 160px;will-change:background-position;
+    animation:vpGrain .55s steps(4) infinite;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E")}
+  .vp-overlay.enhance-on .vp-grain{display:block}
+  @keyframes vpGrain{0%{background-position:0 0}20%{background-position:-30px 10px}40%{background-position:20px -25px}60%{background-position:-15px 30px}80%{background-position:25px 15px}100%{background-position:0 0}}
+  @media (prefers-reduced-motion:reduce){.vp-grain{animation:none}}
+  /* enhance intensity slider (lives in the gear menu's Enhance section) */
+  .vp-enh-slider{display:flex;align-items:center;gap:10px;padding:4px 12px 10px}
+  .vp-enh-slider.off{opacity:.4}
+  .vp-enh-slider input[type=range]{flex:1;accent-color:var(--accent);height:4px;cursor:pointer}
+  .vp-enh-val{font-size:12px;color:rgba(255,255,255,.6);min-width:36px;text-align:right;font-variant-numeric:tabular-nums}
   .vp-overlay.hide-ui{cursor:none}
   /* auto-hide fades the chrome PER-SECTION rather than the whole .vp-ui — an opacity:0
      on the shared parent creates a stacking context the contextual Skip / Next button
@@ -3048,6 +3068,16 @@
 <!-- premium video player -->
 <div class="vp-overlay" id="playerOverlay">
   <video id="playerVideo" playsinline></video>
+  <!-- picture-enhance film-grain layer (toggled via the gear menu; opacity from --grain) -->
+  <div class="vp-grain" id="vpGrain" aria-hidden="true"></div>
+  <!-- clarity: real unsharp-mask convolution applied to the video via filter:url(#vpSharpen).
+       kernelMatrix is rewritten live from the Clarity slider (identity at 0 → sharpen at max).
+       color-interpolation-filters=sRGB keeps the convolution from shifting brightness/colour. -->
+  <svg aria-hidden="true" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none">
+    <filter id="vpSharpen" color-interpolation-filters="sRGB">
+      <feConvolveMatrix id="vpSharpenK" order="3" preserveAlpha="true" kernelMatrix="0 0 0 0 1 0 0 0 0"/>
+    </filter>
+  </svg>
 
   <!-- mobile gesture surface (touch only; JS adds .gestures-on). Sits ABOVE the video (z2)
        but BELOW the loading overlay (z3) and the chrome (.vp-ui z4), so controls/progress bar
@@ -3405,6 +3435,10 @@ window.I18N=(function(){
   "menu.speed": "Playback speed",
   "menu.quality": "Quality / source",
   "menu.auto": "Auto",
+  "menu.enhance": "Enhance picture",
+  "menu.enhance_on": "Film grain & color boost",
+  "menu.clarity": "Clarity (sharpen)",
+  "menu.intensity": "Intensity",
   "stream.instant": "Instant (cached)",
   "stream.seeds": "seeds",
   "stream.p2p": "P2P stream",
@@ -3878,6 +3912,10 @@ window.I18N=(function(){
   "menu.speed": "დაკვრის სიჩქარე",
   "menu.quality": "ხარისხი / წყარო",
   "menu.auto": "ავტო",
+  "menu.enhance": "სურათის გაუმჯობესება",
+  "menu.enhance_on": "მარცვალი და ფერის გაძლიერება",
+  "menu.clarity": "სიმკვეთრე",
+  "menu.intensity": "ინტენსივობა",
   "stream.instant": "მყისიერი (ქეშირებული)",
   "stream.seeds": "სიდერები",
   "stream.p2p": "P2P სტრიმი",
@@ -4803,7 +4841,11 @@ const SETTINGS_DEFAULTS={
   subBg:'transparent',
   subOutline:'#000000',
   blurUnwatched:false,    // blur stills of episodes you haven't started
-  externalPlayer:'disabled' // disabled | vlc | infuse | outplayer | nplayer
+  externalPlayer:'disabled', // disabled | vlc | infuse | outplayer | nplayer
+  enhance:false,          // picture-enhance: CSS contrast/saturation bump + film-grain overlay
+  enhanceLevel:50,        // enhance intensity 0–100 (drives filter strength + grain opacity)
+  clarity:false,          // clarity: real SVG unsharp-mask sharpening on the video
+  clarityLevel:40         // clarity intensity 0–100 (drives the sharpen kernel amount)
 };
 const SETTINGS=(function(){
   try{ return Object.assign({},SETTINGS_DEFAULTS,JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')); }
@@ -4815,6 +4857,7 @@ function setSetting(k,v){ SETTINGS[k]=v; saveSettings(); applySetting(k); }
 function applySetting(k){
   if(k==null||k==='subColor'||k==='subBg'||k==='subOutline'||k==='subSize') applySubtitleStyle();
   if(k==null||k==='blurUnwatched') document.body.classList.toggle('blur-unwatched',!!SETTINGS.blurUnwatched);
+  if(k==null||k==='enhance'||k==='enhanceLevel'||k==='clarity'||k==='clarityLevel'){ try{ VP.applyEnhance(); }catch(e){} }
 }
 function applyAllSettings(){ applySetting(null); }
 /* build/refresh the ::cue stylesheet from the current subtitle prefs */
@@ -6447,7 +6490,27 @@ const VP=(function(){
     $('vpLoading').classList.add('show'); $('vpCenter').classList.add('hidden'); }
   function hideLoading(){ $('vpLoading').classList.remove('show'); }
 
-  function open(title){ overlay.classList.remove('open'); ov.classList.add('open'); $('playerTitle').textContent=title||''; showUI();
+  /* picture-enhance: a CSS contrast/saturation bump on the <video> plus the animated film-grain
+     overlay. It adds no real detail (the browser can't reconstruct data the encoder discarded), but
+     dithers banding and masks macroblocking so low-bitrate streams read sharper. Strength 0–100 from
+     SETTINGS; grain opacity stays low (4–14%) so clean sources aren't visibly noisy. */
+  function applyEnhance(){
+    const gOn=!!SETTINGS.enhance, gLvl=Math.max(0,Math.min(100,+SETTINGS.enhanceLevel||0))/100;
+    const cOn=!!SETTINGS.clarity,  cLvl=Math.max(0,Math.min(100,+SETTINGS.clarityLevel||0))/100;
+    ov.classList.toggle('enhance-on',gOn);     // grain layer visibility
+    if(cOn){
+      // unsharp kernel parameterised by amount a (identity at 0): centre 1+4a, edges −a.
+      // cap a≈0.85 at max so strong settings sharpen without harsh ringing/haloing.
+      const a=0.85*cLvl, c=(1+4*a).toFixed(4), e=(-a).toFixed(4), k=$('vpSharpenK');
+      if(k)k.setAttribute('kernelMatrix',`0 ${e} 0 ${e} ${c} ${e} 0 ${e} 0`);
+    }
+    // chain the sharpen convolution (if on) before the colour/contrast functions
+    let f=cOn?'url(#vpSharpen) ':'';
+    if(gOn)f+=`contrast(${(1+0.14*gLvl).toFixed(3)}) saturate(${(1+0.20*gLvl).toFixed(3)}) brightness(${(1+0.03*gLvl).toFixed(3)})`;
+    v.style.filter=f.trim();
+    ov.style.setProperty('--grain',(gOn?(0.04+0.10*gLvl):0).toFixed(3));
+  }
+  function open(title){ overlay.classList.remove('open'); ov.classList.add('open'); $('playerTitle').textContent=title||''; showUI(); applyEnhance();
     try{ const _g=$('vpGestures'); if(_g&&_g._resetBright)_g._resetBright(); }catch(e){}   // clear the gesture brightness dimmer per title
     refreshSeriesUI();
     if(window.__bg)window.__bg.stop(); }   // pause the background canvas while a video plays
@@ -6753,6 +6816,19 @@ const VP=(function(){
       if(out&&out.url){ load(out.url,$('playerTitle').textContent); armStallWatch(); } else v.removeEventListener('loadedmetadata',resumePlay); }
     vpToast(I18N.t('player.source')+(s.quality||'SD')+' · '+s.source);
   }
+  // switch the playback LANGUAGE (Saturn streams: one stream per language). Picks that
+  // language's best stream — a cached/instant one if present, else the server's top-ranked
+  // (the list arrives cached-first) — updates currentLang so the Quality submenu re-filters,
+  // and hands off to switchStream. No-op if the language has no stream or is already playing.
+  function switchLang(l){
+    if(!l)return;
+    const list=(window.currentStreams||[]).filter(s=>(s.lang||'en')===l);
+    if(!list.length)return;
+    const pick=list.find(s=>s.cached)||list[0];
+    window.currentLang=l;
+    if(pick!==curStream) switchStream(pick);
+    buildMenu();
+  }
 
   /* ---- subtitles (addon + embedded) ---- */
   function subTracks(){ return [...v.textTracks].filter(t=>t.kind==='subtitles'||t.kind==='captions'); }
@@ -6909,6 +6985,10 @@ const VP=(function(){
   // friendly name for an hls.js audio track / quality level
   const AUDIO_LABELS={eng:'English',en:'English',rus:'Russian',ru:'Russian',geo:'ქართული',ka:'ქართული',kat:'ქართული',ukr:'Ukrainian',tur:'Turkish',fre:'French',ger:'German',ita:'Italian',jpn:'Japanese',kor:'Korean',spa:'Spanish'};
   function audioLabel(a,i){ return a.name||AUDIO_LABELS[(a.lang||'').toLowerCase()]||a.lang||(t('menu.track')+(i+1)); }
+  // friendly, UI-localized name for a stream language code (Saturn streams carry s.lang).
+  // Prefer the i18n langtab.* string; fall back to a full-name map / the raw code uppercased.
+  const LANG_FULL={ka:'Georgian',en:'English',ru:'Russian',uk:'Ukrainian',tr:'Turkish',fr:'French',de:'German',it:'Italian',es:'Spanish',ja:'Japanese',ko:'Korean',hi:'Hindi',zh:'Chinese',pl:'Polish',pt:'Portuguese'};
+  function langName(l){ const k='langtab.'+l, v=t(k); return (v&&v!==k)?v:(LANG_FULL[l]||AUDIO_LABELS[l]||(l||'').toUpperCase()); }
   // Map an HLS level to a standard quality tier. Sources use cinematic heights
   // (e.g. 1920x816, 1280x544, 854x362) so we derive a 16:9-equivalent height from
   // the width and snap to the nearest common label → 1080p / 720p / 480p …
@@ -6960,6 +7040,21 @@ const VP=(function(){
       ats.forEach((a,i)=>{ const lbl=a.label||a.language||(t('menu.track')+(i+1)); if(a.enabled)aVal=lbl;
         aBody+=optRow(a.enabled,lbl,`data-act="audio" data-i="${i}"`); });
       h+=accSection('audio',t('menu.audio_lang'),aVal,aBody);
+    } else {
+      // Saturn / multi-language sources: each language is a SEPARATE stream (single embedded
+      // audio track), so derive the available languages from the stream list and let the user
+      // switch language straight from the player. Selecting one swaps to that language's best
+      // (cached-first) stream. Only the languages that actually have a stream are listed.
+      const all=window.currentStreams||[]; const langs=[];
+      all.forEach(s=>{ const l=s.lang||'en'; if(!langs.includes(l))langs.push(l); });
+      if(langs.length>1&&curStream){   // curStream guard: never show stale langs on the demo clip
+        const cur=window.currentLang||(curStream&&curStream.lang)||'en';
+        let aBody='',aVal='';
+        langs.forEach(l=>{ const on=l===cur, lbl=langName(l);
+          const cached=all.some(x=>(x.lang||'en')===l&&x.cached); if(on)aVal=lbl;
+          aBody+=optRow(on,lbl,`data-act="lang" data-lang="${l}"`,'',cached?INSTANT_BADGE:''); });
+        h+=accSection('audio',t('menu.audio_lang'),aVal,aBody);
+      }
     }
     /* playback speed */
     let spBody='<div class="vp-speeds">';
@@ -6990,6 +7085,18 @@ const VP=(function(){
           qBody+=optRow(on,lbl,`data-act="quality" data-i="${i}"`,s.size||'',s.cached?INSTANT_BADGE:''); });
         h+=accSection('quality',t('menu.quality'),qVal,qBody);
       }
+    }
+    /* picture enhance — separate toggles: film-grain+colour (masks banding) and clarity (sharpen) */
+    {
+      const clampL=v=>Math.max(0,Math.min(100,Math.round(+v||0)));
+      const gl=clampL(SETTINGS.enhanceLevel), cl=clampL(SETTINGS.clarityLevel);
+      const slider=(lvl,on,act)=>`<div class="vp-enh-slider${on?'':' off'}">`
+        +`<input type="range" min="0" max="100" step="5" value="${lvl}"${on?'':' disabled'} data-act="${act}" aria-label="${esc(t('menu.intensity'))}"/>`
+        +`<span class="vp-enh-val">${lvl}%</span></div>`;
+      let eBody=optRow(!!SETTINGS.enhance,t('menu.enhance_on'),'data-act="enhance"')+slider(gl,SETTINGS.enhance,'enhlevel')
+        +optRow(!!SETTINGS.clarity,t('menu.clarity'),'data-act="clarity"')+slider(cl,SETTINGS.clarity,'claritylevel');
+      const sum=[SETTINGS.enhance?gl+'%':null,SETTINGS.clarity?cl+'%':null].filter(Boolean);
+      h+=accSection('enhance',t('menu.enhance'),sum.length?sum.join(' · '):t('menu.off'),eBody);
     }
     $('vpMenu').innerHTML=h;
   }
@@ -7088,9 +7195,24 @@ const VP=(function(){
     if(a==='sub')applySub(+o.dataset.i);
     else if(a==='audio')applyAudio(+o.dataset.i);
     else if(a==='hlsaudio'){ if(hls){ try{hls.audioTrack=+o.dataset.i;}catch(e){} } buildMenu(); }
+    else if(a==='lang'){ switchLang(o.dataset.lang); }
     else if(a==='hlslevel'){ if(hls){ const i=+o.dataset.i; hls.currentLevel=i; vpToast(i<0?t('menu.auto'):levelLabel(hls.levels[i]||{})); } buildMenu(); }
     else if(a==='speed'){v.playbackRate=+o.dataset.v;buildMenu();vpToast(o.dataset.v+'×');}
+    else if(a==='enhance'){ setSetting('enhance',!SETTINGS.enhance); buildMenu(); }
+    else if(a==='clarity'){ setSetting('clarity',!SETTINGS.clarity); buildMenu(); }
     else if(a==='quality'){switchStream((window.currentQualityList||window.currentStreams||[])[+o.dataset.i]);closeMenu();} });
+  // intensity sliders live inside the menu — live-update on drag without a full rebuild (keeps focus)
+  $('vpMenu').addEventListener('input',e=>{ const o=e.target.closest('input[type=range][data-act]'); if(!o)return;
+    const act=o.dataset.act, val=Math.max(0,Math.min(100,Math.round(+o.value||0)));
+    if(act==='enhlevel')setSetting('enhanceLevel',val);          // → applySetting → VP.applyEnhance() (live preview)
+    else if(act==='claritylevel')setSetting('clarityLevel',val);
+    else return;
+    const lab=o.parentNode&&o.parentNode.querySelector('.vp-enh-val'); if(lab)lab.textContent=val+'%';
+    // refresh the accordion header summary live (both effects' percentages)
+    const sec=o.closest('.vp-acc'),hv=sec&&sec.querySelector('.vp-acc-val');
+    if(hv){ const sum=[SETTINGS.enhance?Math.round(+SETTINGS.enhanceLevel||0)+'%':null,
+                       SETTINGS.clarity?Math.round(+SETTINGS.clarityLevel||0)+'%':null].filter(Boolean);
+      hv.textContent=sum.length?sum.join(' · '):t('menu.off'); } });
   ov.addEventListener('click',e=>{
     // ignore clicks whose target was detached mid-dispatch — e.g. a season tab the
     // handler re-rendered before this bubbled up (its .closest() would wrongly read
@@ -7303,7 +7425,7 @@ const VP=(function(){
     } });
 
   return { playStream, openDemo, close, setStatus, loading:showLoading, refreshSeriesUI,
-           current:()=>curStream };
+           current:()=>curStream, applyEnhance };
 })();
 /* globals used by stream rows / demo onclick / Esc */
 function playStream(s){ return VP.playStream(s); }
