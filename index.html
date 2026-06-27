@@ -4771,8 +4771,11 @@ function saveHistory(list){ try{ localStorage.setItem(historyKey(),JSON.stringif
 /* drop one title from the Continue Watching rail (the corner ✕ on each card) */
 function removeFromHistory(id){
   if(!id) return;
+  // tombstone the removal so it syncs as a delete (not resurrected from another device)
+  const tomb=removedAll(); tomb[String(id)]=Date.now(); removedSave(tomb);
   saveHistory(watchHistory().filter(x=>String(x.id)!==String(id)));
   renderContinueWatching();
+  syncPush();
 }
 function recordWatch(){
   if(!(window.AUTH&&AUTH.user)) return;                 // history is a signed-in feature
@@ -4784,9 +4787,12 @@ function recordWatch(){
   // straight back into the right episode of a series.
   list.unshift({ id:m.id, title:m.title||'', poster:m.poster||'', year:m.year||'', type:m.type||'movie',
                  genre:m.genre||'', rating:m.rating||'', ep:window.currentEpLabel||'',
-                 key:curMediaKey(),
+                 key:curMediaKey(), at:Date.now(),       // `at` drives cross-device merge ordering
                  season:isSeries?seriesCtx.season:null, episode:isSeries?seriesCtx.ep:null });
   saveHistory(list.slice(0,HISTORY_CAP));
+  // re-watching a previously removed title clears its tombstone so it returns to the rail
+  const tomb=removedAll(); if(tomb[String(m.id)]){ delete tomb[String(m.id)]; removedSave(tomb); }
+  syncPush();
 }
 
 /* ---------- resume progress (timecode) — per-account, on-device ----------
@@ -4807,6 +4813,7 @@ function putProgress(key,pos,dur){
   const keys=Object.keys(map);
   if(keys.length>240){ keys.sort((a,b)=>(map[b].at||0)-(map[a].at||0)).slice(240).forEach(k=>delete map[k]); }
   progressSaveAll(map);
+  syncPush();   // throttled (~25s) → cross-device resume without hammering the server
 }
 function delProgress(key){ if(!key) return; const map=progressAll(); if(map[key]!=null){ delete map[key]; progressSaveAll(map); } }
 /* media key for whatever is playing right now (movie id, or id:S#E# for a series episode) */
@@ -4830,6 +4837,66 @@ function entryResume(e){
 function fmtClock(t){ if(!isFinite(t)||t<0)t=0; t=Math.floor(t);
   const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;
   return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0'); }
+
+/* ---------- cross-device sync: watch history + resume progress ----------
+   localStorage stays the instant, offline-safe source of truth; the server doc
+   (/api/watch-state) is the shared copy. PULL on sign-in + when the tab regains
+   focus (merge by recency); PUSH throttled to ~once/25s of activity, so a 2-hour
+   watch is a handful of writes (gentle on Neon's free tier). Signed-in only —
+   guests never sync. A per-account tombstone map (`sf:removed:<email>`) stops a
+   title removed on one device from resurrecting off another device's older copy. */
+const WATCH_PUSH_MS=25000;        // coalesce server writes to ~once / 25s of activity
+const WATCH_PULL_MIN=15000;       // don't re-pull more often than this on focus
+let _wPushT=null,_wPushPending=false,_wLastPull=0,_wPulling=false;
+function _wAuthed(){ return !!(window.AUTH&&AUTH.user); }
+function removedKey(){ const u=(window.AUTH&&AUTH.user&&AUTH.user.email)||'guest'; return 'sf:removed:'+u; }
+function removedAll(){ try{ return JSON.parse(localStorage.getItem(removedKey())||'{}'); }catch(e){ return {}; } }
+function removedSave(m){ try{ localStorage.setItem(removedKey(),JSON.stringify(m)); }catch(e){} }
+function _mergeHist(a,b,tomb){
+  const m=new Map();
+  for(const e of [].concat(a||[],b||[])){ if(!e||e.id==null) continue;
+    const id=String(e.id),p=m.get(id); if(!p||(+e.at||0)>(+p.at||0)) m.set(id,e); }
+  return [...m.values()].filter(e=>{ const t=tomb[String(e.id)]; return !(t&&t>=(+e.at||0)); })
+    .sort((x,y)=>(+y.at||0)-(+x.at||0)).slice(0,HISTORY_CAP);
+}
+function _mergeProg(a,b){
+  const out={},A=a||{},B=b||{};
+  for(const k of new Set([...Object.keys(A),...Object.keys(B)])){
+    const x=A[k],y=B[k]; out[k]=(!x||(y&&(+y.at||0)>=(+x.at||0)))?(y||x):x; }
+  const keys=Object.keys(out).sort((p,q)=>(+out[q].at||0)-(+out[p].at||0)).slice(0,240);
+  const capped={}; for(const k of keys) capped[k]=out[k]; return capped;
+}
+function _mergeTomb(a,b){
+  const out={},now=Date.now(),TTL=30*24*3600*1000;
+  for(const src of [a||{},b||{}]) for(const id of Object.keys(src)){ const at=+src[id]||0; if(at>(out[id]||0)) out[id]=at; }
+  for(const id of Object.keys(out)) if(now-out[id]>TTL) delete out[id];
+  return out;
+}
+async function syncPull(){
+  if(!_wAuthed()||_wPulling) return; _wPulling=true;
+  try{
+    const r=await fetch('/api/watch-state'); if(!r.ok) return;
+    const remote=await r.json();
+    const tomb=_mergeTomb(removedAll(),remote.removed||{}); removedSave(tomb);
+    saveHistory(_mergeHist(watchHistory(),remote.history||[],tomb));
+    progressSaveAll(_mergeProg(progressAll(),remote.progress||{}));
+    _wLastPull=Date.now();
+    try{ renderContinueWatching(); }catch(e){}
+  }catch(e){}
+  finally{ _wPulling=false; }
+}
+function _wPushNow(keepalive){
+  if(_wPushT){ clearTimeout(_wPushT); _wPushT=null; }
+  _wPushPending=false; if(!_wAuthed()) return;
+  const body=JSON.stringify({ history:watchHistory(), progress:progressAll(), removed:removedAll() });
+  try{ fetch('/api/watch-state',{method:'PUT',headers:{'Content-Type':'application/json'},body,keepalive:!!keepalive}).catch(()=>{}); }catch(e){}
+}
+function syncPush(){ if(!_wAuthed()) return; _wPushPending=true; if(!_wPushT) _wPushT=setTimeout(()=>_wPushNow(false),WATCH_PUSH_MS); }
+function syncFlush(keepalive){ if(_wPushPending) _wPushNow(keepalive); }
+function _wStop(){ if(_wPushT){ clearTimeout(_wPushT); _wPushT=null; } _wPushPending=false; }
+addEventListener('visibilitychange',()=>{ if(!document.hidden&&_wAuthed()&&Date.now()-_wLastPull>WATCH_PULL_MIN) syncPull(); });
+addEventListener('focus',()=>{ if(_wAuthed()&&Date.now()-_wLastPull>WATCH_PULL_MIN) syncPull(); });
+addEventListener('pagehide',()=>{ try{ syncFlush(true); }catch(e){} });
 
 /* ============================================================
    USER SETTINGS — Stremio-style player / interface preferences.
@@ -8418,7 +8485,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       if(r.ok && !AUTH.user) window.setSessionToken('');
     }catch(e){ AUTH.user=null; }
     updateAuthUI();
-    if(AUTH.user){ try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} }
+    if(AUTH.user){ try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} }
   }
 
   /* ---- routing with guards (direct #addons/#settings URLs are blocked too) ---- */
@@ -8503,13 +8570,14 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       window.setSessionToken(data.token||'');   // persist for cross-restart sign-in
       const intent=authIntent;
       closeAuth(); updateAuthUI();
-      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){}
+      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){}
       toast(t('auth.signed_in')+(AUTH.user&&AUTH.user.email?(' · '+AUTH.user.email):''),'var(--success)');
       navigate(intent||'browse');
     }catch(e){ $('authError').textContent=t('auth.err_backend'); setLoading(false); }
   }
 
   async function doLogout(){
+    try{ syncFlush(true); _wStop(); }catch(e){}   // save any pending watch progress before the session ends
     try{ await fetch('/api/auth/logout',{method:'POST'}); }catch(e){}
     window.setSessionToken('');   // drop the persisted token so we don't re-auth
     AUTH.user=null; window.HAS_DEBRID=false; window.saturn={langs:['ka','en','ru','uk']};
@@ -8558,7 +8626,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       if(!r.ok){ $('authError').textContent=data.error||t('auth.err_generic'); return; }
       AUTH.user=data.user||null; window.setSessionToken(data.token||''); const intent=authIntent;
       closeAuth(); updateAuthUI();
-      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){}
+      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){}
       toast(t('auth.signed_in')+(AUTH.user&&AUTH.user.email?(' · '+AUTH.user.email):''),'var(--success)');
       navigate(intent||'browse');
     }catch(e){ $('authError').textContent=t('auth.err_backend'); }

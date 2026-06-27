@@ -557,3 +557,27 @@ export async function setUserSaturn(id, saturn) {
   await writeUsers(users);
   return u.saturn || null;
 }
+
+/* ------------------------------------------------------------------ *
+ *  Per-user watch state — Continue Watching history + resume progress
+ *
+ *  Unlike addons (shared config), each account's watch history and resume
+ *  timecodes are private and sync across that user's devices. Stored as its OWN
+ *  per-user document (watch-<id>) rather than on the user record, so the hot
+ *  readUsers() path that runs on every authed request stays small. Shape:
+ *    { history:[…], progress:{ key:{pos,dur,at} }, removed:{ id:at }, updatedAt }
+ *  `removed` is a tombstone map so a title deleted from the rail on one device
+ *  doesn't resurrect from another device's older copy on the next sync.
+ * ------------------------------------------------------------------ */
+const WATCH_DEFAULT = () => ({ history: [], progress: {}, removed: {} });
+const watchFile = (id) => join(DATA_DIR, 'watch-' + String(id).replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
+export async function getUserWatch(id) {
+  if (!id) return WATCH_DEFAULT();
+  const doc = await readJson(watchFile(id), null);
+  return (doc && typeof doc === 'object') ? doc : WATCH_DEFAULT();
+}
+export async function setUserWatch(id, data) {
+  if (!id) return null;
+  await writeJson(watchFile(id), data);
+  return data;
+}
