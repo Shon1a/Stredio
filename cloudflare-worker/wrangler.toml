@@ -1,0 +1,10 @@
+# Wrangler config for the STREDIO image CDN Worker.
+# Only needed if you deploy via the `wrangler` CLI (Option B in README.md).
+# If you deploy by pasting worker.js into the dashboard (Option A), ignore this.
+
+name = "stredio-img"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# After first deploy your Worker lives at:
+#   https://stredio-img.<your-cloudflare-subdomain>.workers.dev

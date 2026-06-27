@@ -47,6 +47,16 @@ const IMGBACK = 'https://image.tmdb.org/t/p/original';   // landscape backdrop f
 const IMGFACE = 'https://image.tmdb.org/t/p/w185';       // compact avatars for the "Casts & Credits" rail
 const IMGSTILL = 'https://image.tmdb.org/t/p/w300';      // 16:9 episode-card stills (light — cards are ~190px wide)
 
+// Where the media byte-proxy lives. Production sets STREAM_PROXY_BASE to the
+// Cloudflare Worker origin (e.g. https://stredio-stream.<sub>.workers.dev) so
+// video bytes never transit this origin — Cloudflare doesn't meter Worker
+// bandwidth (Render's free tier does, which is what got us suspended). Unset →
+// same-origin Express /api/stream-proxy (local dev). Both expose the identical
+// /stream-proxy?src=&ref=&t=hls request shape, so flipping the env var is the
+// whole switch — and unsetting it instantly reverts to origin-proxying.
+const STREAM_PROXY_BASE = (process.env.STREAM_PROXY_BASE || '').replace(/\/+$/, '');
+const STREAM_PROXY_PATH = STREAM_PROXY_BASE ? STREAM_PROXY_BASE + '/stream-proxy' : '/api/stream-proxy';
+
 const app = express();
 app.disable('x-powered-by');
 // gzip/deflate every text response (HTML/JS/CSS/JSON). The frontend shell is a
@@ -113,7 +123,12 @@ app.use((req, res, next) => {
     // an explicit worker-src the script-src fallback blocks it, forcing slower
     // main-thread playback (and a console error) for every HLS source.
     "worker-src 'self' blob:",
-    "connect-src 'self' https://accounts.google.com",
+    // hls.js fetches playlists/segments via XHR (connect-src). When streams are
+    // proxied through the Cloudflare Worker, its origin must be allowed here so
+    // those cross-origin fetches aren't blocked. (<video> for direct files is
+    // already covered by media-src's https:.) Derived from STREAM_PROXY_BASE so
+    // CSP and the proxy URLs can never drift apart.
+    "connect-src 'self' https://accounts.google.com" + (STREAM_PROXY_BASE ? ' ' + STREAM_PROXY_BASE : ''),
     // the detail modal embeds a muted YouTube trailer via the privacy-enhanced domain;
     // accounts.google.com renders the Google Sign-In button/consent inside an iframe
     "frame-src https://www.youtube-nocookie.com https://www.youtube.com https://accounts.google.com",
@@ -1491,16 +1506,25 @@ function mapStream(s, addonName) {
   // streamType:'hls'; fall back to sniffing the URL.
   const isHls = !isTorrent && url &&
     (s.behaviorHints?.streamType === 'hls' || /\.(m3u8|txt)(\?|$)/i.test(url) || /\/hls\//i.test(url));
-  const proxify = (u, ref, hls) => '/api/stream-proxy?src=' + encodeURIComponent(u) +
+  const proxify = (u, ref, hls) => STREAM_PROXY_PATH + '?src=' + encodeURIComponent(u) +
     '&ref=' + encodeURIComponent(ref) + (hls ? '&t=hls' : '');
-  // Route through the same-origin proxy when either:
+  // hdrezka's CDN (*.voidboost.cc) is a special case: it IP-binds its signed
+  // 302 target to whoever resolves it AND blocks datacenter/Cloudflare ASNs, so
+  // ANY server-side proxy (origin OR the Worker) gets a 404. But it enforces no
+  // Referer and returns CORS '*', so the viewer's browser can fetch it directly:
+  // the browser follows the 302 itself, binding the URL to the viewer's own IP.
+  // Leave these un-proxied → they play browser-direct via <video> (CSP media-src
+  // 'self' blob: https: permits it) with ZERO proxy bandwidth, instead of 404ing.
+  let directHost = ''; try { directHost = new URL(url || '').hostname; } catch { /* keep '' */ }
+  const playDirect = !!url && /(^|\.)voidboost\.cc$/i.test(directHost);
+  // Route through the proxy (Worker in prod, same-origin in dev) when either:
   //  • the addon needs Referer-gated headers the browser can't set (proxyRef), or
   //  • it's HLS — hls.js fetches playlists/segments via XHR, which the page CSP
-  //    (connect-src 'self') blocks for any cross-origin addon URL. The proxy
-  //    rewrites child URIs back through itself, so segments stay same-origin too.
-  // Direct (non-HLS) files without proxyRef are left as-is: they play via the
-  // <video> tag, which CSP media-src ('self' blob: https:) already permits.
-  if (url && (proxyRef || isHls)) {
+  //    blocks for cross-origin URLs unless the proxy host is allowed; the proxy
+  //    also rewrites child URIs back through itself and adds CORS for locked CDNs.
+  // Direct (non-HLS) files without proxyRef — and any playDirect host above — are
+  // left as-is: they play via the <video> tag, which CSP media-src already permits.
+  if (url && !playDirect && (proxyRef || isHls)) {
     url = proxify(url, proxyRef || '', isHls);
   }
   // Audio language tag → drives the modal's language tabs (GE / GB / RU):
@@ -2010,7 +2034,7 @@ app.get('/api/subtitle', async (req, res) => {
  * ------------------------------------------------------------------ */
 const PROXY_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
 function proxify(absUrl, ref, asHls) {
-  return '/api/stream-proxy?src=' + encodeURIComponent(absUrl) + '&ref=' + encodeURIComponent(ref) + (asHls ? '&t=hls' : '');
+  return STREAM_PROXY_PATH + '?src=' + encodeURIComponent(absUrl) + '&ref=' + encodeURIComponent(ref) + (asHls ? '&t=hls' : '');
 }
 function rewriteHlsPlaylist(text, baseUrl, ref) {
   const out = [];
