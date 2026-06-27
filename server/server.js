@@ -40,13 +40,14 @@ const PORT = process.env.PORT || 8787;
 const TMDB_BEARER = process.env.TMDB_BEARER?.trim();
 const TMDB_API_KEY = process.env.TMDB_API_KEY?.trim();
 const HAS_TMDB = !!(TMDB_BEARER || TMDB_API_KEY);
-// Poster/backdrop CDN: the Cloudflare image Worker (stredio-img) is a 30-day
-// edge cache in front of TMDB with an IDENTICAL /t/p/<size>/<file> request
-// shape, so this is a pure host swap. Defaults to the Worker so it's active
-// without extra env config; set IMG_CDN_BASE=https://image.tmdb.org to fall
-// back to TMDB directly. Cloudflare doesn't meter Worker bandwidth, and images
-// never touched the origin anyway — this is purely faster + more resilient.
-const IMG_CDN_BASE = (process.env.IMG_CDN_BASE || 'https://stredio-img.shonomusicofficial.workers.dev').replace(/\/+$/, '');
+// Poster/backdrop CDN. Defaults to TMDB directly: image.tmdb.org is already a
+// fast global CDN that serves WebP straight to browsers, so fronting it with our
+// own Worker only hurt — the Worker's per-region cache starts cold, adding an
+// extra hop on every miss (measurably slower on mobile) plus an error surface,
+// with no WebP gain. The stredio-img Worker stays opt-in via IMG_CDN_BASE for
+// any future case where a cache in front genuinely helps. Either way images go
+// browser→CDN directly and never touch the origin's bandwidth.
+const IMG_CDN_BASE = (process.env.IMG_CDN_BASE || 'https://image.tmdb.org').replace(/\/+$/, '');
 const IMG = IMG_CDN_BASE + '/t/p/w500';
 // hero backdrop at TMDB's full source resolution (`original`) — frequently true
 // 4K (3840x2160) for modern titles — so the full-bleed featured hero stays crisp
