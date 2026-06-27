@@ -581,3 +581,23 @@ export async function setUserWatch(id, data) {
   await writeJson(watchFile(id), data);
   return data;
 }
+
+/* ------------------------------------------------------------------ *
+ *  Per-user add-on install state — which official rows + Saturn the account
+ *  has toggled on. Tiny (a handful of booleans), so it rides on the user
+ *  record like Saturn config. Shape: { map:{ id:bool }, at:ms }; the newer
+ *  `at` wins across devices (last-write-wins, no merge needed for toggles).
+ * ------------------------------------------------------------------ */
+export async function getUserAddonState(id) {
+  if (!id) return null;
+  const users = await readUsers();
+  return users.find(x => x.id === id)?.addonState || null;
+}
+export async function setUserAddonState(id, data) {
+  const users = await readUsers();
+  const u = users.find(x => x.id === id);
+  if (!u) return null;
+  u.addonState = data;
+  await writeUsers(users);
+  return u.addonState;
+}

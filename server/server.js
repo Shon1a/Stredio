@@ -17,6 +17,7 @@ import {
   createSession, destroySession, sessionCookie, clearCookie,
   getUserSaturn, setUserSaturn,
   getUserWatch, setUserWatch,
+  getUserAddonState, setUserAddonState,
 } from './auth.js';
 import * as covers from './covers.js';
 import * as logoStore from './logos.js';
@@ -2301,6 +2302,28 @@ app.put('/api/watch-state', requireAuth, async (req, res) => {
   const merged = mergeWatchState(await getUserWatch(req.user.id), incoming);
   await setUserWatch(req.user.id, merged);
   res.json(merged);
+});
+
+/* Per-user add-on install state (which official rows + Saturn are toggled on),
+ * synced across the account's devices. Last-write-wins by `at` — a stale device
+ * can't clobber a newer toggle. The URL-installed community add-ons stay in the
+ * shared addons store; this is only the per-account on/off toggles. */
+app.get('/api/addon-state', requireAuth, async (req, res) => {
+  const s = await getUserAddonState(req.user.id);
+  res.json((s && typeof s === 'object') ? { map: s.map || {}, at: +s.at || 0 } : { map: {}, at: 0 });
+});
+app.put('/api/addon-state', requireAuth, async (req, res) => {
+  const b = req.body || {};
+  const incoming = {
+    map: (b.map && typeof b.map === 'object' && !Array.isArray(b.map)) ? b.map : {},
+    at: +b.at || 0,
+  };
+  const stored = await getUserAddonState(req.user.id);
+  if (stored && (+stored.at || 0) > incoming.at) {        // stored is newer → keep it
+    return res.json({ map: stored.map || {}, at: +stored.at || 0 });
+  }
+  await setUserAddonState(req.user.id, incoming);
+  res.json(incoming);
 });
 
 /* ------------------------------------------------------------------ *

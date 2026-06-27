@@ -7964,9 +7964,53 @@ const ADDON_KEY='stredio.addons';
     ADDONS.forEach(a=>{if(!a.locked&&typeof s[a.id]==='boolean')a.installed=s[a.id]});}
   catch(e){ try{localStorage.removeItem(ADDON_KEY);}catch(_){} } // reset corrupt state instead of failing forever
 })();
+/* Install state syncs per-account (so Saturn + toggled rows follow you across
+   devices), last-write-wins by timestamp. localStorage stays the source of truth
+   for guests/offline; `owner` guards against one account inheriting another's
+   toggles on a shared browser. */
+const ADDON_AT_KEY='stredio.addons.at', ADDON_OWNER_KEY='stredio.addons.owner';
+function addonStateMap(){ const s={}; ADDONS.forEach(a=>{ if(!a.locked) s[a.id]=a.installed; }); return s; }
+function localAddonAt(){ try{ return +localStorage.getItem(ADDON_AT_KEY)||0; }catch(e){ return 0; } }
+function writeAddonState(map,at){
+  try{ localStorage.setItem(ADDON_KEY,JSON.stringify(map)); }catch(e){}
+  try{ localStorage.setItem(ADDON_AT_KEY,String(at)); }catch(e){}
+}
+function pushAddonState(at){
+  if(!_wAuthed()) return;
+  try{ fetch('/api/addon-state',{method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({map:addonStateMap(),at:at||localAddonAt()||Date.now()})}).catch(()=>{}); }catch(e){}
+}
 function saveAddonState(){
-  const s={};ADDONS.forEach(a=>{if(!a.locked)s[a.id]=a.installed;});
-  try{localStorage.setItem(ADDON_KEY,JSON.stringify(s))}catch(e){}
+  const at=Date.now();
+  writeAddonState(addonStateMap(),at);
+  try{ localStorage.setItem(ADDON_OWNER_KEY,(window.AUTH&&AUTH.user&&AUTH.user.email)||''); }catch(e){}
+  pushAddonState(at);
+}
+function applyAddonsUI(){
+  try{ if(typeof renderAddons==='function') renderAddons(); }catch(e){}
+  try{ if(typeof renderUpcomingSection==='function') renderUpcomingSection(); }catch(e){}
+  try{ if(typeof renderStudioSection==='function') renderStudioSection(); }catch(e){}
+  try{ if(typeof renderCatalogSection==='function') renderCatalogSection(); }catch(e){}
+  try{ if(typeof renderProviderSection==='function') renderProviderSection(); }catch(e){}
+  try{ if(typeof syncSaturnPlayback==='function') syncSaturnPlayback(); }catch(e){}
+}
+async function pullAddonState(){
+  if(!_wAuthed()) return;
+  const email=(AUTH.user&&AUTH.user.email)||'';
+  let owner=''; try{ owner=localStorage.getItem(ADDON_OWNER_KEY)||''; }catch(e){}
+  const diffUser=owner&&owner!==email;
+  try{
+    const r=await fetch('/api/addon-state'); if(!r.ok) return;
+    const remote=await r.json(); const rAt=+remote.at||0, lAt=localAddonAt();
+    const hasRemote=remote.map&&typeof remote.map==='object'&&Object.keys(remote.map).length>0;
+    if(hasRemote&&(rAt>lAt||diffUser)){            // server is newer, or a different account → adopt it
+      ADDONS.forEach(a=>{ if(!a.locked&&typeof remote.map[a.id]==='boolean') a.installed=remote.map[a.id]; });
+      writeAddonState(addonStateMap(),rAt); applyAddonsUI();
+    } else if(!diffUser&&(!hasRemote||lAt>=rAt)){  // we own it and local is newer/first → upload
+      pushAddonState(lAt||Date.now());
+    }
+    try{ localStorage.setItem(ADDON_OWNER_KEY,email); }catch(e){}
+  }catch(e){}
 }
 /* Is a community streaming source installed? Saturn (Torrentio + Georgian Dubbed)
    is the only real one — when it's not installed the player surfaces NO third-party
@@ -8485,7 +8529,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       if(r.ok && !AUTH.user) window.setSessionToken('');
     }catch(e){ AUTH.user=null; }
     updateAuthUI();
-    if(AUTH.user){ try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} }
+    if(AUTH.user){ try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){} }
   }
 
   /* ---- routing with guards (direct #addons/#settings URLs are blocked too) ---- */
@@ -8570,7 +8614,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       window.setSessionToken(data.token||'');   // persist for cross-restart sign-in
       const intent=authIntent;
       closeAuth(); updateAuthUI();
-      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){}
+      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){}
       toast(t('auth.signed_in')+(AUTH.user&&AUTH.user.email?(' · '+AUTH.user.email):''),'var(--success)');
       navigate(intent||'browse');
     }catch(e){ $('authError').textContent=t('auth.err_backend'); setLoading(false); }
@@ -8626,7 +8670,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       if(!r.ok){ $('authError').textContent=data.error||t('auth.err_generic'); return; }
       AUTH.user=data.user||null; window.setSessionToken(data.token||''); const intent=authIntent;
       closeAuth(); updateAuthUI();
-      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){}
+      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){}
       toast(t('auth.signed_in')+(AUTH.user&&AUTH.user.email?(' · '+AUTH.user.email):''),'var(--success)');
       navigate(intent||'browse');
     }catch(e){ $('authError').textContent=t('auth.err_backend'); }
