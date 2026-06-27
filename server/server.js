@@ -96,7 +96,7 @@ app.use((req, res, next) => {
     res.set('Access-Control-Allow-Origin', origin);
     res.set('Access-Control-Allow-Credentials', 'true');
     res.set('Vary', 'Origin');
-    res.set('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+    res.set('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
     // Authorization is required for the Bearer-token fallback: mobile browsers
     // (iOS Safari) block cross-site cookies, so the frontend replays the session
     // as `Authorization: Bearer …`. That header forces a CORS preflight, which
