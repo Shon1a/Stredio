@@ -16,6 +16,8 @@ import {
   createUser, authenticate, authenticateGoogle, googleConfigured, googleClientId,
   createSession, destroySession, sessionCookie, clearCookie,
   getUserSaturn, setUserSaturn,
+  getUserWatch, setUserWatch,
+  getUserAddonState, setUserAddonState,
 } from './auth.js';
 import * as covers from './covers.js';
 import * as logoStore from './logos.js';
@@ -2240,6 +2242,88 @@ app.post('/api/saturn/config', requireAuth, async (req, res) => {
 app.delete('/api/saturn', requireAuth, async (req, res) => {
   await setUserSaturn(req.user.id, null);
   res.json(saturnPublic(null));
+});
+
+/* ------------------------------------------------------------------ *
+ *  Watch state — Continue Watching history + resume progress, synced
+ *  across a signed-in user's devices. The browser keeps localStorage as the
+ *  instant source of truth and PUSHes here throttled (~once/25s of activity),
+ *  so a 2-hour watch is a handful of writes — gentle on the Postgres/Neon
+ *  free tier. PUT MERGES with the stored doc (newest-per-id history, newest-
+ *  per-key progress, tombstones for removals) so two devices never clobber.
+ * ------------------------------------------------------------------ */
+const WATCH_HISTORY_CAP = 60;
+const WATCH_PROGRESS_CAP = 240;
+const WATCH_TOMB_TTL = 30 * 24 * 60 * 60 * 1000;  // forget a removal after 30 days
+function mergeWatchState(stored, incoming) {
+  const s = stored || {}, i = incoming || {};
+  const now = Date.now();
+  // tombstones (history removals): id -> at; keep newest, prune stale
+  const removed = {};
+  for (const src of [s.removed || {}, i.removed || {}]) {
+    for (const id of Object.keys(src)) { const at = +src[id] || 0; if (at > (removed[id] || 0)) removed[id] = at; }
+  }
+  for (const id of Object.keys(removed)) { if (now - removed[id] > WATCH_TOMB_TTL) delete removed[id]; }
+  // history: union by id (newest `at`), drop tombstoned, sort newest-first, cap
+  const hMap = new Map();
+  for (const e of [...(s.history || []), ...(i.history || [])]) {
+    if (!e || e.id == null) continue;
+    const id = String(e.id), prev = hMap.get(id);
+    if (!prev || (+e.at || 0) > (+prev.at || 0)) hMap.set(id, e);
+  }
+  const history = [...hMap.values()]
+    .filter(e => { const t = removed[String(e.id)]; return !(t && t >= (+e.at || 0)); })
+    .sort((a, b) => (+b.at || 0) - (+a.at || 0))
+    .slice(0, WATCH_HISTORY_CAP);
+  // progress: union by key (newest `at`), cap to most-recent keys
+  const sp = s.progress || {}, ip = i.progress || {}, pm = {};
+  for (const k of new Set([...Object.keys(sp), ...Object.keys(ip)])) {
+    const a = sp[k], b = ip[k];
+    pm[k] = (!a || (b && (+b.at || 0) >= (+a.at || 0))) ? (b || a) : a;
+  }
+  const progress = {};
+  Object.keys(pm).sort((a, b) => (+pm[b].at || 0) - (+pm[a].at || 0)).slice(0, WATCH_PROGRESS_CAP)
+    .forEach(k => { progress[k] = pm[k]; });
+  return { history, progress, removed, updatedAt: now };
+}
+
+app.get('/api/watch-state', requireAuth, async (req, res) => {
+  const d = await getUserWatch(req.user.id);
+  res.json({ history: d.history || [], progress: d.progress || {}, removed: d.removed || {} });
+});
+
+app.put('/api/watch-state', requireAuth, async (req, res) => {
+  const b = req.body || {};
+  const incoming = {
+    history: Array.isArray(b.history) ? b.history.slice(0, 200) : [],
+    progress: (b.progress && typeof b.progress === 'object' && !Array.isArray(b.progress)) ? b.progress : {},
+    removed: (b.removed && typeof b.removed === 'object' && !Array.isArray(b.removed)) ? b.removed : {},
+  };
+  const merged = mergeWatchState(await getUserWatch(req.user.id), incoming);
+  await setUserWatch(req.user.id, merged);
+  res.json(merged);
+});
+
+/* Per-user add-on install state (which official rows + Saturn are toggled on),
+ * synced across the account's devices. Last-write-wins by `at` — a stale device
+ * can't clobber a newer toggle. The URL-installed community add-ons stay in the
+ * shared addons store; this is only the per-account on/off toggles. */
+app.get('/api/addon-state', requireAuth, async (req, res) => {
+  const s = await getUserAddonState(req.user.id);
+  res.json((s && typeof s === 'object') ? { map: s.map || {}, at: +s.at || 0 } : { map: {}, at: 0 });
+});
+app.put('/api/addon-state', requireAuth, async (req, res) => {
+  const b = req.body || {};
+  const incoming = {
+    map: (b.map && typeof b.map === 'object' && !Array.isArray(b.map)) ? b.map : {},
+    at: +b.at || 0,
+  };
+  const stored = await getUserAddonState(req.user.id);
+  if (stored && (+stored.at || 0) > incoming.at) {        // stored is newer → keep it
+    return res.json({ map: stored.map || {}, at: +stored.at || 0 });
+  }
+  await setUserAddonState(req.user.id, incoming);
+  res.json(incoming);
 });
 
 /* ------------------------------------------------------------------ *
