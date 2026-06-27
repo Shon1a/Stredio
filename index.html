@@ -1006,6 +1006,11 @@
   .m-hero-bg:hover{transform:none;box-shadow:none;border-color:transparent}
   .m-hero-bg .art{position:absolute;inset:0;padding:0}
   .m-hero-bg .art img,.m-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  /* ambient placeholder = the portrait grid poster, blurred+dimmed so it reads as backdrop art
+     (never a stretched poster); the real landscape backdrop crossfades in over it on load */
+  .m-hero-bg .art img.m-ambient{filter:blur(28px) brightness(.45) saturate(1.1);transform:scale(1.15)}
+  .m-hero-bg .art img.m-backdrop{opacity:0;transition:opacity .55s ease}
+  .m-hero-bg .art img.m-backdrop.rdy{opacity:1}
   .m-hero-trailer-slot{position:absolute;inset:0;z-index:1}
   /* scale the embed up + center it so YouTube's top title bar / chrome is cropped outside
      the 16:9 hero (the slot is overflow:hidden). Keeps the muted trailer chrome-free. */
@@ -6101,8 +6106,9 @@ function openInfoModal(ds){
   const mp=document.getElementById('mPoster');
   const h=HUES[(+ds.s||0)%HUES.length];
   mp.style.background=`linear-gradient(155deg,hsl(${h} 30% 12%),hsl(${h} 22% 6%))`;
-  // instant placeholder = the grid poster (enrichModalMeta swaps in the landscape backdrop)
-  mp.innerHTML=ds.p?`<div class="art" style="position:absolute;inset:0"><img src="${esc(ds.p)}" loading="lazy" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()"/></div>`:'';
+  // instant placeholder = the grid poster, blurred into ambient backdrop art (never a stretched
+  // poster). enrichModalMeta crossfades the real landscape backdrop in over this on load.
+  mp.innerHTML=ds.p?`<div class="art" style="position:absolute;inset:0"><img class="m-ambient" src="${esc(ds.p)}" loading="lazy" alt="" onerror="this.remove()"/></div>`:'';
   currentTitle=ds.t;currentYear=ds.y;
   // snapshot the title for watch-history; recordWatch() reads this when playback starts
   window.currentTitleMeta={ id:ds.id||'', title:ds.t||'', year:ds.y||'', type:ds.type||'movie',
@@ -6168,7 +6174,16 @@ function enrichModalMeta(meta){
   // hero wants a landscape image. Ken-Burns runs on the container, so the swap is seamless;
   // with no backdrop we keep the poster/HUES gradient already painted by openInfoModal.
   if(meta.backdrop){
-    document.getElementById('mPoster').innerHTML=`<div class="art" style="position:absolute;inset:0"><img src="${esc(meta.backdrop)}" alt="" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()"/></div>`;
+    // Crossfade the landscape backdrop in over the blurred ambient placeholder instead of a
+    // hard innerHTML swap — that hard swap is what made the open look like "two screens".
+    const mp=document.getElementById('mPoster');
+    const wrap=document.createElement('div'); wrap.className='art'; wrap.style.cssText='position:absolute;inset:0';
+    const img=document.createElement('img'); img.className='m-backdrop'; img.alt=''; img.decoding='async';
+    img.onload=()=>img.classList.add('rdy');
+    img.onerror=()=>wrap.remove();
+    img.src=meta.backdrop;
+    if(img.complete)img.classList.add('rdy');   // already cached → fade-in target is instant
+    wrap.appendChild(img); mp.appendChild(wrap);
   }
   const isTv=window.currentMediaType==='series';
   // tagline eyebrow + synopsis
