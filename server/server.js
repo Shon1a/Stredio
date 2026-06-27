@@ -38,14 +38,21 @@ const PORT = process.env.PORT || 8787;
 const TMDB_BEARER = process.env.TMDB_BEARER?.trim();
 const TMDB_API_KEY = process.env.TMDB_API_KEY?.trim();
 const HAS_TMDB = !!(TMDB_BEARER || TMDB_API_KEY);
-const IMG = 'https://image.tmdb.org/t/p/w500';
+// Poster/backdrop CDN: the Cloudflare image Worker (stredio-img) is a 30-day
+// edge cache in front of TMDB with an IDENTICAL /t/p/<size>/<file> request
+// shape, so this is a pure host swap. Defaults to the Worker so it's active
+// without extra env config; set IMG_CDN_BASE=https://image.tmdb.org to fall
+// back to TMDB directly. Cloudflare doesn't meter Worker bandwidth, and images
+// never touched the origin anyway — this is purely faster + more resilient.
+const IMG_CDN_BASE = (process.env.IMG_CDN_BASE || 'https://stredio-img.shonomusicofficial.workers.dev').replace(/\/+$/, '');
+const IMG = IMG_CDN_BASE + '/t/p/w500';
 // hero backdrop at TMDB's full source resolution (`original`) — frequently true
 // 4K (3840x2160) for modern titles — so the full-bleed featured hero stays crisp
 // on large/retina displays. `original` is backdrop-only, so the small poster
 // cards (IMG/w500) are unaffected and bandwidth stays scoped to the one hero image.
-const IMGBACK = 'https://image.tmdb.org/t/p/original';   // landscape backdrop for the hero banner
-const IMGFACE = 'https://image.tmdb.org/t/p/w185';       // compact avatars for the "Casts & Credits" rail
-const IMGSTILL = 'https://image.tmdb.org/t/p/w300';      // 16:9 episode-card stills (light — cards are ~190px wide)
+const IMGBACK = IMG_CDN_BASE + '/t/p/original';   // landscape backdrop for the hero banner
+const IMGFACE = IMG_CDN_BASE + '/t/p/w185';       // compact avatars for the "Casts & Credits" rail
+const IMGSTILL = IMG_CDN_BASE + '/t/p/w300';      // 16:9 episode-card stills (light — cards are ~190px wide)
 
 // Where the media byte-proxy lives. Production sets STREAM_PROXY_BASE to the
 // Cloudflare Worker origin (e.g. https://stredio-stream.<sub>.workers.dev) so

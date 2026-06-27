@@ -25,6 +25,7 @@
 <!-- perf: warm up external origins before the requests are made -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://stredio-img.shonomusicofficial.workers.dev" crossorigin />
 <link rel="dns-prefetch" href="https://image.tmdb.org" />
 <!-- Minow Knock: self-hosted display face for the intro sting. Same-origin so it loads fast
      and reliably (no CDN/CSP latency that made the font-gate miss and swap mid-zoom). Declared
@@ -4240,7 +4241,7 @@ function pcard(it,seed,opts){
 }
 
 /* ---------- home: seven categorised rows + featured hero ---------- */
-const LOGO_BASE='https://image.tmdb.org/t/p/w300';
+const LOGO_BASE='https://stredio-img.shonomusicofficial.workers.dev/t/p/w300';
 /* studio cards → server-side STUDIO_COMPANIES key. Logos are TMDB company logos
    rendered full-colour on a light plate (see .studio-card CSS — flattening them to
    white silhouettes turned emblem marks into blobs). Order matches the layout. */
