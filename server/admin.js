@@ -149,7 +149,7 @@ const SELFCHECK_BATCH = [
 
 /* Computed, severity-ranked alerts derived entirely from already-available state —
    no external calls. Surfaced as a cross-view banner in the dashboard. */
-function computeAlerts({ cstats, debrid, hasTmdb, reliability }) {
+function computeAlerts({ cstats, hasTmdb, reliability }) {
   const out = [];
   const push = (level, scope, message) => out.push({ level, scope, message });
   if (!hasTmdb) push('critical', 'system', 'TMDB is not configured — the catalog is offline.');
@@ -159,17 +159,6 @@ function computeAlerts({ cstats, debrid, hasTmdb, reliability }) {
   // hour) — a stale boot-time fallback count shouldn't nag forever.
   const recentFallback = (reliability.fallbacks || []).some(f => Date.now() - new Date(f.at).getTime() < 3600e3);
   if (recentFallback) push('warn', 'overview', `Served English instead of Georgian ${reliability.fellBack} time(s) since boot — translation is degrading.`);
-  // Debrid secret expiry (uses the stored expiration; no live call).
-  for (const [prov, rec] of Object.entries(debrid || {})) {
-    if (!rec || !rec.token || !rec.expiration) continue;
-    const ms = new Date(rec.expiration).getTime() - Date.now();
-    if (Number.isNaN(ms)) continue;
-    const days = ms / 86400000;
-    const label = prov === 'realdebrid' ? 'Real-Debrid' : prov === 'torbox' ? 'TorBox' : prov;
-    if (ms < 0) push('critical', 'integrations', `${label} subscription has expired — streams will stop resolving.`);
-    else if (days < 3) push('warn', 'integrations', `${label} expires in ${Math.ceil(days)} day(s).`);
-    else if (days < 7) push('info', 'integrations', `${label} expires in ${Math.ceil(days)} days.`);
-  }
   if (cstats.flagged > 0) push('info', 'covers', `${cstats.flagged} cover(s) flagged for review.`);
   return out;
 }
@@ -178,7 +167,7 @@ export function createAdminRouter(deps) {
   const {
     kaCache, scheduleCacheSave, mtTranslateBatch,
     tmdb, IMG, IMGBACK, readSettings, writeSettings, readAddons, hasTmdb, dataDir,
-    translationMetrics, addons: addonDeps, debrid: debridDeps, serverConfig,
+    translationMetrics, addons: addonDeps, serverConfig,
   } = deps;
   const router = express.Router();
   const wrap = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
@@ -200,8 +189,6 @@ export function createAdminRouter(deps) {
       countAdmins(), countActiveSessions(), readAddons().then(a => a.length).catch(() => 0),
     ]);
     const users = await listUsers();
-    const settings = await readSettings().catch(() => ({}));
-    const debrid = settings.debrid || {};
     const cstats = covers.stats();
     const reliability = translationMetrics ? translationMetrics() : null;
     res.json({
@@ -209,9 +196,8 @@ export function createAdminRouter(deps) {
       translations: { entries: entries.length, suspicious, bytes, glossary: glossary.list().counts, reliability, engine: 'Google Translate' },
       covers: cstats,
       addons,
-      debrid: Object.keys(debrid).filter(p => debrid[p] && debrid[p].token),
       system: await systemInfo(hasTmdb, dataDir),
-      alerts: reliability ? computeAlerts({ cstats, debrid, hasTmdb, reliability }) : [],
+      alerts: reliability ? computeAlerts({ cstats, hasTmdb, reliability }) : [],
     });
   }));
 
@@ -636,35 +622,10 @@ export function createAdminRouter(deps) {
   router.get('/addons', wrap(async (req, res) => {
     res.json({ addons: await readAddons() });
   }));
-  router.post('/addons', wrap(async (req, res) => {
-    if (!addonDeps) return res.status(501).json({ error: 'Addon management unavailable' });
-    const url = addonDeps.normalizeManifestUrl((req.body || {}).url);
-    if (!url) return res.status(400).json({ error: 'Invalid manifest URL' });
-    if (!addonDeps.isSafeFetchUrl(url)) return res.status(400).json({ error: 'That host is not allowed (private/loopback addresses are blocked)' });
-    let manifest;
-    try {
-      const r = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
-      if (!r.ok) return res.status(502).json({ error: `Addon responded ${r.status}` });
-      manifest = await r.json();
-    } catch (e) { return res.status(502).json({ error: 'Could not fetch manifest: ' + (e.message || 'network error') }); }
-    const problem = addonDeps.validateManifest(manifest);
-    if (problem) return res.status(422).json({ error: problem });
-    const list = await readAddons();
-    if (list.some(a => a.manifest.id === manifest.id)) return res.status(409).json({ error: `Addon "${manifest.name}" is already installed` });
-    const record = {
-      id: manifest.id, url, installedAt: new Date().toISOString(),
-      manifest: {
-        id: manifest.id, name: manifest.name, version: manifest.version || '—',
-        description: manifest.description || '', types: manifest.types,
-        resources: manifest.resources.map(r => (typeof r === 'string' ? r : r.name)),
-        catalogs: Array.isArray(manifest.catalogs) ? manifest.catalogs.map(c => ({ type: c.type, id: c.id, name: c.name || c.id })) : [],
-      },
-    };
-    list.push(record);
-    await addonDeps.writeAddons(list);
-    recordActivity('addon', `Installed addon: ${record.manifest.name}`);
-    res.status(201).json({ addon: record });
-  }));
+  // Add-on INSTALL is intentionally NOT available server-side. STREDIO's server never
+  // contacts an add-on — no manifest fetch, no streams. The shared default add-ons are
+  // seeded in data/addons.json; users install their own in the app (browser-validated,
+  // see POST /api/addons). Admins may only LIST and REMOVE here.
   router.delete('/addons/:id', wrap(async (req, res) => {
     if (!addonDeps) return res.status(501).json({ error: 'Addon management unavailable' });
     const list = await readAddons();
@@ -673,41 +634,6 @@ export function createAdminRouter(deps) {
     await addonDeps.writeAddons(next);
     recordActivity('addon', `Removed addon: ${req.params.id}`);
     res.json({ removed: req.params.id });
-  }));
-
-  /* ================= Integrations: debrid accounts (Real-Debrid / TorBox) ======== */
-  router.get('/debrid', wrap(async (req, res) => {
-    const d = (await readSettings()).debrid || {};
-    const providers = {};
-    for (const [p, def] of Object.entries(debridDeps.providers)) {
-      providers[p] = { label: def.label, ...debridDeps.providerStatus(d[p]) };
-    }
-    res.json({ providers });
-  }));
-  router.post('/debrid', wrap(async (req, res) => {
-    const provider = (req.body || {}).provider || 'realdebrid';
-    const token = String((req.body || {}).token || '').trim();
-    const def = debridDeps.providers[provider];
-    if (!def) return res.status(400).json({ error: 'Unsupported debrid provider' });
-    if (!token) return res.status(400).json({ error: `Paste your ${def.label} API token` });
-    try {
-      const rec = await def.validate(token);   // validates upstream
-      const s = await readSettings();
-      s.debrid = { ...(s.debrid || {}), [provider]: rec };
-      await writeSettings(s);
-      recordActivity('debrid', `${def.label} token saved (${rec.username || 'account'})`);
-      res.json({ provider, label: def.label, ...debridDeps.providerStatus(rec) });
-    } catch (e) {
-      res.status(e.code === 'DEBRID_AUTH' ? 401 : 502).json({ error: e.message || 'Could not validate token' });
-    }
-  }));
-  router.delete('/debrid', wrap(async (req, res) => {
-    const provider = req.query.provider;
-    const s = await readSettings();
-    if (s.debrid) { if (provider) delete s.debrid[provider]; else s.debrid = {}; }
-    await writeSettings(s);
-    recordActivity('debrid', `Removed debrid: ${provider || 'all'}`);
-    res.json({ removed: provider || 'all' });
   }));
 
   /* ================= Live health board — concurrent probes, 60s cached =========== */
@@ -731,26 +657,8 @@ export function createAdminRouter(deps) {
           checks.translation = { ok, latencyMs: Date.now() - t0, engine: 'Google Translate', sample: ok ? out[0] : null };
         } catch (e) { checks.translation = { ok: false, latencyMs: Date.now() - t0, engine: 'Google Translate', error: e.message }; }
       })(),
-      (async () => {   // Addons — fetch manifest
-        const list = await readAddons();
-        checks.addons = await mapLimit(list, 5, async (a) => {
-          const t0 = Date.now();
-          try {
-            if (addonDeps && !addonDeps.isSafeFetchUrl(a.url)) return { id: a.id, name: a.manifest?.name, ok: false, error: 'blocked host' };
-            const r = await fetch(a.url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
-            return { id: a.id, name: a.manifest?.name, ok: r.ok, status: r.status, latencyMs: Date.now() - t0 };
-          } catch (e) { return { id: a.id, name: a.manifest?.name, ok: false, latencyMs: Date.now() - t0, error: e.message }; }
-        });
-      })(),
-      (async () => {   // Debrid — validate token
-        const d = (await readSettings()).debrid || {};
-        const provs = Object.entries(debridDeps.providers).filter(([p]) => d[p] && d[p].token);
-        checks.debrid = await mapLimit(provs, 3, async ([p, def]) => {
-          const t0 = Date.now();
-          try { const rec = await def.validate(d[p].token); return { provider: p, label: def.label, ok: true, latencyMs: Date.now() - t0, premium: rec.premium, expiration: rec.expiration }; }
-          catch (e) { return { provider: p, label: def.label, ok: false, latencyMs: Date.now() - t0, error: e.message }; }
-        });
-      })(),
+      // (Add-on health probing removed: the server never contacts an add-on. Add-on
+      //  reachability is something each user's browser discovers directly.)
     ]);
     const data = { checkedAt: new Date().toISOString(), checks };
     healthCache = { at: Date.now(), data };
@@ -867,21 +775,13 @@ async function systemInfo(hasTmdb, dataDir) {
 }
 
 // Strip every secret out of a data-store bundle before it leaves the box: password
-// hashes, session tokens, and debrid tokens are masked/omitted. A backup is for
-// config + the translation cache, never for credentials.
-function maskSecret(s) { const v = String(s || ''); return v.length <= 8 ? '***' : v.slice(0, 4) + '…' + v.slice(-4); }
+// hashes and session tokens are masked/omitted. A backup is for config + the
+// translation cache, never for credentials.
 function redactBackup(b) {
   if (Array.isArray(b['users.json'])) {
     b['users.json'] = b['users.json'].map(u => ({ ...u, passwordHash: u && u.passwordHash ? '***redacted***' : undefined }));
   }
   if (b['sessions.json'] && typeof b['sessions.json'] === 'object') {
     b['sessions.json'] = { redacted: `${Object.keys(b['sessions.json']).length} session token(s) omitted` };
-  }
-  if (b['settings.json'] && b['settings.json'].debrid && typeof b['settings.json'].debrid === 'object') {
-    const debrid = {};
-    for (const [p, rec] of Object.entries(b['settings.json'].debrid)) {
-      debrid[p] = rec && typeof rec === 'object' ? { ...rec, token: rec.token ? maskSecret(rec.token) : rec.token } : rec;
-    }
-    b['settings.json'] = { ...b['settings.json'], debrid };
   }
 }

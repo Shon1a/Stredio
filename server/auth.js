@@ -8,7 +8,7 @@
 //
 // Auth model (documented decision): STREDIO is a single shared media-server
 // config, not a multi-tenant SaaS. Multiple people may register, but everyone who
-// is logged in shares the same addons/debrid configuration. Auth gates WHO may
+// is logged in shares the same addons configuration. Auth gates WHO may
 // touch the configuration surface (Addons + Settings), it does not partition it
 // per user. See OVERNIGHT_CHANGELOG.md.
 
@@ -531,34 +531,6 @@ export async function countActiveSessions() {
 }
 
 /* ------------------------------------------------------------------ *
- *  Per-user "Saturn" config
- *
- *  Saturn unifies the Torrentio + Georgian Dubbed stream sources behind a
- *  single addon. Unlike addons/debrid (which are SHARED config), Saturn is
- *  stored per-user: each account verifies its own TorBox API key and picks
- *  which audio languages it wants surfaced. The shape lives on the user
- *  record as `user.saturn = { token, verifiedAt, username, premium,
- *  expiration, langs:[...] }`. The raw token never leaves the server beyond
- *  debrid resolution — API responses expose only a masked hint + account meta.
- * ------------------------------------------------------------------ */
-export async function getUserSaturn(id) {
-  if (!id) return null;
-  const users = await readUsers();
-  const u = users.find(x => x.id === id);
-  return u?.saturn || null;
-}
-// Pass `saturn === null` to clear (disconnect) the user's Saturn config.
-export async function setUserSaturn(id, saturn) {
-  const users = await readUsers();
-  const u = users.find(x => x.id === id);
-  if (!u) return null;
-  if (saturn === null) delete u.saturn;
-  else u.saturn = saturn;
-  await writeUsers(users);
-  return u.saturn || null;
-}
-
-/* ------------------------------------------------------------------ *
  *  Per-user watch state — Continue Watching history + resume progress
  *
  *  Unlike addons (shared config), each account's watch history and resume
@@ -583,10 +555,10 @@ export async function setUserWatch(id, data) {
 }
 
 /* ------------------------------------------------------------------ *
- *  Per-user add-on install state — which official rows + Saturn the account
- *  has toggled on. Tiny (a handful of booleans), so it rides on the user
- *  record like Saturn config. Shape: { map:{ id:bool }, at:ms }; the newer
- *  `at` wins across devices (last-write-wins, no merge needed for toggles).
+ *  Per-user add-on install state — which official rows the account has toggled
+ *  on. Tiny (a handful of booleans), so it rides on the user record. Shape:
+ *  { map:{ id:bool }, at:ms }; the newer `at` wins across devices
+ *  (last-write-wins, no merge needed for toggles).
  * ------------------------------------------------------------------ */
 export async function getUserAddonState(id) {
   if (!id) return null;

@@ -421,7 +421,7 @@
 
   /* ---------- feed dot colors (new event types) ---------- */
   .feed .ev.ev-fallback .dot{background:var(--danger)} .feed .ev.ev-addon .dot{background:var(--info)}
-  .feed .ev.ev-debrid .dot{background:var(--lavender)} .feed .ev.ev-system .dot{background:var(--text-muted)}
+  .feed .ev.ev-system .dot{background:var(--text-muted)}
 
   /* ---------- sub-tabs ---------- */
   .subnav{display:flex;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap}
@@ -688,7 +688,7 @@
       </div>
       <div class="panel"><h3>Data store</h3><div class="desc">JSON files under <span class="mono">server/data/</span>.</div><div id="sysFiles"></div></div>
       <div class="panel"><h3>Maintenance</h3>
-        <div class="desc">Operational tools. The backup is <b>redacted</b> — password hashes, API keys, debrid &amp; session tokens are masked or omitted, so it captures config + the translation cache but never credentials.</div>
+        <div class="desc">Operational tools. The backup is <b>redacted</b> — password hashes, API keys &amp; session tokens are masked or omitted, so it captures config + the translation cache but never credentials.</div>
         <div class="row"><button class="btn" id="backupBtn">&#8615; Download redacted backup</button></div>
       </div>
     </section>
@@ -1329,7 +1329,6 @@
       $('#sysIntegrations').innerHTML=[
         ['TMDB',sys.tmdb?'<span class="badge b-available">connected</span>':'<span class="badge b-exhausted">not set</span>'],
         ['Translation',`<span class="badge b-available">${esc(sys.translation||'—')}</span>`],
-        ['Debrid',(s.debrid&&s.debrid.length)?'<span class="badge b-info">'+s.debrid.map(p=>esc(p)).join(', ')+'</span>':'<span class="badge b-neutral">none</span>'],
       ].map(([k,v])=>`<div class="kv"><span class="k">${esc(k)}</span><span class="v">${v}</span></div>`).join('');
       $('#sysFiles').innerHTML='<div class="tbl-wrap"><table class="tbl"><thead><tr><th>File</th><th class="num">Size</th></tr></thead><tbody>'+
         sys.dataFiles.map(f=>`<tr><td class="mono">${esc(f.name)}</td><td class="num muted">${f.sizeKB} KB</td></tr>`).join('')+'</tbody></table></div>';

@@ -7,15 +7,12 @@ import compression from 'compression';
 import dotenv from 'dotenv';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { gunzipSync } from 'node:zlib';
-import { Readable } from 'node:stream';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   attachUser, requireAuth, requireAdmin, ensureAdminBootstrap,
   createUser, authenticate, authenticateGoogle, googleConfigured, googleClientId,
   createSession, destroySession, sessionCookie, clearCookie,
-  getUserSaturn, setUserSaturn,
   getUserWatch, setUserWatch,
   getUserAddonState, setUserAddonState,
 } from './auth.js';
@@ -24,7 +21,6 @@ import * as logoStore from './logos.js';
 import * as glossary from './glossary.js';
 import * as storage from './storage.js';
 import { createAdminRouter, recordActivity } from './admin.js';
-import { start as startGeorgianAddon } from './georgian-addon.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load .env from beside this file, not from process.cwd(), so the TMDB key is
@@ -56,16 +52,6 @@ const IMG = IMG_CDN_BASE + '/t/p/w500';
 const IMGBACK = IMG_CDN_BASE + '/t/p/original';   // landscape backdrop for the hero banner
 const IMGFACE = IMG_CDN_BASE + '/t/p/w185';       // compact avatars for the "Casts & Credits" rail
 const IMGSTILL = IMG_CDN_BASE + '/t/p/w300';      // 16:9 episode-card stills (light — cards are ~190px wide)
-
-// Where the media byte-proxy lives. Production sets STREAM_PROXY_BASE to the
-// Cloudflare Worker origin (e.g. https://stredio-stream.<sub>.workers.dev) so
-// video bytes never transit this origin — Cloudflare doesn't meter Worker
-// bandwidth (Render's free tier does, which is what got us suspended). Unset →
-// same-origin Express /api/stream-proxy (local dev). Both expose the identical
-// /stream-proxy?src=&ref=&t=hls request shape, so flipping the env var is the
-// whole switch — and unsetting it instantly reverts to origin-proxying.
-const STREAM_PROXY_BASE = (process.env.STREAM_PROXY_BASE || '').replace(/\/+$/, '');
-const STREAM_PROXY_PATH = STREAM_PROXY_BASE ? STREAM_PROXY_BASE + '/stream-proxy' : '/api/stream-proxy';
 
 const app = express();
 app.disable('x-powered-by');
@@ -133,12 +119,11 @@ app.use((req, res, next) => {
     // an explicit worker-src the script-src fallback blocks it, forcing slower
     // main-thread playback (and a console error) for every HLS source.
     "worker-src 'self' blob:",
-    // hls.js fetches playlists/segments via XHR (connect-src). When streams are
-    // proxied through the Cloudflare Worker, its origin must be allowed here so
-    // those cross-origin fetches aren't blocked. (<video> for direct files is
-    // already covered by media-src's https:.) Derived from STREAM_PROXY_BASE so
-    // CSP and the proxy URLs can never drift apart.
-    "connect-src 'self' https://accounts.google.com" + (STREAM_PROXY_BASE ? ' ' + STREAM_PROXY_BASE : ''),
+    // The browser connects to each addon's stream / metadata URL DIRECTLY — STREDIO
+    // never proxies or re-hosts media bytes. hls.js fetches playlists/segments over
+    // XHR, so allow cross-origin https connects; <video> direct files are covered by
+    // media-src. (accounts.google.com is https, so it's already included.)
+    "connect-src 'self' https:",
     // the detail modal embeds a muted YouTube trailer via the privacy-enhanced domain;
     // accounts.google.com renders the Google Sign-In button/consent inside an iframe
     "frame-src https://www.youtube-nocookie.com https://www.youtube.com https://accounts.google.com",
@@ -186,8 +171,6 @@ function rateLimit({ windowMs, max, scope }) {
 }
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, scope: 'auth' });
 const installLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, scope: 'install' });
-const resolveLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, scope: 'resolve' });
-const saturnLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, scope: 'saturn-verify' });
 
 app.post('/api/auth/signup', authLimiter, async (req, res) => {
   // Optional admin-controlled lockdown (Security → "Disable new signups"). Defaults
@@ -748,6 +731,35 @@ async function gateByImdb(items) {
 /* ------------------------------------------------------------------ *
  *  Catalog / search / meta
  * ------------------------------------------------------------------ */
+
+/* Browser-cache the public catalog data. These endpoints are TMDB-derived,
+ * identical for every user (no req.user branch), and change slowly — yet the
+ * frontend re-fetches the full JSON on every page load because nothing told the
+ * browser it may reuse a copy. That repeat JSON is the bulk of this API origin's
+ * egress (the HTML shell + /assets are served from the separate frontend host,
+ * not here). A short max-age lets the browser serve instantly without a round
+ * trip; stale-while-revalidate keeps it serving the cached copy while it
+ * refreshes in the background, so updates still land within a day.
+ *
+ * Applied only to GET on these exact paths, and only when the handler returns a
+ * success body — errors (sendErr → 5xx) and any per-user endpoint (streams,
+ * watch-state, addons) are deliberately excluded so no
+ * personalized or failed response ever gets cached. A handler that sets its own
+ * Cache-Control (e.g. /api/subtitle) is left untouched. */
+const PUBLIC_CATALOG_GET = /^\/api\/(catalog|search|genres|browse|hero|meta\/|tv\/|introdb\/)/;
+app.use((req, res, next) => {
+  if (req.method === 'GET' && PUBLIC_CATALOG_GET.test(req.path)) {
+    const json = res.json.bind(res);
+    res.json = (body) => {
+      if (res.statusCode < 400 && !res.get('Cache-Control')) {
+        res.set('Cache-Control', 'public, max-age=600, stale-while-revalidate=86400');
+      }
+      return json(body);
+    };
+  }
+  next();
+});
+
 app.get('/api/config', (req, res) => {
   res.json({ tmdb: HAS_TMDB, source: HAS_TMDB ? 'TMDB' : 'mock' });
 });
@@ -1390,280 +1402,14 @@ function validateManifest(m) {
   return null;
 }
 
-/* SSRF mitigation: block loopback / private / link-local hosts for the server-side
- * fetches that take a user-supplied URL (addon install + subtitle proxy). Real
- * Stremio addons live on public hosts, so this doesn't break them. Note: it matches
- * the literal hostname and does NOT resolve DNS, so it is a mitigation — not a
- * complete defense against DNS-rebinding — appropriate for this localhost app. */
-function isPrivateHost(hostname) {
-  const h = (hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
-  if (!h) return true;
-  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local')) return true;
-  if (h === '0.0.0.0' || h === '::1' || h === '::') return true;
-  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (m) {
-    const a = +m[1], b = +m[2];
-    if (a === 0 || a === 127 || a === 10) return true;
-    if (a === 169 && b === 254) return true;            // link-local + cloud metadata (169.254.169.254)
-    if (a === 192 && b === 168) return true;
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    if (a === 100 && b >= 64 && b <= 127) return true;  // CGNAT
-  }
-  if (/^f[cd][0-9a-f]{2}:/.test(h) || /^fe80:/.test(h)) return true; // IPv6 ULA / link-local
-  // IPv6-mapped IPv4 (e.g. ::ffff:127.0.0.1, which Node serialises to ::ffff:7f00:1) —
-  // decode the embedded IPv4 and re-check it so the mapping can't smuggle a private host
-  const m6 = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
-  if (m6) { const hi = parseInt(m6[1], 16), lo = parseInt(m6[2], 16);
-    return isPrivateHost(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`); }
-  const m6d = h.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i);
-  if (m6d) return isPrivateHost(m6d[1]);
-  return false;
-}
-/* Hosts explicitly trusted for server-side addon/subtitle fetches even though they
- * are loopback/private — for running an addon on the same machine during development.
- * Comma-separated list of host or host:port, e.g. ADDON_HOST_ALLOWLIST=localhost:7000.
- * Empty by default, so the SSRF guard above stays fully in force in production. */
-const ADDON_HOST_ALLOWLIST = new Set(
-  (process.env.ADDON_HOST_ALLOWLIST || '')
-    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
-function isSafeFetchUrl(raw) {
-  let u; try { u = new URL(raw); } catch { return false; }
-  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-  if (ADDON_HOST_ALLOWLIST.has(u.host) || ADDON_HOST_ALLOWLIST.has(u.hostname)) return true;
-  return !isPrivateHost(u.hostname);
-}
+/* (No SSRF guard here anymore: the server makes no fetch to any user- or admin-supplied
+ * add-on URL. Every add-on request — manifest, stream, subtitle, catalog — is made by
+ * the browser directly. The server only fetches its own trusted upstreams: TMDB,
+ * Google Translate, and IntroDB.) */
 
 /* ------------------------------------------------------------------ *
- *  Stremio addon protocol helpers
- *  Resource URLs are relative to the directory holding manifest.json:
- *    https://host/manifest.json          → base https://host/
- *    https://host/cfg=1/manifest.json    → base https://host/cfg=1/
- * ------------------------------------------------------------------ */
-function addonBase(manifestUrl) {
-  return manifestUrl.replace(/[^/]*$/, ''); // drop last path segment, keep trailing slash
-}
-async function fetchAddonResource(base, path) {
-  if (!isSafeFetchUrl(base)) throw Object.assign(new Error('Addon host not allowed'), { status: 400 });
-  const r = await fetch(base + path, {
-    headers: { accept: 'application/json' },
-    // 20s (was 10s): a split-deployed addon on a free host can be slow right after
-    // waking, or take a moment on a heavy title. A keep-warm pinger prevents full
-    // cold starts; this just stops a warm-but-slow scrape from being cut short.
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!r.ok) throw Object.assign(new Error(`Addon responded ${r.status}`), { status: r.status });
-  return r.json();
-}
-// Torrentio source-selection tuning, applied server-side so every user benefits without
-// re-installing a configured addon: sort by quality→size (with debrid, seed count is
-// irrelevant — the file is served from TorBox), and drop cam/screener/unknown junk that
-// never plays well. NO debrid key goes in this URL — the key stays server-side and cache
-// status is checked separately via the TorBox API. streamBasesFor() pairs this configured
-// base with the plain base as a fallback (see the per-addon loop).
-const TORRENTIO_OPTS = 'sort=qualitysize|qualityfilter=cam,scr,unknown';
-function streamBasesFor(a) {
-  const plain = addonBase(a.url);
-  const id = a?.manifest?.id || a?.id;
-  if (id === 'com.stremio.torrentio.addon' && /(^|\/\/)([^/]*\.)?torrentio\.strem\.fun\//i.test(plain)) {
-    const configured = plain.replace(/\/$/, '') + '/' + TORRENTIO_OPTS + '/';
-    return [configured, plain];
-  }
-  return [plain];
-}
-
-const MAGNET_TRACKERS = [
-  'udp://tracker.opentrackr.org:1337/announce',
-  'udp://open.tracker.cl:1337/announce',
-  'udp://tracker.openbittorrent.com:6969/announce',
-  'udp://exodus.desync.com:6969/announce',
-  'udp://tracker.torrent.eu.org:451/announce',
-];
-function buildMagnet(infoHash, name) {
-  const dn = name ? '&dn=' + encodeURIComponent(name) : '';
-  const tr = MAGNET_TRACKERS.map(t => '&tr=' + encodeURIComponent(t)).join('');
-  return `magnet:?xt=urn:btih:${infoHash.toLowerCase()}${dn}${tr}`;
-}
-function detectQuality(text = '') {
-  const t = text.toLowerCase();
-  if (/(2160|\b4k\b|uhd)/.test(t)) return '4K';
-  if (/1080/.test(t)) return '1080p';
-  if (/720/.test(t)) return '720p';
-  if (/480/.test(t)) return '480p';
-  return '';
-}
-function extractSize(text = '') {
-  const m = text.match(/(\d+(?:\.\d+)?)\s?(gb|mb)/i);
-  return m ? `${m[1]} ${m[2].toUpperCase()}` : null;
-}
-function extractSeeds(text = '') {
-  const m = text.match(/(?:👤|seeds?|seeders?)[^\d]*(\d[\d,]*)/i);
-  return m ? +m[1].replace(/,/g, '') : null;
-}
-/* normalise a Stremio stream object into the shape the frontend renders */
-function mapStream(s, addonName) {
-  const label = [s.name, s.title, s.description].filter(Boolean).join(' \n ');
-  const isTorrent = !!s.infoHash;
-  const filename = s.behaviorHints?.filename || s.title || s.name;
-  let url = s.url || (isTorrent ? buildMagnet(s.infoHash, filename) : null);
-  // Addons can request that a direct file be fetched with specific headers
-  // (Stremio's behaviorHints.proxyHeaders) — e.g. a Referer-gated CDN. The
-  // browser can't set those, so route such streams through our same-origin
-  // /api/stream-proxy, which injects the headers, follows redirects and forwards
-  // Range requests. (Georgian addon → sibnet/fsst need this.)
-  const proxyRef = !isTorrent && s.behaviorHints?.proxyHeaders?.request?.Referer;
-  // HLS playlists (.m3u8 / .txt master / FirePlayer hls path) need an HLS-aware
-  // player on the client and playlist rewriting in the proxy. The addon hints
-  // streamType:'hls'; fall back to sniffing the URL.
-  const isHls = !isTorrent && url &&
-    (s.behaviorHints?.streamType === 'hls' || /\.(m3u8|txt)(\?|$)/i.test(url) || /\/hls\//i.test(url));
-  const proxify = (u, ref, hls) => STREAM_PROXY_PATH + '?src=' + encodeURIComponent(u) +
-    '&ref=' + encodeURIComponent(ref) + (hls ? '&t=hls' : '');
-  // hdrezka's CDN (*.voidboost.cc) is a special case: it IP-binds its signed
-  // 302 target to whoever resolves it AND blocks datacenter/Cloudflare ASNs, so
-  // ANY server-side proxy (origin OR the Worker) gets a 404. But it enforces no
-  // Referer and returns CORS '*', so the viewer's browser can fetch it directly:
-  // the browser follows the 302 itself, binding the URL to the viewer's own IP.
-  // Leave these un-proxied → they play browser-direct via <video> (CSP media-src
-  // 'self' blob: https: permits it) with ZERO proxy bandwidth, instead of 404ing.
-  let directHost = ''; try { directHost = new URL(url || '').hostname; } catch { /* keep '' */ }
-  const playDirect = !!url && /(^|\.)voidboost\.cc$/i.test(directHost);
-  // Route through the proxy (Worker in prod, same-origin in dev) when either:
-  //  • the addon needs Referer-gated headers the browser can't set (proxyRef), or
-  //  • it's HLS — hls.js fetches playlists/segments via XHR, which the page CSP
-  //    blocks for cross-origin URLs unless the proxy host is allowed; the proxy
-  //    also rewrites child URIs back through itself and adds CORS for locked CDNs.
-  // Direct (non-HLS) files without proxyRef — and any playDirect host above — are
-  // left as-is: they play via the <video> tag, which CSP media-src already permits.
-  if (url && !playDirect && (proxyRef || isHls)) {
-    url = proxify(url, proxyRef || '', isHls);
-  }
-  // Audio language tag → drives the modal's language tabs (GE / GB / RU):
-  //  • ge.movie addon streams carry behaviorHints.lang ('ka').
-  //  • torrent streams have no tag → infer from the release name (Russian if it
-  //    shows Cyrillic / RUS / dub markers, otherwise treat as English original).
-  let lang = s.behaviorHints?.lang || null;
-  if (!lang && isTorrent) lang = detectTorrentLang(label);
-  const detailText = (s.title || s.description || '').replace(/\s*\n\s*/g, ' · ').trim();
-  return {
-    source: addonName,
-    title: (s.title || s.description || s.name || 'Stream').split('\n')[0].trim() || 'Stream',
-    detail: detailText,
-    quality: detectQuality(label),
-    size: extractSize(label),
-    seeds: extractSeeds(label),
-    kind: isTorrent ? 'torrent' : (isHls ? 'hls' : 'url'),
-    lang,
-    // For multi-audio HLS (em.filmx.my), which audio rendition the player should
-    // select for this row — so the same master plays Georgian/English/Russian.
-    audioLang: s.behaviorHints?.audioLang || null,
-    // Torrent infohash (lowercased) — used server-side to batch-check TorBox cache
-    // status so already-cached releases (instant, never "stall, no seeds") rank first.
-    infoHash: isTorrent ? String(s.infoHash || '').toLowerCase() : null,
-    url,
-    subtitles: Array.isArray(s.subtitles)
-      ? s.subtitles.map(t => ({ url: t.url, lang: t.lang })).filter(t => t.url)
-      : undefined,
-  };
-}
-// Guess a torrent's audio language from its release name. Only treat it as Russian
-// on clear markers (Cyrillic / RUS / Russian dub words) — "MULTI"/"DUAL" alone are
-// too ambiguous (often Portuguese/Spanish) and would mislabel. Everything else → English.
-function detectTorrentLang(text = '') {
-  if (/[Ѐ-ӿ]/.test(text)) return 'ru';                            // any Cyrillic char
-  if (/\brus(sian)?\b/i.test(text)) return 'ru';
-  if (/дубляж|многоголос|двухголос|на русском/i.test(text)) return 'ru';
-  return 'en';
-}
-// Quality rank for size/quality gating of torrents (higher = better).
-function qualityRank(q) {
-  return q === '4K' ? 4 : q === '1080p' ? 3 : q === '720p' ? 2 : q === '480p' ? 1 : 0;
-}
-function sizeGB(sizeStr) {
-  if (!sizeStr) return null;
-  const m = String(sizeStr).match(/([\d.]+)\s*(GB|MB)/i);
-  if (!m) return null;
-  return /mb/i.test(m[2]) ? +m[1] / 1024 : +m[1];
-}
-// Score a torrent release name by how likely it is to play directly in an HTML5
-// <video> (MP4 + H.264). Higher = safer. Used to surface the single most-playable
-// English/Russian source instead of an MKV/HEVC one the browser can't decode.
-const PLAYABLE_TAGS = /\b(x264|h\.?264|avc)\b|\bweb-?dl\b|\bweb-?rip\b|\.mp4\b|\bmp4\b/i;
-const UNPLAYABLE_TAGS = /\b(x265|h\.?265|hevc|av1|10\s?bit|remux)\b|\.mkv\b|\bmkv\b|\bavi\b/i;
-// Browsers decode AAC/MP3/Opus but NOT AC-3/E-AC-3/DTS/TrueHD/Atmos — those play
-// VIDEO WITH NO SOUND, the exact symptom being fixed. So audio codec is weighted too.
-const GOOD_AUDIO = /\b(aac|mp3|opus|vorbis)\b/i;
-const BAD_AUDIO = /\b(e-?ac-?3|ac-?3|dd\+|ddp|dd5\.?1|dts(-?hd)?(-?ma)?|truehd|atmos)\b/i;
-// Cam / telesync / screener = terrible video source (and usually unusable audio).
-const BAD_SOURCE = /\b(telesync|hd-?ts|hd-?cam|cam-?rip|\bts\b|\bcam\b|screener|\bscr\b|workprint)\b/i;
-function browserPlayScore(text = '') {
-  let s = 0;
-  if (/\b(yts|yify)\b/i.test(text)) s += 6;      // YTS/YIFY = MP4 + H.264 + AAC → always plays WITH sound
-  if (/\.mp4\b|\bmp4\b/i.test(text)) s += 4;     // explicit MP4 container is the safest
-  if (PLAYABLE_TAGS.test(text)) s += 3;          // x264/h264/web releases usually play
-  if (GOOD_AUDIO.test(text)) s += 3;             // AAC/MP3 audio → sound actually works
-  if (BAD_AUDIO.test(text)) s -= 4;              // AC3/EAC3/DTS/TrueHD/Atmos → silent video
-  if (UNPLAYABLE_TAGS.test(text)) s -= 5;        // mkv / hevc / x265 / remux usually don't play
-  if (BAD_SOURCE.test(text)) s -= 4;             // telesync / cam → avoid even if it'd "play"
-  if (/\b(2160p?|4k|uhd)\b/i.test(text)) s -= 3; // 4K is almost always HEVC → won't play
-  return s;
-}
-/* ------------------------------------------------------------------ *
- *  "Saturn" — the Georgian Dubbed addon, surfaced to the user as one card.
- *
- *  Torrentio has been retired: STREDIO no longer serves torrents, so there is
- *  no TorBox key gate anymore. The Georgian Dubbed addon now serves every audio
- *  language as a DIRECT link — ka/ru/uk dubs plus en (resolved via a self-hosted
- *  NuvioStreams instance). The only remaining per-user knob is an OPTIONAL audio-
- *  language preference (which of ka/en/ru/uk to surface); the stored config still
- *  lives in auth.js getUserSaturn/setUserSaturn.
- * ------------------------------------------------------------------ */
-// Torrentio is retired — STREDIO no longer serves torrents. English now arrives as
-// DIRECT links from the Georgian Dubbed addon (resolved via a self-hosted NuvioStreams
-// instance) alongside its ka/ru/uk dubs. isTorrentioAddon() hard-excludes any lingering
-// Torrentio install record (local file OR Postgres) from stream queries, so magnets can
-// never resurface even if the addon record wasn't deleted.
-const TORRENTIO_ADDON_ID = 'com.stremio.torrentio.addon';
-const isTorrentioAddon = a =>
-  (a?.manifest?.id || a?.id) === TORRENTIO_ADDON_ID ||
-  /(^|\/\/)([^/]*\.)?torrentio\.strem\.fun\//i.test(a?.url || '');
-
-// "Saturn" now carries only the Georgian Dubbed addon, which serves every audio language
-// as a direct link (en/ka/ru/uk). Its streams are tagged so the OPTIONAL per-user
-// language-preference filter can apply to them.
-const SATURN_SOURCE_IDS = new Set([
-  'community.georgian.dubbed',   // direct dubs (ka/ru/uk) + en (NuvioStreams)
-]);
-const SATURN_LANGS = ['ka', 'en', 'ru', 'uk'];
-const isSaturnAddon = a => SATURN_SOURCE_IDS.has(a?.manifest?.id || a?.id);
-// Keep only the recognised language codes, preserving the canonical order.
-function sanitizeLangs(arr) {
-  if (!Array.isArray(arr)) return null;
-  return SATURN_LANGS.filter(l => arr.includes(l));
-}
-// Client-safe view of a user's Saturn config. Saturn no longer holds a TorBox key or
-// account — only the optional audio-language preference (defaults to all languages).
-function saturnPublic(s) {
-  const langs = s && Array.isArray(s.langs) ? sanitizeLangs(s.langs) : null;
-  return { langs: (langs && langs.length) ? langs : SATURN_LANGS.slice() };
-}
-
-/* normalise a Stremio catalog meta into the frontend movie shape (ids are IMDb tt…) */
-function mapStremioMeta(m) {
-  const genres = m.genres || m.genre || [];
-  return {
-    id: m.id,
-    title: m.name || 'Untitled',
-    year: String(m.releaseInfo || m.year || '').slice(0, 4) || '—',
-    rating: m.imdbRating ? +parseFloat(m.imdbRating).toFixed(1) : 0,
-    genre: (Array.isArray(genres) ? genres[0] : genres) || '—',
-    poster: m.poster || null,
-  };
-}
-
-/* ------------------------------------------------------------------ *
- *  Debrid resolver (Real-Debrid): magnet → direct streamable URL
- *  Key is stored server-side in data/settings.json so the browser
- *  never has to make the (CORS-blocked) debrid calls itself.
+ *  Settings store — server-side config persisted in data/settings.json
+ *  (or Postgres when enabled): Gemini key pool, cover overrides, etc.
  * ------------------------------------------------------------------ */
 const SETTINGS_FILE = join(DATA_DIR, 'settings.json');
 async function readSettings() {
@@ -1680,148 +1426,6 @@ async function writeSettings(s) {
   await writeFile(SETTINGS_FILE, JSON.stringify(s, null, 2));
 }
 
-const RD = 'https://api.real-debrid.com/rest/1.0';
-const VIDEO_EXT = /\.(mkv|mp4|avi|mov|m4v|webm|ts|flv|wmv|mpg|mpeg)$/i;
-// Containers/codecs an HTML5 <video> can actually decode. MKV/AVI and HEVC/x265/AV1
-// generally cannot play in-browser, which is the "This file can't play" failure.
-const PLAYABLE_EXT = /\.(mp4|m4v|webm|mov)$/i;
-function rdErr(status) {
-  const code = (status === 401 || status === 403) ? 'DEBRID_AUTH' : 'DEBRID_ERR';
-  const msg = code === 'DEBRID_AUTH' ? 'Invalid or expired Real-Debrid token' : `Real-Debrid error ${status}`;
-  return Object.assign(new Error(msg), { code, status });
-}
-async function rdFetch(token, path, opts = {}) {
-  const r = await fetch(RD + path, {
-    ...opts,
-    headers: { Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!r.ok) throw rdErr(r.status);
-  return r.status === 204 ? null : r.json();
-}
-async function rdUser(token) {
-  return rdFetch(token, '/user'); // throws on bad token
-}
-const form = o => new URLSearchParams(o);
-/* add magnet → select largest video file → poll until cached → unrestrict */
-async function rdResolveMagnet(magnet, token, fileIdx) {
-  const { id } = await rdFetch(token, '/torrents/addMagnet', { method: 'POST', body: form({ magnet }) });
-  let info = await rdFetch(token, `/torrents/info/${id}`);
-  const files = info.files || [];
-  const videos = files.filter(f => VIDEO_EXT.test(f.path));
-  // Prefer a browser-playable container (mp4/m4v/webm/mov) over a larger MKV when
-  // the torrent ships both, so the resolved file actually plays in <video>.
-  const playable = videos.filter(f => PLAYABLE_EXT.test(f.path));
-  const pool = playable.length ? playable : (videos.length ? videos : files);
-  let chosen = fileIdx != null ? files.find(f => f.id === +fileIdx) : null;
-  if (!chosen) chosen = pool.slice().sort((a, b) => b.bytes - a.bytes)[0];
-  if (!chosen) throw Object.assign(new Error('No playable file in this torrent'), { code: 'NO_FILE' });
-
-  await rdFetch(token, `/torrents/selectFiles/${id}`, { method: 'POST', body: form({ files: String(chosen.id) }) });
-
-  const deadline = Date.now() + 9000; // cached torrents flip to "downloaded" almost instantly
-  while (true) {
-    info = await rdFetch(token, `/torrents/info/${id}`);
-    if (info.status === 'downloaded') break;
-    if (['magnet_error', 'error', 'virus', 'dead'].includes(info.status)) {
-      throw Object.assign(new Error('Torrent unavailable (' + info.status + ')'), { code: 'TORRENT_ERR' });
-    }
-    if (Date.now() > deadline) {
-      throw Object.assign(new Error('Not cached on Real-Debrid yet — it is downloading on their servers. Try again in a minute.'), { code: 'NOT_CACHED' });
-    }
-    await new Promise(s => setTimeout(s, 1200));
-  }
-  const link = (info.links || [])[0];
-  if (!link) throw Object.assign(new Error('Real-Debrid returned no link'), { code: 'NO_LINK' });
-  const un = await rdFetch(token, '/unrestrict/link', { method: 'POST', body: form({ link }) });
-  return { url: un.download, filename: un.filename, mime: un.mimeType || null };
-}
-
-/* ---- TorBox (api.torbox.app) ------------------------------------- */
-const TB = 'https://api.torbox.app/v1/api';
-async function tbFetch(token, path, opts = {}) {
-  const r = await fetch(TB + path, {
-    ...opts,
-    headers: { Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
-    signal: AbortSignal.timeout(15000),
-  });
-  const j = await r.json().catch(() => null);
-  if (!r.ok || (j && j.success === false)) {
-    const code = (r.status === 401 || r.status === 403) ? 'DEBRID_AUTH' : 'DEBRID_ERR';
-    const msg = (j && (j.detail || j.error)) ||
-      (code === 'DEBRID_AUTH' ? 'Invalid or expired TorBox token' : `TorBox error ${r.status}`);
-    throw Object.assign(new Error(msg), { code, status: r.status });
-  }
-  return j;
-}
-async function tbUser(token) {
-  const j = await tbFetch(token, '/user/me'); // throws on bad token
-  return j.data || {};
-}
-/* create torrent → poll until cached → request a direct download link */
-async function tbResolveMagnet(magnet, token, fileIdx) {
-  const fd = new FormData();
-  fd.append('magnet', magnet);
-  const created = await tbFetch(token, '/torrents/createtorrent', { method: 'POST', body: fd });
-  const cd = created.data || {};
-  const torrentId = cd.torrent_id ?? cd.id ?? cd.queued_id;
-  const hash = cd.hash;
-  if (torrentId == null && !hash) throw Object.assign(new Error('TorBox did not return a torrent id'), { code: 'NO_FILE' });
-
-  const pickInfo = (data) => Array.isArray(data)
-    ? data.find(t => t.id === torrentId || (hash && t.hash === hash))
-    : data;
-
-  const deadline = Date.now() + 9000;
-  let info;
-  while (true) {
-    const list = await tbFetch(token, `/torrents/mylist?id=${encodeURIComponent(torrentId)}&bypass_cache=true`);
-    info = pickInfo(list.data);
-    if (info && (info.download_present || info.download_finished) && (info.files || []).length) break;
-    if (info && ['error', 'stalled (no seeds)'].includes(info.download_state)) {
-      throw Object.assign(new Error('Torrent unavailable (' + info.download_state + ')'), { code: 'TORRENT_ERR' });
-    }
-    if (Date.now() > deadline) {
-      throw Object.assign(new Error('Not cached on TorBox yet — it is downloading on their servers. Try again in a minute.'), { code: 'NOT_CACHED' });
-    }
-    await new Promise(s => setTimeout(s, 1200));
-  }
-  const files = info.files || [];
-  const named = f => f.name || f.short_name || '';
-  const videos = files.filter(f => VIDEO_EXT.test(named(f)));
-  // Prefer a browser-playable container (mp4/m4v/webm/mov) over a larger MKV when
-  // the torrent ships both, so the resolved file actually plays in <video>.
-  const playable = videos.filter(f => PLAYABLE_EXT.test(named(f)));
-  const pool = playable.length ? playable : (videos.length ? videos : files);
-  let chosen = fileIdx != null ? files.find(f => f.id === +fileIdx) : null;
-  if (!chosen) chosen = pool.slice().sort((a, b) => (b.size || 0) - (a.size || 0))[0];
-  if (!chosen) throw Object.assign(new Error('No playable file in this torrent'), { code: 'NO_FILE' });
-
-  const dl = await tbFetch(token, `/torrents/requestdl?token=${encodeURIComponent(token)}&torrent_id=${encodeURIComponent(info.id)}&file_id=${encodeURIComponent(chosen.id)}`);
-  return { url: dl.data, filename: chosen.short_name || chosen.name || null, mime: null };
-}
-/* Ask TorBox which of these infohashes are already cached on its servers. Cached
- * torrents stream instantly over HTTPS (no swarm, no seeders) — so they never throw
- * "stalled, no seeds" — which is why we float them to the top of each language's list.
- * Returns a Set of cached (lowercased) hashes, or null if the check is unavailable
- * (network/auth error) so callers can degrade gracefully instead of mis-ranking. */
-async function tbCachedHashes(hashes, token) {
-  const uniq = [...new Set((hashes || []).map(h => String(h || '').toLowerCase()).filter(Boolean))].slice(0, 100);
-  if (!uniq.length) return new Set();
-  try {
-    const j = await tbFetch(token, `/torrents/checkcached?hash=${uniq.join(',')}&format=list&list_files=false`);
-    const data = j && j.data;
-    const set = new Set();
-    if (Array.isArray(data)) {
-      for (const d of data) { const h = d && (d.hash || d.infohash); if (h) set.add(String(h).toLowerCase()); }
-    } else if (data && typeof data === 'object') {
-      // format=object fallback: { "<hash>": { ... } } — a present, truthy entry = cached
-      for (const k of Object.keys(data)) { if (data[k]) set.add(k.toLowerCase()); }
-    }
-    return set;
-  } catch { return null; }
-}
-
 /* Normalise the many shapes users paste into a fetchable manifest URL:
  *   stremio://host/manifest.json   → https://host/manifest.json  (Stremio deep links)
  *   https://host                   → https://host/manifest.json  (bare base URL)
@@ -1833,12 +1437,13 @@ function normalizeManifestUrl(raw) {
   if (url.startsWith('stremio://')) url = 'https://' + url.slice('stremio://'.length);
   if (!/^https?:\/\//i.test(url)) return null;
   let parsed;
-  try { parsed = new URL(url); } catch { return null; }
-  // Only auto-append manifest.json when the path clearly isn't already a JSON endpoint.
-  if (!/\.json($|\?)/i.test(parsed.pathname)) {
-    parsed.pathname = parsed.pathname.replace(/\/+$/, '') + '/manifest.json';
-  }
-  return parsed.toString();
+  try { parsed = new URL(url); } catch { return null; }   // validate only
+  // Keep the URL byte-for-byte: configured add-ons pack options into the path
+  // (e.g. Torrentio `…|torbox=KEY|…/manifest.json`); round-tripping through
+  // URL.toString() would percent-encode the `|`/`,` and mangle the config.
+  if (/\.json($|\?)/i.test(parsed.pathname)) return url;
+  const i = url.indexOf('?'), path = i < 0 ? url : url.slice(0, i), qs = i < 0 ? '' : url.slice(i);
+  return path.replace(/\/+$/, '') + '/manifest.json' + qs;
 }
 
 app.get('/api/addons', requireAuth, async (req, res) => {
@@ -1846,26 +1451,16 @@ app.get('/api/addons', requireAuth, async (req, res) => {
 });
 
 app.post('/api/addons', requireAuth, installLimiter, async (req, res) => {
+  // Stremio architecture: the BROWSER fetches and validates the add-on manifest
+  // directly from the add-on, then posts the resulting record here ONLY so the
+  // user's add-on collection syncs across their devices. STREDIO's server never
+  // contacts an add-on — not for the manifest, not for streams/subtitles/catalogs.
   const url = normalizeManifestUrl(req.body?.url);
   if (!url) return res.status(400).json({ error: 'Invalid manifest URL' });
-  if (!isSafeFetchUrl(url)) return res.status(400).json({ error: 'That host is not allowed (private/loopback addresses are blocked)' });
-
-  let manifest;
-  try {
-    const r = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return res.status(502).json({ error: `Addon responded ${r.status}` });
-    manifest = await r.json();
-  } catch (e) {
-    return res.status(502).json({ error: 'Could not fetch manifest: ' + (e.message || 'network error') });
-  }
-
+  const manifest = req.body?.manifest;
   const problem = validateManifest(manifest);
   if (problem) return res.status(422).json({ error: problem });
 
-  const list = await readAddons();
-  if (list.some(a => a.manifest.id === manifest.id)) {
-    return res.status(409).json({ error: `Addon "${manifest.name}" is already installed` });
-  }
   const record = {
     id: manifest.id,
     url,
@@ -1875,13 +1470,20 @@ app.post('/api/addons', requireAuth, installLimiter, async (req, res) => {
       name: manifest.name,
       version: manifest.version || '—',
       description: manifest.description || '',
-      types: manifest.types,
-      resources: manifest.resources.map(r => (typeof r === 'string' ? r : r.name)),
+      types: Array.isArray(manifest.types) ? manifest.types : [],
+      resources: Array.isArray(manifest.resources)
+        ? manifest.resources.map(r => (typeof r === 'string' ? r : r && r.name)).filter(Boolean)
+        : [],
       catalogs: Array.isArray(manifest.catalogs)
         ? manifest.catalogs.map(c => ({ type: c.type, id: c.id, name: c.name || c.id }))
         : [],
     },
   };
+
+  const list = await readAddons();
+  if (list.some(a => a.manifest.id === record.id)) {
+    return res.status(409).json({ error: `Addon "${manifest.name}" is already installed` });
+  }
   list.push(record);
   await writeAddons(list);
   res.status(201).json({ addon: record });
@@ -1896,354 +1498,15 @@ app.delete('/api/addons/:id', requireAuth, async (req, res) => {
 });
 
 /* ------------------------------------------------------------------ *
- *  Addon resources wired into the UI: streams + catalogs
+ *  Add-on resources — streams, subtitles, catalogs — are fetched by the
+ *  BROWSER directly from each installed add-on (Stremio's model). STREDIO's
+ *  server is never in that path: it does not list, fetch, proxy, rank, or
+ *  filter streams/subtitles/catalogs, and never sees the user's debrid key
+ *  (which lives only in a debrid-configured add-on URL the browser calls).
+ *  The only add-on data the server holds is the user's installed-collection
+ *  list (GET/POST/DELETE /api/addons above), stored so it syncs across the
+ *  account's devices.
  * ------------------------------------------------------------------ */
-
-/* aggregate streams for a video id (IMDb tt…) across installed stream addons */
-app.get('/api/streams/:id', async (req, res) => {
-  const id = req.params.id;
-  const type = String(req.query.type || 'movie');
-  const all = (await readAddons()).filter(a =>
-    (a.manifest?.resources || []).includes('stream') &&
-    (a.manifest?.types || []).includes(type));
-
-  // No TorBox gate anymore: every source now serves DIRECT links (no debrid needed),
-  // so streams are never locked. Torrentio is hard-excluded so a lingering install
-  // record can't resurface magnets. The only remaining knob is an OPTIONAL per-user
-  // audio-language preference; with none set, all available languages surface.
-  const addons = all.filter(a => !isTorrentioAddon(a));
-  const saturnCfg = req.user ? await getUserSaturn(req.user.id) : null;
-  const cfgLangs = saturnCfg && Array.isArray(saturnCfg.langs) ? sanitizeLangs(saturnCfg.langs) : null;
-  const langs = (cfgLangs && cfgLangs.length) ? cfgLangs : SATURN_LANGS.slice();
-  if (!addons.length) return res.json({ streams: [], addons: 0, saturn: 'none', langs });
-
-  const perAddon = await Promise.all(addons.map(async a => {
-    const path = `stream/${type}/${encodeURIComponent(id)}.json`;
-    // Try the optimized base(s) first; on error OR an empty result, fall through to the
-    // plain base so a Torrentio config quirk can never make a title return zero sources.
-    const bases = streamBasesFor(a);
-    const sat = isSaturnAddon(a);   // tag provenance so the language filter only touches Saturn
-    for (let i = 0; i < bases.length; i++) {
-      try {
-        const data = await fetchAddonResource(bases[i], path);
-        const mapped = (data.streams || []).map(s => { const m = mapStream(s, a.manifest.name); m._saturn = sat; return m; }).filter(s => s.url);
-        if (mapped.length || i === bases.length - 1) return mapped;
-      } catch { /* try the next base */ }
-    }
-    return []; // one slow/broken addon shouldn't sink the rest
-  }));
-  let streams = perAddon.flat();
-
-  // Torrent ranking removed: STREDIO no longer serves magnets. Every source is now a
-  // DIRECT link, already ordered best-first by its addon (NuvioStreams sorts English by
-  // quality; the Georgian addon emits its best per-language row first). The client still
-  // shows the single best row per language and silently cascades to the next on failure.
-
-  // Optional audio-language preference: when the user has set one, surface only those
-  // languages for our Georgian Dubbed source; otherwise show every available language.
-  if (cfgLangs && cfgLangs.length) {
-    streams = streams.filter(s => !s._saturn || cfgLangs.includes(s.lang || 'en'));
-  }
-  for (const s of streams) delete s._saturn;   // internal tag — don't leak it to the client
-
-  res.json({ streams, addons: addons.length, saturn: 'none', langs });
-});
-
-/* list every catalog declared by installed catalog addons */
-app.get('/api/addon-catalogs', async (req, res) => {
-  const out = [];
-  for (const a of await readAddons()) {
-    if (!(a.manifest?.resources || []).includes('catalog')) continue;
-    for (const c of a.manifest?.catalogs || []) {
-      out.push({ addonId: a.id, addonName: a.manifest.name, type: c.type, id: c.id, name: c.name });
-    }
-  }
-  res.json({ catalogs: out });
-});
-
-/* ---- subtitles: aggregate from installed subtitle addons, serve as VTT ---- */
-const LANG_NAMES = {
-  en: 'English', eng: 'English', es: 'Spanish', spa: 'Spanish', fr: 'French', fre: 'French', fra: 'French',
-  de: 'German', ger: 'German', deu: 'German', it: 'Italian', ita: 'Italian', pt: 'Portuguese', por: 'Portuguese',
-  'pt-br': 'Portuguese (BR)', pob: 'Portuguese (BR)', ru: 'Russian', rus: 'Russian', ar: 'Arabic', ara: 'Arabic',
-  hi: 'Hindi', hin: 'Hindi', ja: 'Japanese', jpn: 'Japanese', ko: 'Korean', kor: 'Korean', zh: 'Chinese',
-  chi: 'Chinese', zho: 'Chinese', nl: 'Dutch', dut: 'Dutch', nld: 'Dutch', pl: 'Polish', pol: 'Polish',
-  tr: 'Turkish', tur: 'Turkish', sv: 'Swedish', swe: 'Swedish', no: 'Norwegian', nor: 'Norwegian',
-  da: 'Danish', dan: 'Danish', fi: 'Finnish', fin: 'Finnish', cs: 'Czech', cze: 'Czech', el: 'Greek',
-  gre: 'Greek', he: 'Hebrew', heb: 'Hebrew', ro: 'Romanian', rum: 'Romanian', hu: 'Hungarian', hun: 'Hungarian',
-  th: 'Thai', tha: 'Thai', vi: 'Vietnamese', vie: 'Vietnamese', id: 'Indonesian', ind: 'Indonesian', uk: 'Ukrainian', ukr: 'Ukrainian',
-  ron: 'Romanian', hrv: 'Croatian', srp: 'Serbian', bul: 'Bulgarian', slv: 'Slovenian', slo: 'Slovak', slk: 'Slovak',
-  est: 'Estonian', lav: 'Latvian', lit: 'Lithuanian', spl: 'Spanish (LatAm)', ze: 'Chinese (bilingual)', fa: 'Persian', per: 'Persian', fas: 'Persian',
-  ms: 'Malay', may: 'Malay', msa: 'Malay', ca: 'Catalan', cat: 'Catalan', eu: 'Basque', baq: 'Basque', gl: 'Galician', glg: 'Galician',
-};
-function langName(code) {
-  if (!code) return null;
-  const c = String(code).toLowerCase();
-  return LANG_NAMES[c] || LANG_NAMES[c.split(/[-_]/)[0]] || null;
-}
-function srtToVtt(srt) {
-  const body = srt.replace(/\r+/g, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
-  return /^\s*WEBVTT/.test(body) ? body : 'WEBVTT\n\n' + body;
-}
-
-app.get('/api/subtitles/:id', async (req, res) => {
-  const id = req.params.id;
-  const type = String(req.query.type || 'movie');
-  const addons = (await readAddons()).filter(a =>
-    (a.manifest?.resources || []).includes('subtitles') &&
-    (a.manifest?.types || []).includes(type));
-  if (!addons.length) return res.json({ subtitles: [], addons: 0 });
-
-  const perAddon = await Promise.all(addons.map(async a => {
-    try {
-      const data = await fetchAddonResource(addonBase(a.url), `subtitles/${type}/${encodeURIComponent(id)}.json`);
-      return (data.subtitles || []).filter(s => s.url).map(s => ({
-        lang: s.lang || s.id || 'und',
-        label: (langName(s.lang) || s.lang || 'Subtitle') + (s.id && /hi|sdh/i.test(s.id) ? ' (SDH)' : ''),
-        url: '/api/subtitle?src=' + encodeURIComponent(s.url),
-        source: a.manifest.name,
-      }));
-    } catch { return []; }
-  }));
-  res.json({ subtitles: perAddon.flat(), addons: addons.length });
-});
-
-/* fetch a subtitle file, decompress if gzipped, convert SRT→VTT, serve as text/vtt */
-app.get('/api/subtitle', async (req, res) => {
-  const src = req.query.src;
-  if (!src || !isSafeFetchUrl(src)) return res.status(400).send('Invalid or disallowed subtitle src');
-  try {
-    const r = await fetch(src, { signal: AbortSignal.timeout(12000) });
-    if (!r.ok) return res.status(502).send('Subtitle fetch failed');
-    let buf = Buffer.from(await r.arrayBuffer());
-    if (/\.gz($|\?)/i.test(src) || (buf[0] === 0x1f && buf[1] === 0x8b)) {
-      try { buf = gunzipSync(buf); } catch { /* not actually gzipped */ }
-    }
-    const vtt = srtToVtt(buf.toString('utf8'));
-    res.set('Content-Type', 'text/vtt; charset=utf-8');
-    res.set('Cache-Control', 'public, max-age=86400');
-    res.send(vtt);
-  } catch (e) {
-    res.status(502).send('Subtitle error');
-  }
-});
-
-/* ------------------------------------------------------------------ *
- *  Media stream proxy: play Referer-gated CDN files in the browser.
- *  Some addon sources (e.g. the Georgian addon's sibnet/fsst mirrors and the
- *  ge.movie/em.filmx.my HLS streams) serve their media only when the request
- *  carries a specific Referer, then 30x redirect to a signed CDN URL — things a
- *  browser can't do itself. mapStream() rewrites those streams to point here; we
- *  re-issue the request server-side with the Referer, follow redirects and pipe
- *  the bytes back, forwarding Range so the player can seek. Same origin → no CORS.
- *
- *  For HLS (t=hls) we additionally rewrite every child URI in the playlist
- *  (variant + audio playlists, segments, keys) to come back through this proxy,
- *  so the whole HLS tree inherits the Referer. Georgian audio lives in a separate
- *  EXT-X-MEDIA audio track, which this preserves.
- * ------------------------------------------------------------------ */
-const PROXY_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
-function proxify(absUrl, ref, asHls) {
-  return STREAM_PROXY_PATH + '?src=' + encodeURIComponent(absUrl) + '&ref=' + encodeURIComponent(ref) + (asHls ? '&t=hls' : '');
-}
-function rewriteHlsPlaylist(text, baseUrl, ref) {
-  const out = [];
-  const lines = text.split(/\r?\n/);
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-    if (line.startsWith('#')) {
-      // Rewrite URI="…" attributes (EXT-X-MEDIA audio/subs = playlists; KEY/MAP = binary)
-      line = line.replace(/URI="([^"]+)"/g, (_m, u) => {
-        let abs; try { abs = new URL(u, baseUrl).href; } catch { return `URI="${u}"`; }
-        const binary = /EXT-X-KEY|EXT-X-MAP/i.test(line);
-        return `URI="${proxify(abs, ref, !binary)}"`;
-      });
-      out.push(line);
-    } else if (line.trim() === '') {
-      out.push(line);
-    } else {
-      let abs; try { abs = new URL(line.trim(), baseUrl).href; } catch { out.push(line); continue; }
-      const prev = out.length ? out[out.length - 1] : '';
-      const isPlaylist = /EXT-X-STREAM-INF|EXT-X-I-FRAME-STREAM-INF/i.test(prev) || /\.(m3u8|txt)(\?|$)/i.test(line);
-      out.push(proxify(abs, ref, isPlaylist));
-    }
-  }
-  return out.join('\n');
-}
-
-app.get('/api/stream-proxy', async (req, res) => {
-  const src = req.query.src;
-  const ref = req.query.ref || '';
-  const asHls = req.query.t === 'hls';
-  if (!src || !isSafeFetchUrl(src)) return res.status(400).send('Invalid or disallowed src');
-  if (ref && !/^https?:\/\//i.test(ref)) return res.status(400).send('Invalid ref');
-  const upstreamHeaders = { 'User-Agent': PROXY_UA, Accept: '*/*' };
-  if (ref) upstreamHeaders.Referer = ref;
-  // Don't forward Range when fetching a playlist — we need the whole text to rewrite.
-  if (req.headers.range && !asHls) upstreamHeaders.Range = req.headers.range;
-  let upstream;
-  try {
-    upstream = await fetch(src, { headers: upstreamHeaders, redirect: 'follow', signal: AbortSignal.timeout(30000) });
-  } catch (e) {
-    return res.status(502).send('Upstream fetch failed');
-  }
-  if (!upstream.ok && upstream.status !== 206) return res.status(upstream.status).send('Upstream ' + upstream.status);
-
-  // HLS playlist → rewrite all child URIs to inherit the Referer through this proxy.
-  if (asHls) {
-    let text;
-    try { text = await upstream.text(); } catch { return res.status(502).send('Playlist read failed'); }
-    if (/#EXTM3U/.test(text)) {
-      const body = rewriteHlsPlaylist(text, upstream.url || src, ref);
-      res.set('Content-Type', 'application/vnd.apple.mpegurl');
-      res.set('Cache-Control', 'no-store');
-      return res.send(body);
-    }
-    // Not actually a playlist — fall through and serve as-is.
-    res.status(upstream.status);
-    const ct = upstream.headers.get('content-type'); if (ct) res.set('Content-Type', ct);
-    return res.send(text);
-  }
-
-  res.status(upstream.status);
-  for (const h of ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control']) {
-    const v = upstream.headers.get(h);
-    if (v) res.set(h, v);
-  }
-  if (!upstream.headers.get('accept-ranges')) res.set('Accept-Ranges', 'bytes');
-  if (!upstream.body) return res.end();
-
-  const node = Readable.fromWeb(upstream.body);
-  // If the client aborts (closes the tab / seeks), stop pulling from upstream.
-  res.on('close', () => node.destroy());
-  node.on('error', () => { try { res.end(); } catch { /* already closed */ } });
-  node.pipe(res);
-});
-
-/* fetch one catalog's contents, normalised to the frontend movie shape */
-app.get('/api/addon-catalog/:addonId/:type/:catalogId', async (req, res) => {
-  const a = (await readAddons()).find(x => x.id === req.params.addonId);
-  if (!a) return res.status(404).json({ error: 'Addon not installed' });
-  try {
-    const data = await fetchAddonResource(
-      addonBase(a.url),
-      `catalog/${req.params.type}/${encodeURIComponent(req.params.catalogId)}.json`);
-    // Titles come straight from the addon's secure catalog API — never from the
-    // client. (We previously accepted a ?titles= override, which let a caller
-    // rewrite any title; removed.)
-    res.json({ source: a.manifest.name, results: (data.metas || []).map(mapStremioMeta) });
-  } catch (e) {
-    res.status(502).json({ error: e.message || 'Catalog fetch failed' });
-  }
-});
-
-/* ------------------------------------------------------------------ *
- *  Debrid: account status, save/validate key, resolve magnet
- * ------------------------------------------------------------------ */
-const DEBRID_PROVIDERS = {
-  realdebrid: {
-    label: 'Real-Debrid',
-    validate: async token => { const u = await rdUser(token); return { token, username: u.username, premium: u.type === 'premium', expiration: u.expiration }; },
-    resolve: rdResolveMagnet,
-  },
-  torbox: {
-    label: 'TorBox',
-    validate: async token => { const u = await tbUser(token); return { token, username: u.email || u.username || null, premium: (u.plan ?? 0) > 0, expiration: u.premium_expires_at || u.cooldown_until || null }; },
-    resolve: tbResolveMagnet,
-  },
-};
-function providerStatus(rec) {
-  if (!rec?.token) return { configured: false };
-  return { configured: true, username: rec.username || null, premium: rec.premium ?? null, expiration: rec.expiration || null };
-}
-
-app.get('/api/debrid', requireAuth, async (req, res) => {
-  const d = (await readSettings()).debrid || {};
-  const out = { configured: false };
-  for (const p of Object.keys(DEBRID_PROVIDERS)) {
-    out[p] = providerStatus(d[p]);
-    if (out[p].configured) out.configured = true;
-  }
-  res.json(out);
-});
-
-app.post('/api/debrid', requireAuth, async (req, res) => {
-  const provider = req.body?.provider || 'realdebrid';
-  const token = (req.body?.token || '').trim();
-  const def = DEBRID_PROVIDERS[provider];
-  if (!def) return res.status(400).json({ error: 'Unsupported debrid provider' });
-  if (!token) return res.status(400).json({ error: `Paste your ${def.label} API token` });
-  try {
-    const rec = await def.validate(token); // validates the token upstream
-    const s = await readSettings();
-    s.debrid = { ...(s.debrid || {}), [provider]: rec };
-    await writeSettings(s);
-    res.json({ provider, ...providerStatus(rec) });
-  } catch (e) {
-    const status = e.code === 'DEBRID_AUTH' ? 401 : 502;
-    res.status(status).json({ error: e.message || 'Could not validate token' });
-  }
-});
-
-app.delete('/api/debrid', requireAuth, async (req, res) => {
-  const provider = req.query.provider;
-  const s = await readSettings();
-  if (s.debrid) { if (provider) delete s.debrid[provider]; else s.debrid = {}; }
-  await writeSettings(s);
-  res.json({ removed: provider || 'all' });
-});
-
-app.post('/api/debrid/resolve', requireAuth, resolveLimiter, async (req, res) => {
-  const magnet = req.body?.magnet;
-  const fileIdx = req.body?.fileIdx;
-  if (!magnet || !/^magnet:/i.test(magnet)) return res.status(400).json({ error: 'Missing or invalid magnet' });
-  // The user's Saturn TorBox key (set when they verified the addon) takes
-  // precedence — it's the key they used to unlock the very streams they're now
-  // playing — and falls back to the shared debrid config for legacy setups.
-  const saturnCfg = await getUserSaturn(req.user.id);
-  const d = (await readSettings()).debrid || {};
-  let provider, token;
-  if (saturnCfg?.token) {
-    provider = 'torbox';
-    token = saturnCfg.token;
-  } else {
-    provider = req.body?.provider || Object.keys(DEBRID_PROVIDERS).find(p => d[p]?.token);
-    token = provider ? d[provider]?.token : null;
-  }
-  if (!provider || !token) return res.status(400).json({ error: 'No debrid key set', code: 'NO_KEY' });
-  try {
-    const out = await DEBRID_PROVIDERS[provider].resolve(magnet, token, fileIdx);
-    res.json({ provider, ...out });
-  } catch (e) {
-    const status = e.code === 'NOT_CACHED' ? 202 : e.code === 'DEBRID_AUTH' ? 401 : 502;
-    res.status(status).json({ error: e.message || 'Resolve failed', code: e.code || 'DEBRID_ERR', provider });
-  }
-});
-
-/* ------------------------------------------------------------------ *
- *  "Saturn" addon — per-user audio-language preference (no TorBox key).
- *  Torrentio is retired; every source is a direct link, so there is nothing
- *  to verify. The user just picks which of ka/en/ru/uk surface in the stream
- *  list; with no preference saved, all available languages show.
- * ------------------------------------------------------------------ */
-app.get('/api/saturn', requireAuth, async (req, res) => {
-  res.json(saturnPublic(await getUserSaturn(req.user.id)));
-});
-
-app.post('/api/saturn/config', requireAuth, async (req, res) => {
-  const langs = sanitizeLangs(req.body?.langs);
-  if (!langs || !langs.length) return res.status(400).json({ error: 'Choose at least one language' });
-  const saturn = (await getUserSaturn(req.user.id)) || {};
-  saturn.langs = langs;
-  await setUserSaturn(req.user.id, saturn);
-  res.json(saturnPublic(saturn));
-});
-
-// Reset the language preference back to "all languages".
-app.delete('/api/saturn', requireAuth, async (req, res) => {
-  await setUserSaturn(req.user.id, null);
-  res.json(saturnPublic(null));
-});
 
 /* ------------------------------------------------------------------ *
  *  Watch state — Continue Watching history + resume progress, synced
@@ -2305,7 +1568,7 @@ app.put('/api/watch-state', requireAuth, async (req, res) => {
   res.json(merged);
 });
 
-/* Per-user add-on install state (which official rows + Saturn are toggled on),
+/* Per-user add-on install state (which official rows are toggled on),
  * synced across the account's devices. Last-write-wins by `at` — a stale device
  * can't clobber a newer toggle. The URL-installed community add-ons stay in the
  * shared addons store; this is only the per-account on/off toggles. */
@@ -2346,10 +1609,10 @@ app.use('/api/admin', requireAdmin, createAdminRouter({
   dataDir: DATA_DIR,
   // Localization reliability snapshot (the silent-English-fallback telemetry).
   translationMetrics,
-  // Integrations + live health board — reuse the EXISTING SSRF-guarded primitives so
-  // the admin surface inherits the same private-host/URL protections (never reinvent).
-  addons: { writeAddons, normalizeManifestUrl, isSafeFetchUrl, validateManifest, addonBase, fetchAddonResource },
-  debrid: { providers: DEBRID_PROVIDERS, providerStatus },
+  // Add-on collection: list/remove only. The server never fetches an add-on (no manifest,
+  // no streams) — not from the user surface, not from admin — so no SSRF-guarded fetch
+  // primitives are handed in.
+  addons: { writeAddons },
   // Read-only posture introspection (booleans only — never the actual admin emails).
   serverConfig: {
     adminEmailsConfigured: !!String(process.env.ADMIN_EMAILS || '').trim(),
@@ -2371,7 +1634,7 @@ function sendErr(res, e) {
 
 /* Serve ONLY the frontend file. The previous express.static(ROOT) exposed the
  * entire project folder over HTTP — including server/.env (TMDB token) and
- * server/data/settings.json (debrid token) — so it is deliberately gone. The
+ * server/data/settings.json (Gemini keys) — so it is deliberately gone. The
  * frontend needs no local assets besides itself (fonts/images load from the
  * CDNs allowed by the CSP above), so an explicit allowlist is both safe and
  * sufficient. Anything else under / returns 404. */
@@ -2441,9 +1704,6 @@ async function boot() {
   ]);
   const admins = await ensureAdminBootstrap().catch(e => (console.warn('admin bootstrap:', e.message), []));
   const hasAdminEmails = !!String(process.env.ADMIN_EMAILS || '').trim();
-  // Keep the dubbed-streams addon (:7000) alive alongside us — it's the only source
-  // of Georgian + Ukrainian dubs, so if it's down those languages vanish from the modal.
-  startGeorgianAddon().catch(e => console.warn('georgian addon supervise:', e.message));
   app.listen(PORT, () => {
     console.log(`\n  STREDIO backend → http://localhost:${PORT}`);
     console.log(`  Frontend           → http://localhost:${PORT}/`);

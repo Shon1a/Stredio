@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>STREDIO — Stream Movies &amp; Series</title>
-<meta name="description" content="STREDIO is a terminal-styled streaming front-end: browse a live movie catalog, filter by genre, year and rating, install Stremio addons by URL, and play sources via third-party platforms in a built-in player." />
+<title>STREDIO — Your Personal Media Library</title>
+<meta name="description" content="STREDIO is an open personal media library: browse a catalog, keep a watchlist and continue-watching, and connect your own Stremio-compatible add-ons. STREDIO hosts no media — add-ons you install supply the sources and your browser connects to them directly." />
 <meta name="theme-color" content="#101016" />
 <meta name="color-scheme" content="dark" />
 <link rel="icon" type="image/svg+xml" href="/assets/stredio-icon.svg?v=3" />
@@ -18,10 +18,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="STREDIO" />
 <meta property="og:title" content="STREDIO" />
-<meta property="og:description" content="A terminal-styled streaming front-end: live catalog, Stremio addons, and a built-in player." />
+<meta property="og:description" content="An open personal media library: browse a catalog, keep a watchlist, and connect your own add-ons. STREDIO hosts no media." />
 <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="STREDIO" />
-<meta name="twitter:description" content="A terminal-styled streaming front-end: live catalog, Stremio addons, and a built-in player." />
+<meta name="twitter:description" content="An open personal media library: browse a catalog, keep a watchlist, and connect your own add-ons. STREDIO hosts no media." />
 <!-- perf: warm up external origins before the requests are made -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1249,7 +1249,7 @@
   .flag-ka{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 200'><rect width='300' height='200' fill='%23fff'/><g fill='%23ff0000'><rect x='130' width='40' height='200'/><rect y='80' width='300' height='40'/><rect x='55' y='30' width='20' height='8'/><rect x='61' y='24' width='8' height='20'/><rect x='225' y='30' width='20' height='8'/><rect x='231' y='24' width='8' height='20'/><rect x='55' y='162' width='20' height='8'/><rect x='61' y='156' width='8' height='20'/><rect x='225' y='162' width='20' height='8'/><rect x='231' y='156' width='8' height='20'/></g></svg>")}
   .flag-en{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'><clipPath id='a'><path d='M0 0v30h60V0z'/></clipPath><clipPath id='b'><path d='M30 15h30v15zv15H0zH0V0zV0h30z'/></clipPath><g clip-path='url(%23a)'><path d='M0 0v30h60V0z' fill='%23012169'/><path d='M0 0l60 30m0-30L0 30' stroke='%23fff' stroke-width='6'/><path d='M0 0l60 30m0-30L0 30' clip-path='url(%23b)' stroke='%23C8102E' stroke-width='4'/><path d='M30 0v30M0 15h60' stroke='%23fff' stroke-width='10'/><path d='M30 0v30M0 15h60' stroke='%23C8102E' stroke-width='6'/></g></svg>")}
   .lang-empty{font-size:16px;color:var(--text-muted);padding:18px 4px;line-height:1.5}
-  /* Saturn lock: streams hidden until the user verifies their TorBox key */
+  /* Catalog-only / empty-state notice styling (reused by renderCatalogOnly) */
   .streams-locked{background:rgba(208,35,52,.05);border:1px solid rgba(208,35,52,.18);
     border-radius:8px;padding:22px 22px;text-align:center}
   .streams-locked .sl-ico{font-size:30px;line-height:1;margin-bottom:10px}
@@ -1287,8 +1287,6 @@
   .s-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(208,35,52,.08)}
   .s-btn.play{background:var(--accent);color:var(--ink);border-color:var(--accent)}
   .s-btn.play:hover{background:var(--accent-h)}
-  .debrid-badge{font-family:var(--font-mono);font-size:13px;color:var(--success);
-    background:rgba(92,210,160,.1);padding:2px 7px;border-radius:20px;border:1px solid rgba(92,210,160,.2)}
 
   /* external player menu */
   .ext-menu{position:absolute;right:0;bottom:calc(100% + 6px);background:#16131f;border:1px solid var(--border);
@@ -1740,38 +1738,21 @@
   .auth-foot a:hover{color:var(--accent-h)}
   .auth-note{text-align:center;font-size:15px;color:var(--text-muted);opacity:.9;margin-top:14px;line-height:1.5}
   @media(max-width:480px){ .auth-card{padding:32px 22px 24px} }
-  /* ---- direct-to-sources sheet (add-on catalog cards → /api/streams → player) ---- */
+  /* ---- direct-to-sources sheet (add-on catalog cards → add-on streams → player) ---- */
   .sources-card{max-width:560px;width:min(560px,92vw)}
   .sources-card #sourcesSub{margin-bottom:16px}
   .sources-list{max-height:min(56vh,440px);overflow-y:auto;margin-top:4px}
   .sources-list .stream-source-label:first-child{margin-top:0}
-  /* ---- Saturn addon: card badge + configure modal (reuses .auth-overlay/.auth-card) ---- */
-  .badge.saturn-on{background:rgba(127,210,150,.14);color:var(--success)}
-  .badge.saturn-off{background:rgba(255,255,255,.05);color:var(--text-muted)}
-  .addon .ic.saturn{background:rgba(208,35,52,.14);font-size:22px}
   .addon .ic.studios{background:radial-gradient(circle at 50% 50%,rgba(var(--accent-rgb),.20),rgba(var(--accent-rgb),.05) 72%);font-size:21px}
-  .saturn-verify-row{display:flex;gap:8px;align-items:stretch}
-  .saturn-verify-row input{flex:1}
-  .saturn-verify-row .auth-submit{width:auto;padding:0 18px;white-space:nowrap;min-height:0}
-  .saturn-status{display:flex;align-items:center;gap:9px;background:rgba(127,210,150,.08);
-    border:1px solid rgba(127,210,150,.22);border-radius:6px;padding:11px 13px;margin-bottom:18px;font-size:15px}
-  .saturn-status .ss-dot{width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0}
-  .saturn-status .ss-text{color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .saturn-status .ss-hint{font-family:var(--font-mono);font-size:13px;color:var(--text-muted)}
-  .saturn-langs{display:flex;flex-direction:column;gap:8px;margin:6px 0 4px}
-  .saturn-lang{display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid var(--border);
+  /* ---- option-row checkbox list (add-on configure: catalog-row / provider pickers) ---- */
+  .optrow-list{display:flex;flex-direction:column;gap:8px;margin:6px 0 4px}
+  .optrow{display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid var(--border);
     border-radius:6px;cursor:pointer;transition:.15s;font-size:16px;color:var(--text);user-select:none}
-  .saturn-lang:hover{border-color:rgba(208,35,52,.35)}
-  .saturn-lang.on{border-color:var(--accent);background:rgba(208,35,52,.08)}
-  .saturn-lang input{accent-color:var(--accent);width:17px;height:17px;cursor:pointer}
-  .saturn-block{margin-top:20px}
-  .saturn-block.is-hidden{display:none}
-  .saturn-foot{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px}
-  .saturn-disconnect{background:none;border:none;color:var(--text-muted);font-family:var(--font-mono);
-    font-size:13px;letter-spacing:.06em;cursor:pointer;transition:.2s;padding:6px 2px}
-  .saturn-disconnect:hover{color:var(--danger)}
-  .saturn-getkey{font-size:14px;color:var(--text-muted);margin-top:9px}
-  .saturn-getkey a{color:var(--accent)}
+  .optrow:hover{border-color:rgba(208,35,52,.35)}
+  .optrow.on{border-color:var(--accent);background:rgba(208,35,52,.08)}
+  .optrow input{accent-color:var(--accent);width:17px;height:17px;cursor:pointer}
+  .optrow-block{margin-top:20px}
+  .optrow-block.is-hidden{display:none}
   /* ---- Official add-on configure: live "home screen" preview of which rows show ---- */
   .cfg-preview{margin:18px 0 6px;border:1px solid var(--border);border-radius:9px;overflow:hidden;
     background:linear-gradient(180deg,#0d0c10,#050506)}
@@ -1962,8 +1943,6 @@
 
     /* auth / sheet small targets */
     .auth-dismiss{width:44px;height:44px;display:flex;align-items:center;justify-content:center;top:6px;right:6px}
-    .saturn-disconnect{min-height:44px;display:inline-flex;align-items:center;padding:8px 6px}
-    .saturn-verify-row .auth-submit{min-height:44px}
   }
 
   /* ---- phones + tablets (<=900px): safe-area insets, dvh, iOS input-zoom ---- */
@@ -2067,10 +2046,6 @@
   @media (max-width:420px){
     .m-hero-actions .hero-add{width:44px;height:44px}
     .m-hero-actions .hero-play{min-height:44px;padding:11px 18px}
-  }
-  @media (max-width:375px){
-    .saturn-verify-row{flex-direction:column}
-    .saturn-verify-row .auth-submit{width:100%}
   }
 
   /* ---- landscape phones / short windows ---- */
@@ -2220,7 +2195,7 @@
   }
 </style>
 <!-- hls.js (vendored locally, served from /assets so it passes our CSP script-src 'self'):
-     play HLS (.m3u8) streams in browsers without native support (Georgian ge.movie sources) -->
+     play HLS (.m3u8) streams in browsers without native support (some add-on sources use HLS) -->
 <!-- HLS engine (~414KB) is only needed for video playback, so it's loaded lazily AFTER the
      intro splash window — its compile used to land right at the animation start and jank it.
      loadHls() checks window.Hls and falls back to native HLS, so a play before this lands is safe. -->
@@ -2522,7 +2497,7 @@
         </svg>
         <span data-i18n="addons.title">Add-on Catalog</span>
       </h2>
-      <p class="section-sub"><span data-i18n="addons.sub">Add-ons connect external streaming sources, metadata providers, and subtitle libraries into the catalog. Official add-ons ship with Stredio; community add-ons are installed at your discretion.</span> <span id="installedCount" class="mono" style="color:var(--accent)">1 installed</span>.</p>
+      <p class="section-sub"><span data-i18n="addons.sub">Add-ons connect metadata providers, subtitle libraries, and your own streaming sources to your library. Official add-ons are metadata and subtitle providers only; community add-ons are third-party and installed by you, at your discretion.</span> <span id="installedCount" class="mono" style="color:var(--accent)">1 installed</span>.</p>
 
       <!-- SECTION 1 — Official Add-ons -->
       <div class="addon-section">
@@ -2557,7 +2532,7 @@
     <!-- SETTINGS -->
     <section class="page" id="settings" data-i18n-aria="settings.title" aria-label="Settings">
       <h2 class="section-title display" data-i18n="settings.title">Settings</h2>
-      <p class="section-sub" data-i18n="settings.sub">Playback preferences are stored locally in your browser. no separate debrid key to manage here.</p>
+      <p class="section-sub" data-i18n="settings.sub">Playback preferences are stored locally in your browser.</p>
 
       <div class="settings-grid">
 
@@ -2711,7 +2686,12 @@
 
         <div class="legal-section">
           <h3 data-i18n="legal.disclaimer_head">Disclaimer</h3>
-          <p data-i18n="legal.disclaimer_body">STREDIO does not host, store, or upload any movie or series video files on its servers. The platform is an index: all streamable video content is provided by and hosted on independent third-party services. We do not control, and are not responsible for, the content made available through those services. Cover art, translations, and catalog metadata shown on this site are descriptive information only and are not the copyrighted media itself.</p>
+          <p data-i18n="legal.disclaimer_body">STREDIO is a personal media library and browser. It does not host, store, upload, cache, or proxy any film or series video files, and its servers never transit media. When you play something, your browser connects directly to a source supplied by a third-party add-on that you chose to install. STREDIO does not control, endorse, or take responsibility for those add-ons or the content they make available. Catalog metadata, cover art, and translations shown here are descriptive information only and are not the copyrighted media itself.</p>
+        </div>
+
+        <div class="legal-section">
+          <h3 data-i18n="legal.privacy_head">Privacy &amp; logging</h3>
+          <p data-i18n="legal.privacy_body">STREDIO does not log your IP address or keep server-side request logs. The only data stored against your account is what the service needs to run and sync across your devices — your email, watchlist, continue-watching positions, and add-on preferences — and you can delete your account at any time to remove it.</p>
         </div>
 
         <div class="legal-section">
@@ -2733,8 +2713,8 @@
           <h3 data-i18n="legal.contact_head">Contact</h3>
           <div class="legal-contact">
             <p data-i18n="legal.contact_body">Send takedown notices and legal enquiries to:</p>
-            <!-- TODO: replace with your real takedown alias once the mailbox/forwarding is set up -->
-            <p><a href="mailto:takedown@yourdomain.com">takedown@Stredio.com</a></p>
+            <!-- TODO: replace with your registered DMCA-agent / abuse address once the mailbox is live -->
+            <p><a href="mailto:takedown@stredio.com">takedown@stredio.com</a></p>
             <p data-i18n="legal.contact_note">We aim to review valid notices within a few business days.</p>
           </div>
         </div>
@@ -2753,7 +2733,7 @@
 
     <!-- site-wide footer: always visible, sits below the .page sections inside the main column -->
     <footer class="site-footer">
-      <div class="sf-disclaimer" data-i18n="footer.disclaimer">STREDIO does not host any movie or series video files on its servers. All video content is provided by and hosted on third-party services.</div>
+      <div class="sf-disclaimer" data-i18n="footer.disclaimer">STREDIO hosts no video files and stores no media on its servers. The catalog shows descriptive metadata only; any playable sources come from third-party add-ons you install, and your browser connects to them directly.</div>
       <div class="sf-links">
         <a id="footerTerms" role="button" tabindex="0" data-i18n="footer.terms_link">Terms &amp; Conditions</a>
         <a id="footerLegal" role="button" tabindex="0" data-i18n="footer.legal_link">DMCA / Takedown Policy</a>
@@ -2836,34 +2816,11 @@
   </div>
 </div>
 
-<!-- Saturn configure (choose which audio languages appear in the stream list) -->
-<div class="auth-overlay" id="saturnOverlay" role="dialog" aria-modal="true" aria-labelledby="saturnTitle" aria-hidden="true">
-  <div class="auth-card">
-    <button class="auth-dismiss" id="saturnDismiss" type="button" aria-label="Close">✕</button>
-    <div class="auth-brand">
-      <div class="auth-word display" id="saturnTitle" data-i18n="saturn.modal_title">Configure Saturn</div>
-    </div>
-    <div class="auth-kicker mono" data-i18n="saturn.modal_kicker">// choose your stream languages</div>
+<!-- (removed) the bundled streaming-source configure modal — STREDIO ships no stream sources -->
 
-    <!-- language picker -->
-    <div class="saturn-block" id="saturnLangBlock">
-      <label class="mono" style="display:block;font-size:13px;letter-spacing:.2em;color:var(--text-muted);margin-bottom:7px" data-i18n="saturn.langs_head">LANGUAGES IN STREAM LIST</label>
-      <div class="saturn-langs" id="saturnLangs">
-        <label class="saturn-lang"><input type="checkbox" value="ka"><span data-i18n="saturn.lang_ka">Georgian</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="en"><span data-i18n="saturn.lang_en">English</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="ru"><span data-i18n="saturn.lang_ru">Russian</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="uk"><span data-i18n="saturn.lang_uk">Ukrainian</span></label>
-      </div>
-      <button class="auth-submit" id="saturnSaveBtn" type="button" style="margin-top:16px">
-        <span class="auth-submit-label" data-i18n="saturn.save_btn">SAVE PREFERENCES</span>
-        <span class="spinner" id="saturnSaveSpin" hidden aria-hidden="true"></span>
-      </button>
-    </div>
-  </div>
-</div>
 
 <!-- Catalog Rows configure modal: check which of the six Trending / Top-Rated rows
-     appear on the home screen. Reuses the Saturn modal's checkbox styling. -->
+     appear on the home screen. Reuses the option-row checkbox styling. -->
 <div class="auth-overlay" id="catalogOverlay" role="dialog" aria-modal="true" aria-labelledby="catalogTitle" aria-hidden="true">
   <div class="auth-card">
     <button class="auth-dismiss" id="catalogDismiss" type="button" aria-label="Close">✕</button>
@@ -2881,16 +2838,16 @@
       <div class="cfg-preview-screen" id="catalogPreviewScreen"></div>
     </div>
 
-    <div class="saturn-block" style="margin-top:18px">
+    <div class="optrow-block" style="margin-top:18px">
       <label class="mono" style="display:block;font-size:13px;letter-spacing:.2em;color:var(--text-muted);margin-bottom:7px" data-i18n="catalog.rows_head">ROWS ON HOME</label>
       <div class="auth-hint mono" data-i18n="catalog.rows_hint" style="margin:0 0 12px">Check the rows you want to see on the home page.</div>
-      <div class="saturn-langs" id="catalogRows">
-        <label class="saturn-lang"><input type="checkbox" value="trending_movie"><span data-i18n="sec.trending_movies">TRENDING MOVIES</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="trending_tv"><span data-i18n="sec.trending_shows">TRENDING SHOWS</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="top_movie"><span data-i18n="sec.top_movies">TOP RATED MOVIES</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="top_tv"><span data-i18n="sec.top_shows">TOP RATED SHOWS</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="trending_anime"><span data-i18n="sec.trending_anime">TRENDING ANIME</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="top_anime"><span data-i18n="sec.top_anime">TOP RATED ANIME</span></label>
+      <div class="optrow-list" id="catalogRows">
+        <label class="optrow"><input type="checkbox" value="trending_movie"><span data-i18n="sec.trending_movies">TRENDING MOVIES</span></label>
+        <label class="optrow"><input type="checkbox" value="trending_tv"><span data-i18n="sec.trending_shows">TRENDING SHOWS</span></label>
+        <label class="optrow"><input type="checkbox" value="top_movie"><span data-i18n="sec.top_movies">TOP RATED MOVIES</span></label>
+        <label class="optrow"><input type="checkbox" value="top_tv"><span data-i18n="sec.top_shows">TOP RATED SHOWS</span></label>
+        <label class="optrow"><input type="checkbox" value="trending_anime"><span data-i18n="sec.trending_anime">TRENDING ANIME</span></label>
+        <label class="optrow"><input type="checkbox" value="top_anime"><span data-i18n="sec.top_anime">TOP RATED ANIME</span></label>
       </div>
       <button class="auth-submit" id="catalogSaveBtn" type="button" style="margin-top:16px">
         <span class="auth-submit-label" data-i18n="catalog.save_btn">DONE</span>
@@ -2918,17 +2875,17 @@
       <div class="cfg-preview-screen" id="providersPreviewScreen"></div>
     </div>
 
-    <div class="saturn-block" style="margin-top:18px">
+    <div class="optrow-block" style="margin-top:18px">
       <label class="mono" style="display:block;font-size:13px;letter-spacing:.2em;color:var(--text-muted);margin-bottom:7px" data-i18n="providers.rows_head">SERVICES ON HOME</label>
       <div class="auth-hint mono" data-i18n="providers.rows_hint" style="margin:0 0 12px">Check the services you want to see on the home page.</div>
-      <div class="saturn-langs" id="providerRows">
-        <label class="saturn-lang"><input type="checkbox" value="prov_netflix"><span data-i18n="sec.netflix">NETFLIX</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="prov_disney"><span data-i18n="sec.disney">DISNEY+</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="prov_prime"><span data-i18n="sec.prime">PRIME VIDEO</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="prov_apple"><span data-i18n="sec.apple">APPLE TV+</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="prov_max"><span data-i18n="sec.max">MAX</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="prov_paramount"><span data-i18n="sec.paramount">PARAMOUNT+</span></label>
-        <label class="saturn-lang"><input type="checkbox" value="prov_crunchyroll"><span data-i18n="sec.crunchyroll">CRUNCHYROLL</span></label>
+      <div class="optrow-list" id="providerRows">
+        <label class="optrow"><input type="checkbox" value="prov_netflix"><span data-i18n="sec.netflix">NETFLIX</span></label>
+        <label class="optrow"><input type="checkbox" value="prov_disney"><span data-i18n="sec.disney">DISNEY+</span></label>
+        <label class="optrow"><input type="checkbox" value="prov_prime"><span data-i18n="sec.prime">PRIME VIDEO</span></label>
+        <label class="optrow"><input type="checkbox" value="prov_apple"><span data-i18n="sec.apple">APPLE TV+</span></label>
+        <label class="optrow"><input type="checkbox" value="prov_max"><span data-i18n="sec.max">MAX</span></label>
+        <label class="optrow"><input type="checkbox" value="prov_paramount"><span data-i18n="sec.paramount">PARAMOUNT+</span></label>
+        <label class="optrow"><input type="checkbox" value="prov_crunchyroll"><span data-i18n="sec.crunchyroll">CRUNCHYROLL</span></label>
       </div>
       <button class="auth-submit" id="providersSaveBtn" type="button" style="margin-top:16px">
         <span class="auth-submit-label" data-i18n="providers.save_btn">DONE</span>
@@ -2963,7 +2920,7 @@
 </div>
 
 <!-- direct-to-sources sheet: opened by add-on catalog cards (sports/channels/etc.)
-     whose items don't resolve to a TMDB detail page. Lists /api/streams rows and
+     whose items don't resolve to a TMDB detail page. Lists the add-on's stream rows and
      hands the pick to the same player a movie/series uses. -->
 <div class="auth-overlay" id="sourcesOverlay" role="dialog" aria-modal="true" aria-labelledby="sourcesTitle" aria-hidden="true">
   <div class="auth-card sources-card">
@@ -3249,7 +3206,7 @@ window.I18N=(function(){
   "toast.added": "✓ Added \"{t}\" to My List",
   "toast.removed": "✕ Removed \"{t}\"",
   "addons.title": "Add-on Catalog",
-  "addons.sub": "Addons connect external streaming sources, metadata providers, and subtitle libraries directly into the catalog. Install by URL — no signup required.",
+  "addons.sub": "Add-ons connect metadata providers, subtitle libraries, and your own streaming sources to your library. Official add-ons are metadata and subtitle providers only; community add-ons are third-party and installed by you, at your discretion.",
   "addons.installed_count": "{n} installed",
   "addons.catalog_head": "ADDON CATALOG",
   "addons.install_head": "INSTALL NEW ADDON",
@@ -3273,34 +3230,16 @@ window.I18N=(function(){
   "addons.installed_ok": "✓ Installed {name}",
   "addons.toast_installed": "✓ {name} installed",
   "addons.toast_removed": "✕ {name} removed",
-  "saturn.modal_title": "Configure Saturn",
-  "saturn.modal_kicker": "choose your stream languages",
-  "saturn.langs_head": "LANGUAGES IN STREAM LIST",
-  "saturn.langs_hint": "Pick which audio languages appear when you open a title.",
-  "saturn.lang_ka": "Georgian",
-  "saturn.lang_en": "English",
-  "saturn.lang_ru": "Russian",
-  "saturn.lang_uk": "Ukrainian",
-  "saturn.save_btn": "SAVE PREFERENCES",
-  "saturn.saved": "✓ Saturn preferences saved",
-  "saturn.need_lang": "✕ Choose at least one language",
-  "saturn.locked": "Streams are locked",
-  "saturn.locked_sub": "Verify your Saturn key on the Addons page to unlock Georgian, English & Russian sources.",
-  "saturn.go_addons": "Configure addons",
-  "saturn.locked_signin": "Sign in to unlock streams.",
   "common.backend_unreachable": "✕ Backend not reachable",
   "common.backend_unreachable_start": "✕ Backend not reachable — start the server",
   "settings.title": "Settings",
   "settings.sub": "Playback preferences are stored locally in your browser.",
-  "settings.debrid_head": "DEBRID SERVICES",
   "settings.validate": "VALIDATE",
   "settings.remove": "REMOVE",
   "settings.not_set": "not set",
   "settings.checking": "checking…",
   "settings.connected": "connected",
   "settings.premium": "premium",
-  "settings.rd_hint_a": "Get your token at ",
-  "settings.rd_hint_b": " — required to play torrent sources.",
   "settings.tb_hint_a": "Get your key at ",
   "settings.tb_hint_b": " (API section).",
   "settings.soon": "soon",
@@ -3412,19 +3351,9 @@ window.I18N=(function(){
   "modal.mock_synopsis": "A short synopsis would render here, pulled from catalog metadata for the selected title. (Mock entry — run the backend with a TMDB key for live data.)",
   "player.close": "Close player",
   "player.preparing": "Preparing stream…",
-  "player.resolving": "Resolving via debrid…",
-  "player.resolving_sub": "Cached torrents start in a few seconds.",
-  "player.caching_sub": "caching from third-party servers.",
-  "player.could_not_resolve": "✕ Could not resolve this source",
   "player.try_another": "Try another source from the ⚙ Quality menu.",
   "player.start_server": "Start the server and try again.",
-  "player.demo_title": "Demo stream — no real file attached",
-  "player.demo_sub": "Verify your Saturn key to play real sources.",
-  "player.add_debrid": "Add a key in Settings to stream",
-  "player.verify_saturn": "Verify your Saturn TorBox key to stream torrents",
-  "settings.saturn_note_a": " playback now runs on your ",
-  "settings.saturn_note_b": " TorBox key — no separate debrid key needed.",
-  "settings.saturn_note_link": "Configure addons",
+  "player.demo_sub": "This is a sample clip — install a streaming add-on to play real sources.",
   "player.source": "Source: ",
   "player.subs_off": "Subtitles off",
   "player.subs_on": "Subtitles: ",
@@ -3444,32 +3373,30 @@ window.I18N=(function(){
   "menu.enhance_on": "Film grain & color boost",
   "menu.clarity": "Clarity (sharpen)",
   "menu.intensity": "Intensity",
-  "stream.instant": "Instant (cached)",
-  "stream.seeds": "seeds",
-  "stream.p2p": "P2P stream",
   "stream.play": "▶ PLAY",
-  "stream.open_in": "↗ OPEN IN",
   "footer.preview": "v0.1 · preview build",
   "footer.catalog_label": "catalog: ",
   "footer.catalog_live": "TMDB · live",
   "footer.catalog_mock": "mock sample",
   "footer.playback_label": "playback: ",
-  "footer.debrid_connected": "streaming ready",
+  "footer.stream_ready": "streaming ready",
   "footer.demo_mode": "demo mode",
   "page.browse": "Browse",
   "page.addons": "Addons",
   "page.settings": "Settings",
   "page.legal": "Legal",
   "page.terms": "Terms & Conditions",
-  "footer.disclaimer": "STREDIO does not host any movie or series video files on its servers. All video content is provided by and hosted on third-party services — we only link to it.",
+  "footer.disclaimer": "STREDIO hosts no video files and stores no media on its servers. The catalog shows descriptive metadata only; any playable sources come from third-party add-ons you install, and your browser connects to them directly.",
   "footer.legal_link": "DMCA / Takedown Policy",
   "legal.back": "Back to catalog",
   "legal.title": "Legal & Takedown Policy",
   "legal.updated": "Last updated: June 2026",
   "legal.disclaimer_head": "Disclaimer",
-  "legal.disclaimer_body": "STREDIO does not host, store, or upload any movie or series video files on its servers. The platform is an index: all streamable video content is provided by and hosted on independent third-party services. We do not control, and are not responsible for, the content made available through those services. Cover art, translations, and catalog metadata shown on this site are descriptive information only and are not the copyrighted media itself.",
+  "legal.disclaimer_body": "STREDIO is a personal media library and browser. It does not host, store, upload, cache, or proxy any film or series video files, and its servers never transit media. When you play something, your browser connects directly to a source supplied by a third-party add-on that you chose to install. STREDIO does not control, endorse, or take responsibility for those add-ons or the content they make available. Catalog metadata, cover art, and translations shown here are descriptive information only and are not the copyrighted media itself.",
+  "legal.privacy_head": "Privacy & logging",
+  "legal.privacy_body": "STREDIO does not log your IP address or keep server-side request logs. The only data stored against your account is what the service needs to run and sync across your devices — your email, an encrypted password (or your Google sign-in identifier), your watchlist, continue-watching positions, and add-on preferences. We show no ads and run no third-party trackers, and we never sell or share your personal data. A single first-party cookie keeps you signed in. To display catalog metadata and Georgian translations we send the title or search term you request to our providers (TMDB and Google Translate) — never your identity. Your installed add-ons are contacted directly by your browser, not by our servers, so we never see what you stream. You can delete your account at any time to remove your data, or contact takedown@stredio.com to exercise any privacy right.",
   "legal.takedown_head": "Takedown / DMCA notices",
-  "legal.takedown_body": "If you are a copyright owner (or an agent authorised to act on their behalf) and believe a link indexed on STREDIO points to material that infringes your rights, we will act on a valid notice and disable or remove the offending link from our index promptly.",
+  "legal.takedown_body": "If you are a copyright owner (or an agent authorised to act on their behalf) and believe that an add-on surfaced through STREDIO points to material that infringes your rights, we will act on a valid notice and promptly remove the relevant add-on or reference from STREDIO.",
   "legal.takedown_list_intro": "To help us act quickly, please include the following in your notice:",
   "legal.takedown_l1": "Identification of the copyrighted work you claim has been infringed.",
   "legal.takedown_l2": "The exact link or page on STREDIO that points to the material.",
@@ -3510,12 +3437,11 @@ window.I18N=(function(){
   "genre.Talk": "Talk",
   "genre.War & Politics": "War & Politics",
   "stream.from": "From: ",
-  "stream.p2p_magnet": "P2P / magnet",
   "stream.direct_link": "direct link",
   "modal.loading_metadata": "loading metadata…",
   "modal.searching_addons": "searching installed addons…",
   "modal.no_imdb": "No IMDb id available for this title, so installed stream addons can't be queried. Showing demo streams.",
-  "modal.no_stream_addons_html": "No <b>stream</b> addons installed. Install <b>Saturn</b> on the Addons page to pull real sources. Showing demo streams below.",
+  "modal.no_stream_addons_html": "No <b>stream</b> add-ons installed. Install a streaming add-on on the Add-ons page to pull sources. Showing demo streams below.",
   "modal.no_sources": "Your {addons} installed stream addon(s) returned no sources for this title.",
   "modal.now_showing": "NOW SHOWING",
   "modal.now_streaming": "NOW STREAMING",
@@ -3545,7 +3471,6 @@ window.I18N=(function(){
   "addons.default_tag": "Default",
   "addons.default_hint": "Auto-installed default add-on — always on",
   "addons.no_config": "{name} has no configurable options",
-  "saturn.installed_hint": "✓ Saturn installed — open Configure to choose your stream languages",
   "streams.catalog_only_title": "Catalog & discovery mode",
   "streams.catalog_only_sub": "Stredio is a media catalog and interface. Install a community streaming add-on to pull playable sources from third-party platforms.",
   "streams.browse_addons": "Browse add-ons →",
@@ -3633,8 +3558,6 @@ window.I18N=(function(){
   "providers.rows_hint": "Check the services you want to see on the home page.",
   "providers.save_btn": "DONE",
   "providers.saved": "Home rows updated",
-  "addon.saturn.type": "Streaming Source",
-  "addon.saturn.desc": "Provides streams from open-source platforms in GEO, ENG, UKR, RUS languages.",
   "addon.livetv.type": "Live Channels",
   "addon.livetv.desc": "200+ free live TV channels by region",
   "addon.trakt.type": "Watchlist",
@@ -3642,7 +3565,6 @@ window.I18N=(function(){
   "tag.metadata": "metadata",
   "tag.catalog": "catalog",
   "tag.streaming": "streaming",
-  "tag.torrent": "torrent",
   "tag.subtitles": "subtitles",
   "tag.multilingual": "multilingual",
   "tag.community": "community",
@@ -3726,7 +3648,7 @@ window.I18N=(function(){
   "toast.added": "✓ „{t}“ დაემატა ჩემს სიაში",
   "toast.removed": "✕ „{t}“ ამოიშალა",
   "addons.title": "დამატებების კატალოგი",
-  "addons.sub": "დამატებები პირდაპირ კატალოგში აკავშირებს გარე სტრიმინგის წყაროებს, მეტამონაცემების პროვაიდერებსა და სუბტიტრების ბიბლიოთეკებს. დააინსტალირეთ URL-ით — რეგისტრაცია არ არის საჭირო.",
+  "addons.sub": "დამატებები აკავშირებს მეტამონაცემების პროვაიდერებს, სუბტიტრების ბიბლიოთეკებსა და თქვენს საკუთარ სტრიმინგ-წყაროებს თქვენს ბიბლიოთეკასთან. ოფიციალური დამატებები მხოლოდ მეტამონაცემებისა და სუბტიტრების პროვაიდერებია; საზოგადოების დამატებები მესამე მხარისაა და თქვენ თვითონ აინსტალირებთ, საკუთარი შეხედულებისამებრ.",
   "addons.installed_count": "{n} დაინსტალირებულია",
   "addons.catalog_head": "დამატებების კატალოგი",
   "addons.install_head": "ახალი დამატების ინსტალაცია",
@@ -3750,34 +3672,16 @@ window.I18N=(function(){
   "addons.installed_ok": "✓ {name} დაინსტალირდა",
   "addons.toast_installed": "✓ {name} დაინსტალირდა",
   "addons.toast_removed": "✕ {name} წაიშალა",
-  "saturn.modal_title": "Saturn-ის კონფიგურაცია",
-  "saturn.modal_kicker": "// აირჩიეთ სტრიმების ენები",
-  "saturn.langs_head": "ენები სტრიმების სიაში",
-  "saturn.langs_hint": "აირჩიეთ რომელი აუდიო ენები გამოჩნდეს ფილმის გახსნისას.",
-  "saturn.lang_ka": "ქართული",
-  "saturn.lang_en": "ინგლისური",
-  "saturn.lang_ru": "რუსული",
-  "saturn.lang_uk": "უკრაინული",
-  "saturn.save_btn": "პარამეტრების შენახვა",
-  "saturn.saved": "✓ Saturn-ის პარამეტრები შენახულია",
-  "saturn.need_lang": "✕ აირჩიეთ მინიმუმ ერთი ენა",
-  "saturn.locked": "სტრიმები დაბლოკილია",
-  "saturn.locked_sub": "დაადასტურეთ თქვენი Saturn TorBox გასაღები დამატებების გვერდზე, რათა განბლოკოთ ქართული, ინგლისური და რუსული წყაროები.",
-  "saturn.go_addons": "Saturn-ის კონფიგურაცია →",
-  "saturn.locked_signin": "შედით სისტემაში და დაადასტურეთ თქვენი Saturn გასაღები სტრიმების განსაბლოკად.",
   "common.backend_unreachable": "✕ ბექენდი მიუწვდომელია",
   "common.backend_unreachable_start": "✕ ბექენდი მიუწვდომელია — ჩართეთ სერვერი",
   "settings.title": "პარამეტრები",
-  "settings.sub": "დაკვრის პარამეტრები ინახება ლოკალურად თქვენს ბრაუზერში. ინგლისური და რუსული torrent-წყაროების დასაკვრელად დაადასტურეთ თქვენი გასაღები Saturn.",
-  "settings.debrid_head": "სერვისები",
+  "settings.sub": "დაკვრის პარამეტრები ინახება ლოკალურად თქვენს ბრაუზერში.",
   "settings.validate": "ვალიდაცია",
   "settings.remove": "წაშლა",
   "settings.not_set": "არ არის მითითებული",
   "settings.checking": "მოწმდება…",
   "settings.connected": "დაკავშირებულია",
   "settings.premium": "პრემიუმი",
-  "settings.rd_hint_a": "მიიღეთ თქვენი ტოკენი აქ: ",
-  "settings.rd_hint_b": " — საჭიროა torrent წყაროების დასაკვრელად.",
   "settings.tb_hint_a": "მიიღეთ თქვენი გასაღები აქ: ",
   "settings.tb_hint_b": " (API სექცია).",
   "settings.soon": "მალე",
@@ -3889,19 +3793,9 @@ window.I18N=(function(){
   "modal.mock_synopsis": "აქ გამოჩნდება მოკლე აღწერა, რომელიც აღებულია არჩეული სათაურის კატალოგის მეტამონაცემებიდან. (დემო ჩანაწერი — გაუშვით ბექენდი TMDB გასაღებით რეალური მონაცემებისთვის.)",
   "player.close": "პლეერის დახურვა",
   "player.preparing": "სტრიმის მომზადება…",
-  "player.resolving": "დამუშავება…",
-  "player.resolving_sub": "ქეშირებული torrent-ები რამდენიმე წამში ჩაირთვება.",
-  "player.caching_sub": "Debrid ახდენს ამ torrent-ის ქეშირებას თავის სერვერებზე.",
-  "player.could_not_resolve": "✕ ამ წყაროს დამუშავება ვერ მოხერხდა",
   "player.try_another": "სცადეთ სხვა წყარო ⚙ ხარისხის მენიუდან.",
   "player.start_server": "ჩართეთ სერვერი და სცადეთ თავიდან.",
-  "player.demo_title": "დემო სტრიმი — რეალური ფაილი არ არის მიბმული",
-  "player.demo_sub": "რეალური წყაროების დასაკვრელად დაადასტურეთ თქვენი Saturn გასაღები.",
-  "player.add_debrid": "დაამატეთ debrid გასაღები პარამეტრებში torrent-ების სტრიმინგისთვის",
-  "player.verify_saturn": "torrent-ების სტრიმინგისთვის დაადასტურეთ თქვენი Saturn TorBox გასაღები",
-  "settings.saturn_note_a": "torrent-ების დაკვრა ახლა მუშაობს თქვენი ",
-  "settings.saturn_note_b": " TorBox გასაღებით — ცალკე debrid გასაღები საჭირო აღარ არის.",
-  "settings.saturn_note_link": "Saturn-ის კონფიგურაცია →",
+  "player.demo_sub": "ეს არის სანიმუშო კლიპი — რეალური წყაროების დასაკრავად დააინსტალირეთ სტრიმინგ-დამატება.",
   "player.source": "წყარო: ",
   "player.subs_off": "სუბტიტრები გამორთულია",
   "player.subs_on": "სუბტიტრები: ",
@@ -3921,32 +3815,30 @@ window.I18N=(function(){
   "menu.enhance_on": "მარცვალი და ფერის გაძლიერება",
   "menu.clarity": "სიმკვეთრე",
   "menu.intensity": "ინტენსივობა",
-  "stream.instant": "მყისიერი (ქეშირებული)",
-  "stream.seeds": "სიდერები",
-  "stream.p2p": "P2P სტრიმი",
   "stream.play": "▶ დაკვრა",
-  "stream.open_in": "↗ გახსნა",
   "footer.preview": "v0.1 · წინასწარი ვერსია",
   "footer.catalog_label": "კატალოგი: ",
   "footer.catalog_live": "TMDB · პირდაპირი",
   "footer.catalog_mock": "დემო ნიმუში",
   "footer.playback_label": "დაკვრა: ",
-  "footer.debrid_connected": "სტრიმინგი მზადაა",
+  "footer.stream_ready": "სტრიმინგი მზადაა",
   "footer.demo_mode": "დემო რეჟიმი",
   "page.browse": "მთავარი",
   "page.addons": "დამატებები",
   "page.settings": "პარამეტრები",
   "page.legal": "იურიდიული",
   "page.terms": "წესები და პირობები",
-  "footer.disclaimer": "STREDIO არ ინახავს არცერთ ფილმის ან სერიალის ვიდეოფაილს თავის სერვერებზე. მთელი ვიდეოკონტენტი მოწოდებული და განთავსებულია მესამე მხარის სერვისებზე — ჩვენ მხოლოდ ვუთითებთ მათ ბმულებს.",
+  "footer.disclaimer": "STREDIO არ ჰოსტავს ვიდეოფაილებს და არ ინახავს მედიას თავის სერვერებზე. კატალოგი აჩვენებს მხოლოდ აღწერით მეტამონაცემებს; ნებისმიერი დასაკრავი წყარო მოდის თქვენ მიერ დაინსტალირებული მესამე მხარის დამატებებიდან და თქვენი ბრაუზერი მათ პირდაპირ უკავშირდება.",
   "footer.legal_link": "DMCA / წაშლის პოლიტიკა",
   "legal.back": "კატალოგში დაბრუნება",
   "legal.title": "იურიდიული და წაშლის პოლიტიკა",
   "legal.updated": "ბოლო განახლება: 2026 წლის ივნისი",
   "legal.disclaimer_head": "გაფრთხილება",
-  "legal.disclaimer_body": "STREDIO არ ჰოსტავს, არ ინახავს და არ ტვირთავს არცერთ ფილმის ან სერიალის ვიდეოფაილს თავის სერვერებზე. პლატფორმა წარმოადგენს ინდექსს: მთელი დასაკრავი ვიდეოკონტენტი მოწოდებული და განთავსებულია დამოუკიდებელ მესამე მხარის სერვისებზე. ჩვენ არ ვაკონტროლებთ და არ ვართ პასუხისმგებელი ამ სერვისების მეშვეობით ხელმისაწვდომ კონტენტზე. საიტზე ნაჩვენები ყდის სურათები, თარგმანები და კატალოგის მეტამონაცემები მხოლოდ აღწერითი ინფორმაციაა და არ წარმოადგენს თავად საავტორო უფლებებით დაცულ მედიას.",
+  "legal.disclaimer_body": "STREDIO არის პერსონალური მედია ბიბლიოთეკა და ბრაუზერი. ის არ ჰოსტავს, არ ინახავს, არ ტვირთავს, არ ქეშავს და არ აპროქსირებს არცერთ ფილმის ან სერიალის ვიდეოფაილს, და მისი სერვერები არასოდეს ატარებენ მედიას. როდესაც რამეს უშვებთ, თქვენი ბრაუზერი პირდაპირ უკავშირდება წყაროს, რომელსაც გაწვდით თქვენ მიერ დაინსტალირებული მესამე მხარის დამატება. STREDIO არ აკონტროლებს, არ უჭერს მხარს და არ აგებს პასუხს ამ დამატებებზე ან მათ მიერ ხელმისაწვდომ კონტენტზე. აქ ნაჩვენები კატალოგის მეტამონაცემები, ყდის სურათები და თარგმანები მხოლოდ აღწერითი ინფორმაციაა და არ წარმოადგენს თავად საავტორო უფლებებით დაცულ მედიას.",
+  "legal.privacy_head": "კონფიდენციალურობა და ჟურნალირება",
+  "legal.privacy_body": "STREDIO არ აღრიცხავს თქვენს IP მისამართს და არ ინახავს სერვერის მხარის მოთხოვნების ჟურნალს. თქვენს ანგარიშზე მიბმული ერთადერთი მონაცემები არის ის, რაც სერვისს სჭირდება სამუშაოდ და თქვენს მოწყობილობებს შორის სინქრონიზაციისთვის — თქვენი ელფოსტა, დაშიფრული პაროლი (ან Google-ით შესვლის იდენტიფიკატორი), სანახავი სია, ყურების გაგრძელების პოზიციები და დამატებების პარამეტრები. ჩვენ არ ვაჩვენებთ რეკლამას, არ გვაქვს მესამე მხარის თვალთვალი და არასოდეს ვყიდით ან ვაზიარებთ თქვენს პერსონალურ მონაცემებს. ერთი ფირსთ-პარტი ქუქი გამოიყენება სისტემაში თქვენი შესვლის შესანარჩუნებლად. კატალოგის მეტამონაცემებისა და ქართული თარგმანების საჩვენებლად ჩვენ ვუგზავნით თქვენ მიერ მოთხოვნილ სათაურს ან საძიებო ტერმინს ჩვენს პროვაიდერებს (TMDB და Google Translate) — და არასოდეს თქვენს ვინაობას. თქვენს მიერ დაინსტალირებულ დამატებებს პირდაპირ თქვენი ბრაუზერი უკავშირდება და არა ჩვენი სერვერები, ამიტომ ჩვენ ვერ ვხედავთ რას უყურებთ. ნებისმიერ დროს შეგიძლიათ წაშალოთ ანგარიში მონაცემების მოსაშორებლად, ან დაგვიკავშირდეთ მისამართზე takedown@stredio.com ნებისმიერი კონფიდენციალურობის უფლების გამოსაყენებლად.",
   "legal.takedown_head": "წაშლის / DMCA შეტყობინებები",
-  "legal.takedown_body": "თუ თქვენ ხართ საავტორო უფლების მფლობელი (ან მისი სახელით მოქმედი უფლებამოსილი წარმომადგენელი) და მიგაჩნიათ, რომ STREDIO-ზე ინდექსირებული ბმული მიუთითებს მასალაზე, რომელიც არღვევს თქვენს უფლებებს, ჩვენ ვუპასუხებთ ვალიდურ შეტყობინებას და დროულად გავთიშავთ ან წავშლით სადავო ბმულს ჩვენი ინდექსიდან.",
+  "legal.takedown_body": "თუ თქვენ ხართ საავტორო უფლების მფლობელი (ან მისი სახელით მოქმედი უფლებამოსილი წარმომადგენელი) და მიგაჩნიათ, რომ STREDIO-ის მეშვეობით გამოჩენილი დამატება მიუთითებს მასალაზე, რომელიც არღვევს თქვენს უფლებებს, ჩვენ ვუპასუხებთ ვალიდურ შეტყობინებას და დროულად წავშლით შესაბამის დამატებას ან მითითებას STREDIO-დან.",
   "legal.takedown_list_intro": "სწრაფი რეაგირებისთვის, გთხოვთ თქვენს შეტყობინებაში მიუთითოთ შემდეგი:",
   "legal.takedown_l1": "იმ საავტორო უფლებებით დაცული ნაწარმოების იდენტიფიკაცია, რომლის დარღვევასაც აცხადებთ.",
   "legal.takedown_l2": "ზუსტი ბმული ან გვერდი STREDIO-ზე, რომელიც მიუთითებს მასალაზე.",
@@ -3987,12 +3879,11 @@ window.I18N=(function(){
   "genre.Talk": "თოქ-შოუ",
   "genre.War & Politics": "ომი და პოლიტიკა",
   "stream.from": "საიდან: ",
-  "stream.p2p_magnet": "P2P / magnet",
   "stream.direct_link": "პირდაპირი ბმული",
   "modal.loading_metadata": "მეტამონაცემების ჩატვირთვა…",
   "modal.searching_addons": "დაინსტალირებული დამატებების ძებნა…",
   "modal.no_imdb": "ამ სათაურისთვის IMDb id არ არის ხელმისაწვდომი, ამიტომ დაინსტალირებული stream დამატებების გამოკითხვა ვერ ხერხდება. ნაჩვენებია დემო ნაკადები.",
-  "modal.no_stream_addons_html": "არ არის დაინსტალირებული <b>stream</b> დამატებები. დააინსტალირეთ <b>Saturn</b> დამატებების გვერდზე რეალური წყაროების მისაღებად. ქვემოთ ნაჩვენებია დემო ნაკადები.",
+  "modal.no_stream_addons_html": "არ არის დაინსტალირებული <b>stream</b> დამატებები. დააინსტალირეთ სტრიმინგ-დამატება დამატებების გვერდზე წყაროების მისაღებად. ქვემოთ ნაჩვენებია დემო ნაკადები.",
   "modal.no_sources": "თქვენს მიერ დაინსტალირებულმა {addons} stream დამატებამ(ებმა) ვერ მოიძია წყაროები ამ სათაურისთვის.",
   "modal.now_showing": "ნაჩვენებია",
   "modal.now_streaming": "ეთერში",
@@ -4022,9 +3913,8 @@ window.I18N=(function(){
   "addons.default_tag": "ნაგულისხმევი",
   "addons.default_hint": "ავტომატურად დაინსტალირებული ნაგულისხმევი დამატება — ყოველთვის ჩართული",
   "addons.no_config": "{name}-ს არ აქვს კონფიგურირებადი პარამეტრები",
-  "saturn.installed_hint": "✓ Saturn დაინსტალირდა — გახსენით „კონფიგურაცია“ სტრიმების ენების ასარჩევად",
   "streams.catalog_only_title": "კატალოგისა და აღმოჩენის რეჟიმი",
-  "streams.catalog_only_sub": "Stredio არის მედია კატალოგი და ინტერფეისი. დააინსტალირეთ საზოგადოების სტრიმინგ-დამატება (მაგ. Saturn), რომ მესამე მხარის პლატფორმებიდან დასაკრავი წყაროები მიიღოთ.",
+  "streams.catalog_only_sub": "Stredio არის მედია კატალოგი და ინტერფეისი. დააინსტალირეთ საზოგადოების სტრიმინგ-დამატება, რომ მესამე მხარის პლატფორმებიდან დასაკრავი წყაროები მიიღოთ.",
   "streams.browse_addons": "დამატებების დათვალიერება →",
   "sources.sub": "წყაროები — {name}",
   "sources.searching": "წყაროების ძიება…",
@@ -4110,8 +4000,6 @@ window.I18N=(function(){
   "providers.rows_hint": "მონიშნეთ სერვისები, რომელთა ნახვაც გსურთ მთავარ გვერდზე.",
   "providers.save_btn": "მზადაა",
   "providers.saved": "მთავარის რიგები განახლდა",
-  "addon.saturn.type": "სტრიმინგის წყარო",
-  "addon.saturn.desc": "გთავაზობთ სტრიმებს ღია-კოდის პლატფორმებიდან ქართულ, ინგლისურ, უკრაინულ და რუსულ ენებზე.",
   "addon.livetv.type": "პირდაპირი არხები",
   "addon.livetv.desc": "200+ უფასო პირდაპირი სატელევიზიო არხი რეგიონის მიხედვით",
   "addon.trakt.type": "სანახავი სია",
@@ -4119,7 +4007,6 @@ window.I18N=(function(){
   "tag.metadata": "მეტამონაცემები",
   "tag.catalog": "კატალოგი",
   "tag.streaming": "სტრიმინგი",
-  "tag.torrent": "ტორენტი",
   "tag.subtitles": "სუბტიტრები",
   "tag.multilingual": "მრავალენოვანი",
   "tag.community": "საზოგადოება",
@@ -4533,11 +4420,15 @@ async function loadHomeRow(row,strip){
 async function appendAddonRows(){
   const host=document.getElementById('strips'); if(!host) return;
   host.querySelectorAll('[data-row^="addon:"]').forEach(el=>el.remove());   // clear any prior pass (e.g. language switch)
+  // Enumerate catalogs from the user's installed collection — no server round-trip.
   let cats=[];
-  try{ cats=(await fetch('/api/addon-catalogs').then(r=>r.json())).catalogs||[]; }
-  catch(e){ return; }                       // backend off / none installed → home stays the built-in rows
+  for(const a of (window.INSTALLED_ADDONS||[])){
+    if(!addonHasResource(a,'catalog'))continue;
+    for(const c of ((a.manifest&&a.manifest.catalogs)||[]))
+      cats.push({addonId:a.id,addonName:a.manifest.name,type:c.type,id:c.id,name:c.name,url:a.url});
+  }
   // Skip the built-in/default add-ons: Cinemeta's catalogs already power the seven
-  // home rows, and Saturn (Torrentio/Georgian) is stream-gated, not a home catalog.
+  // home rows; an installed stream add-on is a stream source, not a home catalog.
   // Only genuinely user-installed third-party catalogs (e.g. Nebula Sports) get rows.
   cats=cats.filter(c=>!CURATED_BACKEND_IDS.includes(c.addonId));
   if(!cats.length) return;
@@ -4556,13 +4447,11 @@ async function appendAddonRows(){
 }
 async function loadAddonRow(c,strip){
   try{
-    const url=`/api/addon-catalog/${encodeURIComponent(c.addonId)}/${encodeURIComponent(c.type)}/${encodeURIComponent(c.id)}`;
-    const r=await fetch(url);
-    if(!r.ok) throw new Error('addon row '+r.status);
-    const data=await r.json();
+    // Browser → the add-on's catalog endpoint directly.
+    const data=await fetchAddonJSON(addonBaseUrl(c.url),`catalog/${c.type}/${encodeURIComponent(c.id)}.json`);
     // keep only poster-bearing items (a rail needs art), and tag them as add-on cards
-    const list=(data.results||[]).filter(m=>m.poster)
-      .map(m=>({...m,type:c.type,_addon:true,_addonName:c.addonName||data.source||''}));
+    const list=(data.metas||[]).map(mapStremioMetaC).filter(m=>m.poster)
+      .map(m=>({...m,type:c.type,_addon:true,_addonName:c.addonName||''}));
     fillRail(strip,list);                     // drops the strip if nothing renders
     const rail=strip.querySelector('.strip-rail'); if(rail)wireRail(rail);
   }catch(e){ strip.remove(); }
@@ -5317,7 +5206,7 @@ function renderOfflineHome(){
 let __catalogSource='mock';
 function renderFooter(){
   const el=document.querySelector('aside .foot'); if(!el)return;
-  const playback=window.HAS_DEBRID?t('footer.debrid_connected'):t('footer.demo_mode');
+  const playback=window.STREAM_READY?t('footer.stream_ready'):t('footer.demo_mode');
   const cat=__catalogSource==='TMDB'?t('footer.catalog_live'):t('footer.catalog_mock');
   el.innerHTML=`${esc(t('footer.preview'))}<br>${esc(t('footer.catalog_label'))}${esc(cat)}<br><span style="color:var(--accent)">${esc(t('footer.playback_label'))}${esc(playback)}</span>`;
 }
@@ -5947,6 +5836,9 @@ const TERMS_DATA={
       `You may use the Platform only for lawful, personal, non-commercial purposes, in compliance with these Terms and all applicable laws. Certain features may require you to create an account; you are responsible for safeguarding your credentials and for all activity under your account.`,
       `We may modify, suspend, or discontinue any part of the Platform at any time, with or without notice.`,
     ]},
+    {h:`Eligibility`, body:[
+      `You must be at least 18 years old, or the age of legal majority in your jurisdiction, to create an account or use the Platform. By using the Platform you represent and warrant that you meet this requirement and have the legal capacity to enter into these Terms. The Platform is not directed to children, and we do not knowingly collect personal data from anyone under the age of majority.`,
+    ]},
     {h:`The Add-on Ecosystem`, body:[
       `The Platform provides an open framework that allows Users to install Add-ons. Add-ons extend the Platform with catalogs, metadata, subtitles, ratings, and stream sources.`,
       `<b>Community Add-ons are created, published, and maintained independently by third-party community developers. They are not developed, maintained, controlled, or endorsed by Stredio or its team.</b> Stredio provides the framework only; we do not select, review, monitor, or control what any Community Add-on accesses, indexes, links to, or makes available.`,
@@ -5977,7 +5869,8 @@ const TERMS_DATA={
         `A statement, under penalty of perjury, that the information in your notice is accurate and that you are the rights holder or are authorised to act on its behalf.`,
         `Your physical or electronic signature.`,
       ]},
-      `In appropriate circumstances, we may disable or terminate the accounts of Users who are repeat infringers.`,
+      `<b>Counter-notification.</b> If you believe that material we removed or disabled was removed as a result of mistake or misidentification, you may send a counter-notification to our designated agent at <a href="mailto:legal@stredio.com">legal@stredio.com</a>, including: (a) identification of the removed material and the location where it appeared before removal; (b) your name, address, telephone number, and email; (c) a statement, under penalty of perjury, that you have a good-faith belief the material was removed or disabled by mistake or misidentification; (d) your consent to the jurisdiction of the courts identified in the "Governing Law" section and to accept service of process from the party that filed the original notice; and (e) your physical or electronic signature.`,
+      `<b>Repeat infringers.</b> In appropriate circumstances, and at our sole discretion, we will disable or terminate the accounts of Users who are determined to be repeat infringers.`,
     ]},
     {h:`Disclaimer of Warranties`, body:[
       `The Platform is provided "as is" and "as available", without warranties of any kind, whether express or implied, including but not limited to implied warranties of merchantability, fitness for a particular purpose, title, and non-infringement.`,
@@ -5987,11 +5880,17 @@ const TERMS_DATA={
       `To the maximum extent permitted by applicable law, Stredio and its operators, affiliates, and contributors shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss of data, profits, or goodwill, arising out of or in connection with your use of (or inability to use) the Platform, any Add-on, or any Third-Party Service.`,
       `Stredio is not responsible for the behaviour, Content, or legality of any third-party Add-on or Third-Party Service, nor for any action a User takes in reliance on them. Nothing in these Terms excludes or limits any liability that cannot be excluded or limited under applicable law.`,
     ]},
+    {h:`Indemnification`, body:[
+      `You agree to indemnify, defend, and hold harmless Stredio and its operators, affiliates, and contributors from and against any claims, demands, liabilities, damages, losses, costs, and expenses (including reasonable legal fees) arising out of or related to: (a) your use or misuse of the Platform; (b) any Add-on you install, configure, or use, or any Third-Party Service you reach through it; (c) Content you access, stream, download, or share; (d) your violation of these Terms or of any applicable law; or (e) your infringement of any intellectual-property or other right of any person or entity.`,
+    ]},
     {h:`Governing Law`, body:[
       `These Terms are governed by and construed in accordance with the laws of Georgia, without regard to its conflict-of-laws provisions. You agree to submit to the exclusive jurisdiction of the competent courts of Georgia for the resolution of any dispute arising out of or relating to these Terms or the Platform.`,
     ]},
     {h:`Changes to Terms`, body:[
       `We may update these Terms from time to time. When we do, we will revise the "Last updated" date shown above, and material changes may be communicated through the Platform. Your continued use of the Platform after changes take effect constitutes acceptance of the revised Terms. If you do not agree to the changes, you must stop using the Platform.`,
+    ]},
+    {h:`General`, body:[
+      `If any provision of these Terms is held invalid or unenforceable, that provision will be limited or severed to the minimum extent necessary and the remaining provisions will remain in full force and effect. Our failure to enforce any provision is not a waiver of it. You may not assign these Terms without our prior consent; we may assign them to a successor or affiliate. These Terms, together with the DMCA / Takedown Policy, are the entire agreement between you and Stredio regarding the Platform and supersede any prior understanding.`,
     ]},
     {h:`Contact Information`, body:[
       `Questions about these Terms, or notices required under them, may be sent to the addresses below:`,
@@ -6019,6 +5918,9 @@ const TERMS_DATA={
       `Stredio არ ინახავს, არ მასპინძლობს, არ ტვირთავს, არ ქეშავს და არ ავრცელებს არცერთ მედია კონტენტს. ყველა დასაკრავი მედია მოწოდებულია და განთავსებულია დამოუკიდებელ მესამე მხარის სერვისებზე, რომლებიც ჩვენი კონტროლის მიღმაა.`,
       `პლატფორმის გამოყენება შეგიძლიათ მხოლოდ კანონიერი, პირადი, არაკომერციული მიზნებისთვის, ამ პირობებისა და ყველა მოქმედი კანონის დაცვით. ზოგიერთ ფუნქციას შესაძლოა ანგარიშის შექმნა დასჭირდეს; თქვენ პასუხისმგებელი ხართ თქვენი მონაცემების დაცვაზე და თქვენი ანგარიშით განხორციელებულ ყველა ქმედებაზე.`,
       `ჩვენ შეგვიძლია ნებისმიერ დროს შევცვალოთ, შევაჩეროთ ან შევწყვიტოთ პლატფორმის ნებისმიერი ნაწილი, წინასწარი შეტყობინებით ან მის გარეშე.`,
+    ]},
+    {h:`უფლებამოსილება (ასაკი)`, body:[
+      `პლატფორმის გამოსაყენებლად ან ანგარიშის შესაქმნელად უნდა იყოთ სულ მცირე 18 წლის, ან თქვენი იურისდიქციის სრულწლოვანების ასაკის. პლატფორმის გამოყენებით თქვენ აცხადებთ და იძლევით გარანტიას, რომ აკმაყოფილებთ ამ მოთხოვნას და გაქვთ ამ პირობების დადების სამართლებრივი ქმედუნარიანობა. პლატფორმა არ არის გათვლილი ბავშვებზე და ჩვენ შეგნებულად არ ვაგროვებთ პერსონალურ მონაცემებს სრულწლოვანების ასაკს მიუღწეველ პირებზე.`,
     ]},
     {h:`დამატებების ეკოსისტემა`, body:[
       `პლატფორმა გთავაზობთ ღია ჩარჩოს, რომელიც მომხმარებლებს დამატებების ინსტალაციის საშუალებას აძლევს. დამატებები აფართოებს პლატფორმას კატალოგებით, მეტამონაცემებით, სუბტიტრებით, შეფასებებითა და სტრიმის წყაროებით.`,
@@ -6050,7 +5952,8 @@ const TERMS_DATA={
         `განცხადება, ცრუ ჩვენების პასუხისმგებლობის ქვეშ, რომ შეტყობინებაში მოცემული ინფორმაცია ზუსტია და რომ თქვენ ხართ უფლების მფლობელი ან უფლებამოსილი მის სახელით მოქმედებაზე.`,
         `თქვენი ფიზიკური ან ელექტრონული ხელმოწერა.`,
       ]},
-      `შესაბამის შემთხვევებში ჩვენ შეიძლება გავთიშოთ ან დავხუროთ იმ მომხმარებლების ანგარიშები, რომლებიც განმეორებით არღვევენ უფლებებს.`,
+      `<b>საპასუხო შეტყობინება.</b> თუ თვლით, რომ ჩვენ მიერ წაშლილი ან გათიშული მასალა მოიხსნა შეცდომის ან არასწორი იდენტიფიკაციის გამო, შეგიძლიათ გამოაგზავნოთ საპასუხო შეტყობინება ჩვენს დანიშნულ აგენტთან მისამართზე <a href="mailto:legal@stredio.com">legal@stredio.com</a>, რომელიც მოიცავს: (ა) წაშლილი მასალის იდენტიფიკაციას და მის ადგილმდებარეობას წაშლამდე; (ბ) თქვენს სახელს, მისამართს, ტელეფონის ნომერსა და ელფოსტას; (გ) განცხადებას, ცრუ ჩვენების პასუხისმგებლობის ქვეშ, რომ კეთილსინდისიერად მიგაჩნიათ, რომ მასალა წაიშალა ან გაითიშა შეცდომით ან არასწორი იდენტიფიკაციით; (დ) თქვენს თანხმობას „მარეგულირებელი კანონმდებლობის“ სექციაში მითითებული სასამართლოების იურისდიქციაზე და თავდაპირველი შეტყობინების ავტორისგან საპროცესო დოკუმენტების მიღებაზე; და (ე) თქვენს ფიზიკურ ან ელექტრონულ ხელმოწერას.`,
+      `<b>განმეორებითი დამრღვევები.</b> შესაბამის შემთხვევებში და ჩვენი შეხედულებისამებრ, ჩვენ გავთიშავთ ან დავხურავთ იმ მომხმარებლების ანგარიშებს, რომლებიც დადგინდება როგორც განმეორებითი დამრღვევები.`,
     ]},
     {h:`გარანტიების უარყოფა`, body:[
       `პლატფორმა მოწოდებულია "როგორც არის" და "როგორც ხელმისაწვდომია", ნებისმიერი სახის გარანტიის გარეშე, იქნება ეს პირდაპირი თუ ნაგულისხმევი, მათ შორის — ვაჭრობისთვის ვარგისიანობის, კონკრეტული მიზნისთვის შესაბამისობის, საკუთრებისა და უფლების დაურღვევლობის ნაგულისხმევი გარანტიების ჩათვლით.`,
@@ -6060,11 +5963,17 @@ const TERMS_DATA={
       `მოქმედი კანონით დაშვებული მაქსიმალური ფარგლებში, Stredio და მისი ოპერატორები, აფილირებული პირები და კონტრიბუტორები არ იქნებიან პასუხისმგებელი რაიმე არაპირდაპირ, შემთხვევით, სპეციალურ, თანმდევ ან სადამსჯელო ზიანზე, ან მონაცემების, მოგების თუ რეპუტაციის დაკარგვაზე, რომელიც წარმოიშობა პლატფორმის, ნებისმიერი დამატების ან მესამე მხარის სერვისის გამოყენებასთან (ან გამოყენების შეუძლებლობასთან) დაკავშირებით.`,
       `Stredio არ არის პასუხისმგებელი ნებისმიერი მესამე მხარის დამატების ან სერვისის ქცევაზე, კონტენტზე ან კანონიერებაზე, ისევე როგორც მომხმარებლის ნებისმიერ ქმედებაზე, რომელიც მათზე დაყრდნობით ხდება. ამ პირობებში არაფერი გამორიცხავს ან ზღუდავს იმ პასუხისმგებლობას, რომელიც მოქმედი კანონით ვერ გამოირიცხება ან შეიზღუდება.`,
     ]},
+    {h:`ზიანის ანაზღაურება (ინდემნიფიკაცია)`, body:[
+      `თქვენ თანხმდებით, რომ აანაზღაურებთ, დაიცავთ და გაათავისუფლებთ Stredio-ს და მის ოპერატორებს, აფილირებულ პირებსა და კონტრიბუტორებს ნებისმიერი პრეტენზიის, მოთხოვნის, ვალდებულების, ზიანის, დანაკარგის, ხარჯისა და დანახარჯისგან (გონივრული იურიდიული ხარჯების ჩათვლით), რომელიც წარმოიშობა ან დაკავშირებულია: (ა) თქვენ მიერ პლატფორმის გამოყენებასთან ან არასათანადო გამოყენებასთან; (ბ) ნებისმიერ დამატებასთან, რომელსაც აინსტალირებთ, აკონფიგურირებთ ან იყენებთ, ან მესამე მხარის სერვისთან, რომელსაც მისი მეშვეობით წვდებით; (გ) კონტენტთან, რომელსაც წვდებით, უყურებთ, ჩამოტვირთავთ ან აზიარებთ; (დ) ამ პირობების ან ნებისმიერი მოქმედი კანონის დარღვევასთან; ან (ე) ნებისმიერი პირის ან ორგანიზაციის ინტელექტუალური საკუთრების ან სხვა უფლების დარღვევასთან.`,
+    ]},
     {h:`მარეგულირებელი კანონმდებლობა`, body:[
       `ეს პირობები რეგულირდება და განიმარტება საქართველოს კანონმდებლობის შესაბამისად, კანონთა კოლიზიის ნორმების გათვალისწინების გარეშე. თქვენ თანხმდებით, რომ ამ პირობებთან ან პლატფორმასთან დაკავშირებული ნებისმიერი დავის გადასაჭრელად დაემორჩილებით საქართველოს კომპეტენტური სასამართლოების ექსკლუზიურ იურისდიქციას.`,
     ]},
     {h:`პირობების ცვლილებები`, body:[
       `ჩვენ შესაძლოა დროდადრო განვაახლოთ ეს პირობები. ამ შემთხვევაში განვაახლებთ ზემოთ მითითებულ "ბოლო განახლების" თარიღს, ხოლო არსებითი ცვლილებები შესაძლოა გამოცხადდეს პლატფორმის მეშვეობით. ცვლილებების ძალაში შესვლის შემდეგ პლატფორმის გამოყენების გაგრძელება ნიშნავს განახლებული პირობების მიღებას. თუ არ ეთანხმებით ცვლილებებს, უნდა შეწყვიტოთ პლატფორმის გამოყენება.`,
+    ]},
+    {h:`ზოგადი დებულებები`, body:[
+      `თუ ამ პირობების რომელიმე დებულება ბათილად ან აღუსრულებლად იქნა მიჩნეული, ეს დებულება შეიზღუდება ან გამოეყოფა მინიმალური აუცილებელი ფარგლებით, ხოლო დანარჩენი დებულებები სრულად შენარჩუნდება ძალაში. ჩვენ მიერ რომელიმე დებულების აღუსრულებლობა არ ნიშნავს მასზე უარის თქმას. თქვენ არ შეგიძლიათ ამ პირობების გადაცემა ჩვენი წინასწარი თანხმობის გარეშე; ჩვენ შეგვიძლია მათი გადაცემა უფლებამონაცვლეზე ან აფილირებულ პირზე. ეს პირობები, DMCA / წაშლის პოლიტიკასთან ერთად, წარმოადგენს სრულ შეთანხმებას თქვენსა და Stredio-ს შორის პლატფორმასთან დაკავშირებით და ანაცვლებს ნებისმიერ წინა შეთანხმებას.`,
     ]},
     {h:`საკონტაქტო ინფორმაცია`, body:[
       `კითხვები ამ პირობებზე, ან მათ ფარგლებში მოთხოვნილი შეტყობინებები, შეგიძლიათ გამოაგზავნოთ ქვემოთ მითითებულ მისამართებზე:`,
@@ -6121,17 +6030,11 @@ renderTerms();
   });
 })();
 
-/* ---------- playback unlock via Saturn (TorBox) ---------- */
-/* There is no separate debrid settings panel anymore. Torrent playback
-   (English / Russian sources) resolves through the SAME TorBox key the user
-   verified to unlock Saturn. window.HAS_DEBRID mirrors Saturn verification so
-   the footer status line and the play guard stay in sync. fetchSaturn() (defined
-   in the addons section) keeps window.saturn + HAS_DEBRID current. */
-window.HAS_DEBRID=false;
-async function refreshSaturn(){
-  await fetchSaturn();   // updates window.saturn AND window.HAS_DEBRID + footer
-}
-/* refreshSaturn() is invoked by refreshAuth() once we know a user is signed in */
+/* ---------- playback readiness ---------- */
+/* window.STREAM_READY mirrors whether a third-party stream source is installed, so the
+   footer status line and the play guard stay in sync. loadRemoteAddons() (in the addons
+   section) recomputes it whenever the installed add-on set changes. */
+window.STREAM_READY=false;
 
 /* topbar scroll border */
 addEventListener('scroll',()=>document.getElementById('topbar').classList.toggle('scrolled',scrollY>10));
@@ -6195,7 +6098,7 @@ function openInfoModal(ds){
   }else if(ds.type==='tv'&&/^\d+$/.test(id)){
     /* TV / anime — real TMDB metadata (synopsis, cast, trailer). The season +
        episode chooser is wired to the addon engine: picking an episode queries
-       installed series addons (incl. Georgian Dubbed) for that
+       installed series addons for that
        tt:season:episode. Until an episode is picked, no stream list is shown. */
     window.currentMediaType='series';
     setStreams(`<div class="demo-note">${esc(I18N.t('modal.pick_episode'))}</div>`);
@@ -6492,60 +6395,24 @@ addEventListener('keydown',e=>{
 function slugify(t){return (t||'').trim().replace(/[^\w\s]/g,'').replace(/\s+/g,'.')}
 function buildStreams(title,year){
   const s=slugify(title)||'Title';
-  const PLAY=esc(t('stream.play')), OPENIN=esc(t('stream.open_in')), INST=esc(t('stream.instant')),
-        SEEDS=esc(t('stream.seeds')), P2P=esc(t('stream.p2p')), FROM=esc(t('stream.from'));
+  const PLAY=esc(t('stream.play')), FROM=esc(t('stream.from')), DIRECT=esc(t('stream.direct_link'));
   return `
-    <div class="stream-source-label">${FROM}Torrentio + Real-Debrid</div>
+    <div class="stream-source-label">${FROM}Sample</div>
     <div class="stream-row">
-      <span class="quality-badge q-4k">4K</span>
+      <span class="quality-badge q-1080">1080p</span>
       <div class="stream-info">
-        <div class="stream-title">${s}.${year}.2160p.UHD.BluRay.REMUX.HDR</div>
-        <div class="stream-detail">54.8 GB &nbsp;·&nbsp; ${INST} &nbsp;·&nbsp; HEVC HDR10</div>
+        <div class="stream-title">${s}.${year}.1080p</div>
+        <div class="stream-detail">${DIRECT}</div>
       </div>
       <div class="stream-actions"><button class="s-btn play" onclick="openPlayer()">${PLAY}</button></div>
     </div>
     <div class="stream-row">
-      <span class="quality-badge q-1080">1080p</span>
+      <span class="quality-badge q-720">720p</span>
       <div class="stream-info">
-        <div class="stream-title">${s}.${year}.1080p.BluRay.x264</div>
-        <div class="stream-detail">12.4 GB &nbsp;·&nbsp; ${INST} &nbsp;·&nbsp; x264 DTS</div>
+        <div class="stream-title">${s}.${year}.720p</div>
+        <div class="stream-detail">${DIRECT}</div>
       </div>
       <div class="stream-actions"><button class="s-btn play" onclick="openPlayer()">${PLAY}</button></div>
-    </div>
-    <div class="stream-source-label" style="margin-top:18px">⊕ ${FROM}Torrentio (P2P)</div>
-    <div class="stream-row">
-      <span class="quality-badge q-4k">4K</span>
-      <div class="stream-info">
-        <div class="stream-title">${s}.${year}.2160p.BluRay.HDR.x265</div>
-        <div class="stream-detail">48.2 GB &nbsp;·&nbsp; ◍ 9,120 ${SEEDS} &nbsp;·&nbsp; ${P2P}</div>
-      </div>
-      <div class="stream-actions" style="position:relative">
-        <button class="s-btn play" onclick="openPlayer()">${PLAY}</button>
-        <button class="s-btn ext-trigger" onclick="toggleExtMenu(this)">${OPENIN}</button>
-        <div class="ext-menu">
-          <div class="ext-item"><span class="ext-icon">▷</span><div><div class="ext-name">VLC</div><div class="ext-sub">vlc://stream</div></div></div>
-          <div class="ext-item"><span class="ext-icon">▶</span><div><div class="ext-name">Outplayer</div><div class="ext-sub">outplayer://</div></div></div>
-          <div class="ext-item"><span class="ext-icon">◆</span><div><div class="ext-name">Infuse</div><div class="ext-sub">infuse://play?url=</div></div></div>
-          <div class="ext-item"><span class="ext-icon">▶</span><div><div class="ext-name">nPlayer</div><div class="ext-sub">nplayer-http://</div></div></div>
-          <div class="ext-item"><span class="ext-icon">⬡</span><div><div class="ext-name">Stremio App</div><div class="ext-sub">stremio://stream</div></div></div>
-        </div>
-      </div>
-    </div>
-    <div class="stream-row">
-      <span class="quality-badge q-1080">1080p</span>
-      <div class="stream-info">
-        <div class="stream-title">${s}.${year}.1080p.BluRay.x264-YIFY</div>
-        <div class="stream-detail">3.8 GB &nbsp;·&nbsp; ◍ 6,540 ${SEEDS} &nbsp;·&nbsp; ${P2P}</div>
-      </div>
-      <div class="stream-actions" style="position:relative">
-        <button class="s-btn play" onclick="openPlayer()">${PLAY}</button>
-        <button class="s-btn ext-trigger" onclick="toggleExtMenu(this)">${OPENIN}</button>
-        <div class="ext-menu">
-          <div class="ext-item"><span class="ext-icon">▷</span><div><div class="ext-name">VLC</div><div class="ext-sub">vlc://stream</div></div></div>
-          <div class="ext-item"><span class="ext-icon">◆</span><div><div class="ext-name">Infuse</div><div class="ext-sub">infuse://play?url=</div></div></div>
-          <div class="ext-item"><span class="ext-icon">⬡</span><div><div class="ext-name">Stremio App</div><div class="ext-sub">stremio://stream</div></div></div>
-        </div>
-      </div>
     </div>`;
 }
 /* ====================== premium video player ====================== */
@@ -6555,7 +6422,7 @@ const VP=(function(){
   const $=id=>document.getElementById(id);
   const DEMO_SRC='/assets/demo.mp4';   // bundled sample (H.264 + AAC) so the demo player has real video + sound
   let hideTimer,currentSub=-1,curStream=null,dragging=false,scrubX=null,audioHintShown=false,hls=null,subsLoading=false;
-  // automatic source fallback (EN/RU torrent chain — see playCurrentCandidate)
+  // automatic source fallback chain — see playCurrentCandidate
   let cand=[],candI=0,candTried=null,audioFailed=null,playGen=0,stallTimer=null,lastProg=0,lastProgClock=0,resolving=false,cacheRetried=false;
   // resume-by-timecode: the position the next source-load should seek to (survives auto-
   // fallback swaps + manual quality switches), the last-persisted position, and a one-time
@@ -6654,16 +6521,16 @@ const VP=(function(){
 
   /* ---- source loading ---- */
   function destroyHls(){ if(hls){ try{hls.destroy();}catch(e){} hls=null; } }
-  // Attach any per-stream subtitles the addon supplied (e.g. ge.movie eng/rus VTT).
-  // Routed through /api/subtitle so they're served same-origin (cross-origin <track> needs CORS).
+  // Attach any per-stream subtitles the addon supplied (e.g. an addon's eng/rus VTT).
+  // Fetched in the browser and turned into a same-document blob: <track> — no server
+  // hop (Stremio model). A subtitle host without CORS simply can't be read and is skipped.
   function addStreamSubs(s){
     if(!s||!Array.isArray(s.subtitles))return;
-    s.subtitles.forEach(sub=>{ if(!sub||!sub.url)return;
+    s.subtitles.forEach(async sub=>{ if(!sub||!sub.url)return;
+      let blobUrl; try{ blobUrl=await subtitleBlobUrl(sub.url); }catch(e){ return; }
       const tr=document.createElement('track'); tr.kind='subtitles';
       tr.label=sub.lang||'Subtitle'; tr.srclang=String(sub.lang||'und').slice(0,3);
-      // Cross-origin <track> requires CORS; the backend sends the headers for our origin.
-      tr.crossOrigin='anonymous';
-      tr.src=window.apiUrl('/api/subtitle?src='+encodeURIComponent(sub.url)); v.appendChild(tr); });
+      tr.src=blobUrl; v.appendChild(tr); });
   }
   // Settings › Advanced "Play in external player": hand a real http(s) stream off
   // to a native app via its deep-link scheme. In-browser playback continues as a
@@ -6684,12 +6551,12 @@ const VP=(function(){
       vpToast(t('settings.ext_opening',{app:app.toUpperCase()}));
     }catch(e){}
   }
-  // On the split deploy (frontend on Vercel, backend on Render) our proxied stream
-  // URLs are root-relative '/api/stream-proxy?...'. A <video>.src or hls.loadSource()
-  // resolves those against the PAGE origin (Vercel), which has no /api/ — so they 404
-  // and the player sits at 0:00/0:00. The fetch() wrapper can't help here (these aren't
-  // fetch calls), so resolve '/api/...' media URLs against the backend explicitly.
-  // Already-absolute direct stream URLs (CORS-enabled files) are left untouched.
+  // On the split deploy (frontend on Vercel, backend on Render) any root-relative
+  // '/api/...' URL (e.g. a subtitle endpoint) resolves against the PAGE origin
+  // (Vercel), which has no /api/ — so it 404s. A <video>.src or hls.loadSource() can't
+  // use the fetch() wrapper (these aren't fetch calls), so resolve '/api/...' URLs
+  // against the backend explicitly. Direct add-on stream URLs are already absolute
+  // (CORS-enabled) and are left untouched.
   function mediaSrc(u){
     return (window.API_BASE && typeof u==='string' && u.lastIndexOf('/api/',0)===0) ? window.API_BASE+u : u;
   }
@@ -6708,7 +6575,7 @@ const VP=(function(){
     const p=v.play(); if(p&&p.catch)p.catch(()=>{});
     addStreamSubs(curStream); loadSubs(); buildMenu();
   }
-  // em.filmx.my HLS masters carry several audio renditions (Georgian/English/Russian)
+  // Some HLS masters carry several audio renditions (e.g. multiple languages)
   // and usually DEFAULT to Russian. Each stream row tells us which language it's for
   // (s.audioLang); we switch the player to that audio track so the chosen language
   // actually plays. Matching is by track name/lang; falls back to Georgian.
@@ -6757,26 +6624,6 @@ const VP=(function(){
     }
     addStreamSubs(curStream); loadSubs(); buildMenu();
   }
-  // quiet=true suppresses the hard failure/caching screens so the fallback engine can
-  // silently swap in the next candidate instead of dumping an error on the user.
-  async function resolveTorrent(magnet,quiet){
-    if(!window.HAS_DEBRID){
-      // Torrent playback runs on the user's verified Saturn TorBox key — send
-      // them to verify Saturn, not to a (now-removed) debrid settings panel.
-      toast(t('player.verify_saturn'),'var(--danger)'); close(); navigate('addons');
-      if(window.AUTH&&AUTH.user){ setTimeout(()=>{ try{ openSaturn(); }catch(_){} },120); }
-      return null;
-    }
-    showLoading(t('player.resolving'),t('player.resolving_sub')); setStatus('<span class="spinner"></span> '+t('status.resolving'));
-    try{
-      const r=await fetch('/api/debrid/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({magnet})});
-      const data=await r.json().catch(()=>({}));
-      if(!ov.classList.contains('open'))return null;
-      if(r.status===202){ if(!quiet){ showLoading('◷ '+data.error,t('player.caching_sub')); setStatus(t('status.caching')); } return {caching:true}; }   // recoverable: TorBox is caching it
-      if(!r.ok){ if(!quiet){ showLoading('✕ '+(data.error||t('player.could_not_resolve').replace(/^✕ /,'')),t('player.try_another')); setStatus('✕ '+t('status.failed')); } return null; }
-      return data;
-    }catch(e){ if(!quiet){ showLoading(t('common.backend_unreachable'),t('player.start_server')); setStatus('✕ '+t('status.error')); } return null; }
-  }
   function titleLabel(){
     // series: title bar shows just the show name — the S·E·name line is carried by the
     // accent subtitle (set in refreshSeriesUI), so we don't repeat it here.
@@ -6790,18 +6637,18 @@ const VP=(function(){
    * can't decode), silently advance to the next one — so the user no longer has to
    * manually retry. Georgian HLS is a single working source and is left untouched. */
   function setupCandidates(s){
-    const lang=(s&&s.lang)||window.currentLang||'en';
+    const lang=window.currentLang||(s&&streamLangs(s)[0])||'en';
     const all=window.currentStreams||[];
-    const sameLang=all.filter(x=>((x.lang||'en')===lang));
-    // clicked stream first, then the server's ranked order (deduped)
-    cand=[s].concat(sameLang.filter(x=>x!==s&&!(x.url===s.url&&(x.lang||'en')===(s.lang||'en'))));
+    const sameLang=all.filter(x=>streamLangs(x).includes(lang));
+    // clicked stream first, then the ranked order (deduped by url)
+    cand=[s].concat(sameLang.filter(x=>x!==s&&x.url!==s.url));
     candI=0; candTried=new Set(); audioFailed=new Set(); cacheRetried=false;
   }
   function clearStallWatch(){ if(stallTimer){ clearInterval(stallTimer); stallTimer=null; } }
   function armStallWatch(){
     clearStallWatch();
     lastProg=0; lastProgClock=Date.now();
-    if(!curStream||curStream.kind!=='torrent')return;   // only watch resolved-torrent playback
+    if(!curStream||curStream.kind!=='url')return;   // watch progressive (direct-file) playback; HLS self-recovers
     stallTimer=setInterval(()=>{
       if(!ov.classList.contains('open')){ clearStallWatch(); return; }
       if(v.paused||v.ended)return;                       // user paused → not a stall
@@ -6838,26 +6685,10 @@ const VP=(function(){
     advanceCandidate(reason);
   }
   async function playCurrentCandidate(){
-    const gen=++playGen; const s=cand[candI]; if(!s)return;
+    ++playGen; const s=cand[candI]; if(!s)return;
     candTried.add(candI); curStream=s;
     if(s.kind==='hls'){ clearStallWatch(); loadHls(s.url,titleLabel(),s.audioLang); return; }
-    if(s.kind==='url'){ load(s.url,titleLabel()); armStallWatch(); return; }
-    const hasNext=cand.some((_,i)=>i!==candI&&!candTried.has(i));
-    // resolving=true blocks event-driven advances (a stray stall/error/silent-audio from the
-    // PREVIOUS source) from skipping this candidate while its resolve is in flight.
-    resolving=true;
-    let out; try{ out=await resolveTorrent(s.url,hasNext); } finally{ resolving=false; }
-    if(gen!==playGen)return;                          // a newer candidate already took over
-    if(out&&out.url){ load(out.url,out.filename||titleLabel()); armStallWatch(); }
-    else if(out&&out.caching){
-      // TorBox is still caching this torrent — recoverable, not a dead source. Move to the
-      // next candidate if there is one; otherwise keep the ◷ screen and re-try once after 30s
-      // instead of clobbering it with a "can't play" error.
-      if(hasNext){ if(ov.classList.contains('open')) advanceCandidate('resolve'); }
-      else if(!cacheRetried){ cacheRetried=true; const myGen=gen;
-        setTimeout(()=>{ if(myGen===playGen&&ov.classList.contains('open')){ candTried.delete(candI); playCurrentCandidate(); } },30000); }
-    }
-    else if(ov.classList.contains('open')){ advanceCandidate('resolve'); }   // hard failure → next
+    load(s.url,titleLabel()); armStallWatch();   // direct (non-HLS) file
   }
   async function playStream(s){
     curStream=s; open(titleLabel());
@@ -6872,11 +6703,11 @@ const VP=(function(){
     try{ resumeTarget=0; lastSavePos=0; resumeToastPending=false; }catch(e){}   // demo loops a 30s clip — nothing to resume/persist
     curStream=null; clearStallWatch();   // demo clip — no real source, so no fallback machinery
     setStatus(t('status.demo'));
-    // No real source (no debrid key / addon) → play the bundled sample clip so the
-    // player actually shows video AND plays sound, with all controls live.
+    // No stream source installed → play the bundled sample clip so the player
+    // actually shows video AND plays sound, with all controls live.
     load(DEMO_SRC, `${currentTitle} (${currentYear})`);
     v.loop=true;                        // set AFTER load() (which resets loop) so the short sample repeats
-    vpToast(t('player.demo_sub'));      // make clear it's a sample; real sources need a debrid key + addon
+    vpToast(t('player.demo_sub'));      // make clear it's a sample; real sources need a stream add-on
   }
   async function switchStream(s){
     if(!s||s===curStream)return; const wasPlaying=!v.paused; curStream=s;
@@ -6888,25 +6719,22 @@ const VP=(function(){
     // re-anchor the fallback chain on the manually chosen source so a later stall still
     // auto-advances from here onward; ++playGen cancels any in-flight auto-resolve, and gen
     // guards this manual resolve against an out-of-order earlier switch clobbering it.
-    const gen=++playGen; setupCandidates(s); candTried.add(0); clearStallWatch();
+    ++playGen; setupCandidates(s); candTried.add(0); clearStallWatch();
     const resumePlay=()=>{ if(wasPlaying)v.play().catch(()=>{}); v.removeEventListener('loadedmetadata',resumePlay); };
     v.addEventListener('loadedmetadata',resumePlay);
     if(s.kind==='hls'){ loadHls(s.url,$('playerTitle').textContent,s.audioLang); }
-    else if(s.kind==='url'){ load(s.url,$('playerTitle').textContent); armStallWatch(); }
-    else { const out=await resolveTorrent(s.url);
-      if(gen!==playGen){ v.removeEventListener('loadedmetadata',resumePlay); return; }   // a newer switch took over
-      if(out&&out.url){ load(out.url,$('playerTitle').textContent); armStallWatch(); } else v.removeEventListener('loadedmetadata',resumePlay); }
+    else { load(s.url,$('playerTitle').textContent); armStallWatch(); }
     vpToast(I18N.t('player.source')+(s.quality||'SD')+' · '+s.source);
   }
-  // switch the playback LANGUAGE (Saturn streams: one stream per language). Picks that
-  // language's best stream — a cached/instant one if present, else the server's top-ranked
-  // (the list arrives cached-first) — updates currentLang so the Quality submenu re-filters,
-  // and hands off to switchStream. No-op if the language has no stream or is already playing.
+  // switch the playback LANGUAGE (multi-language sources: one stream per language). Picks that
+  // language's best stream (the list arrives best-first), updates currentLang so the
+  // Quality submenu re-filters, and hands off to switchStream. No-op if the language has
+  // no stream or is already playing.
   function switchLang(l){
     if(!l)return;
-    const list=(window.currentStreams||[]).filter(s=>(s.lang||'en')===l);
+    const list=(window.currentStreams||[]).filter(s=>streamLangs(s).includes(l));
     if(!list.length)return;
-    const pick=list.find(s=>s.cached)||list[0];
+    const pick=list[0];
     window.currentLang=l;
     if(pick!==curStream) switchStream(pick);
     buildMenu();
@@ -6919,11 +6747,23 @@ const VP=(function(){
     const id=window.currentImdb; if(!id){ buildMenu(); return; }
     subsLoading=true;
     try{
-      const data=await fetch('/api/subtitles/'+encodeURIComponent(id)+'?type='+encodeURIComponent(window.currentMediaType||'movie')).then(r=>r.json());
+      // Browser → each installed subtitle add-on directly (Stremio model).
+      const type=window.currentMediaType||'movie';
+      const addons=(window.INSTALLED_ADDONS||[]).filter(a=>addonHasResource(a,'subtitles',type));
+      const lists=await Promise.all(addons.map(async a=>{
+        try{
+          const data=await fetchAddonJSON(addonBaseUrl(a.url),'subtitles/'+type+'/'+encodeURIComponent(id)+'.json');
+          return (data.subtitles||[]).filter(s=>s.url).map(s=>({
+            lang:s.lang||s.id||'und',
+            label:(subLangName(s.lang)||s.lang||'Subtitle')+(s.id&&/hi|sdh/i.test(s.id)?' (SDH)':''),
+            url:s.url }));
+        }catch(e){ return []; }
+      }));
       const seen=new Set();
-      (data.subtitles||[]).forEach(s=>{ const k=(s.label||s.lang); if(seen.has(k)||seen.size>=12)return; seen.add(k);
+      for(const s of lists.flat()){ const k=(s.label||s.lang); if(seen.has(k)||seen.size>=12)continue; seen.add(k);
+        let blobUrl; try{ blobUrl=await subtitleBlobUrl(s.url); }catch(e){ continue; }  // skip CORS-blocked hosts
         const tr=document.createElement('track'); tr.kind='subtitles'; tr.label=s.label||s.lang||'Subtitle';
-        tr.srclang=(s.lang||'und').slice(0,3); tr.src=s.url; v.appendChild(tr); });
+        tr.srclang=(s.lang||'und').slice(0,3); tr.src=blobUrl; v.appendChild(tr); }
     }catch(e){}
     // finally so the flag always clears (incl. the early-return path) — honour Settings ›
     // "Default subtitles language" then rebuild the menu with the freshly loaded tracks
@@ -7062,12 +6902,10 @@ const VP=(function(){
 
   /* ---- settings menu ---- */
   function optRow(on,label,attrs,sub,badge){ return `<div class="vp-opt ${on?'on':''}" ${attrs}><span class="ck">${on?'✓':''}</span>${esc(label)}${badge||''}${sub?`<span class="sub">${esc(sub)}</span>`:''}</div>`; }
-  // Red-accent "Instant" pill (cached on TorBox) — inline SVG bolt, matches the site's tag styling.
-  const INSTANT_BADGE='<span class="vp-instant" title="Cached on TorBox · instant play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>Instant</span>';
   // friendly name for an hls.js audio track / quality level
   const AUDIO_LABELS={eng:'English',en:'English',rus:'Russian',ru:'Russian',geo:'ქართული',ka:'ქართული',kat:'ქართული',ukr:'Ukrainian',tur:'Turkish',fre:'French',ger:'German',ita:'Italian',jpn:'Japanese',kor:'Korean',spa:'Spanish'};
   function audioLabel(a,i){ return a.name||AUDIO_LABELS[(a.lang||'').toLowerCase()]||a.lang||(t('menu.track')+(i+1)); }
-  // friendly, UI-localized name for a stream language code (Saturn streams carry s.lang).
+  // friendly, UI-localized name for a stream language code (streams may carry s.lang).
   // Prefer the i18n langtab.* string; fall back to a full-name map / the raw code uppercased.
   const LANG_FULL={ka:'Georgian',en:'English',ru:'Russian',uk:'Ukrainian',tr:'Turkish',fr:'French',de:'German',it:'Italian',es:'Spanish',ja:'Japanese',ko:'Korean',hi:'Hindi',zh:'Chinese',pl:'Polish',pt:'Portuguese'};
   function langName(l){ const k='langtab.'+l, v=t(k); return (v&&v!==k)?v:(LANG_FULL[l]||AUDIO_LABELS[l]||(l||'').toUpperCase()); }
@@ -7123,7 +6961,7 @@ const VP=(function(){
         aBody+=optRow(a.enabled,lbl,`data-act="audio" data-i="${i}"`); });
       h+=accSection('audio',t('menu.audio_lang'),aVal,aBody);
     } else {
-      // Saturn / multi-language sources: each language is a SEPARATE stream (single embedded
+      // Multi-language sources: each language is a SEPARATE stream (single embedded
       // audio track), so derive the available languages from the stream list and let the user
       // switch language straight from the player. Selecting one swaps to that language's best
       // (cached-first) stream. Only the languages that actually have a stream are listed.
@@ -7133,8 +6971,8 @@ const VP=(function(){
         const cur=window.currentLang||(curStream&&curStream.lang)||'en';
         let aBody='',aVal='';
         langs.forEach(l=>{ const on=l===cur, lbl=langName(l);
-          const cached=all.some(x=>(x.lang||'en')===l&&x.cached); if(on)aVal=lbl;
-          aBody+=optRow(on,lbl,`data-act="lang" data-lang="${l}"`,'',cached?INSTANT_BADGE:''); });
+          if(on)aVal=lbl;
+          aBody+=optRow(on,lbl,`data-act="lang" data-lang="${l}"`,'',''); });
         h+=accSection('audio',t('menu.audio_lang'),aVal,aBody);
       }
     }
@@ -7154,17 +6992,17 @@ const VP=(function(){
       h+=accSection('quality',t('menu.quality'),qVal,qBody);
     } else {
       // Source picker for the CURRENT language only — the server's ranked fallback chain.
-      // The "Instant" pill = cached on TorBox. window.currentQualityList keeps the displayed
-      // order so the click handler resolves the right stream by index.
+      // window.currentQualityList keeps the displayed order so the click handler resolves
+      // the right stream by index.
       const lng=window.currentLang||'en';
-      const qlist=(window.currentStreams||[]).filter(s=>(s.lang||'en')===lng).slice(0,10);
+      const qlist=(window.currentStreams||[]).filter(s=>streamLangs(s).includes(lng)).slice(0,10);
       window.currentQualityList=qlist;
       if(qlist.length>1){
         let qBody='',qVal='';
         qlist.forEach((s,i)=>{ const on=curStream&&curStream.url===s.url&&(curStream.lang||'en')===(s.lang||'en');
           const lbl=(s.quality||'SD')+' · '+s.source;
           if(on)qVal=(s.quality||'SD');
-          qBody+=optRow(on,lbl,`data-act="quality" data-i="${i}"`,s.size||'',s.cached?INSTANT_BADGE:''); });
+          qBody+=optRow(on,lbl,`data-act="quality" data-i="${i}"`,s.size||'',''); });
         h+=accSection('quality',t('menu.quality'),qVal,qBody);
       }
     }
@@ -7225,7 +7063,7 @@ const VP=(function(){
     // duration fires `ended` — which stops a movie or jumps a series to the next episode.
     // A click near the right edge should play the final seconds, not skip them.
     target=Math.min(target,v.duration-0.25);
-    // A source that isn't fully available yet (still caching on TorBox, or an HLS window)
+    // A source that isn't fully available yet (an HLS availability window)
     // reports a SEEKABLE range narrower than its duration. Setting currentTime past that
     // range makes the browser silently snap the playhead back to the buffered edge (or, in
     // some browsers, to 0) — which is exactly the "I scrub forward but it barely moves /
@@ -7439,11 +7277,9 @@ const VP=(function(){
     if(!audioHintShown && v.loop===false && v.currentTime>6 && !v.muted && v.volume>0
        && typeof v.webkitAudioDecodedByteCount==='number' && v.webkitAudioDecodedByteCount===0){
       audioHintShown=true;
-      // browser decoded ZERO audio bytes → this source's audio (AC-3/E-AC-3/DTS) is silent
-      // here. For torrents, jump to the next candidate (preferring an AAC release); for
-      // Georgian HLS / demo, just surface the one-time hint.
-      if(curStream && curStream.kind==='torrent') onPlaybackTrouble('audio');
-      else vpToast(t('player.no_audio_hint'));
+      // browser decoded ZERO audio bytes → this source's audio (AC-3/E-AC-3/DTS) can't be
+      // decoded in-browser. Surface the one-time hint pointing at another source.
+      vpToast(t('player.no_audio_hint'));
     } });
   v.addEventListener('progress',()=>{ try{ if(v.duration&&v.buffered.length){ const e=v.buffered.end(v.buffered.length-1);
     $('vpBuffered').style.width=(e/v.duration*100)+'%'; } }catch(e){} });
@@ -7464,8 +7300,6 @@ const VP=(function(){
   // re-anchor the stall watchdog on every seek — a backward scrub must NOT look like a stall
   v.addEventListener('seeking',()=>{ lastProg=v.currentTime; lastProgClock=Date.now(); });
   v.addEventListener('error',()=>{ if(!v.src)return;
-    // a resolved torrent that won't decode (bad container/codec) → try the next candidate
-    if(curStream && curStream.kind==='torrent' && ov.classList.contains('open')){ onPlaybackTrouble('error'); return; }
     showLoading(t('player.cant_play'),t('player.cant_play_sub')); setStatus('✕ '+t('status.playback_error')); });
   if('pictureInPictureEnabled' in document){
     v.addEventListener('enterpictureinpicture',()=>$('vpPip').classList.add('active'));
@@ -7525,7 +7359,130 @@ function toast(msg,color){
   el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2400);
 }
 
-/* ---------- real streams from installed addons (/api/streams) ---------- */
+/* ================= client-side Stremio add-on transport =================
+   Stremio's architecture: the BROWSER talks to each installed add-on directly.
+   STREDIO's server is never in the path — it neither lists, fetches, proxies,
+   ranks, nor filters streams/subtitles/catalogs. It only stores the user's
+   installed-collection (the add-on URLs) so the collection syncs across the
+   account's devices. Every resource request below goes browser → add-on, and
+   the stream then plays straight in the browser — through the user's OWN debrid
+   account if they installed a debrid-configured add-on URL (the key lives only
+   in that URL, which STREDIO stores but never uses). Any community add-on the
+   user installs works the same way. Add-ons send `Access-Control-Allow-Origin:*`
+   (they're built for browser clients), so these cross-origin fetches succeed;
+   the page CSP already allows connect-src https: + media-src blob: https:. */
+window.INSTALLED_ADDONS = window.INSTALLED_ADDONS || [];
+/* Resource URLs are relative to the directory holding manifest.json. */
+function addonBaseUrl(manifestUrl){ return String(manifestUrl||'').replace(/[^/]*$/,''); }
+function addonHasResource(a,resource,type){
+  const m=(a&&a.manifest)||{};
+  const res=(m.resources||[]).map(r=>typeof r==='string'?r:(r&&r.name)).filter(Boolean);
+  return res.includes(resource) && (!type || (m.types||[]).includes(type));
+}
+/* Browser → add-on, JSON resource fetch. Absolute https URL → the fetch shim
+   leaves it untouched and sends NO credentials, so wildcard CORS is honoured. */
+async function fetchAddonJSON(base,path){
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),20000);
+  try{
+    const r=await fetch(base+path,{headers:{accept:'application/json'},signal:ctrl.signal});
+    if(!r.ok) throw new Error('addon '+r.status);
+    return await r.json();
+  } finally { clearTimeout(to); }
+}
+function detectQualityC(t){ t=(t||'').toLowerCase();
+  if(/(2160|\b4k\b|uhd)/.test(t))return'4K'; if(/1080/.test(t))return'1080p';
+  if(/720/.test(t))return'720p'; if(/480/.test(t))return'480p'; return''; }
+function extractSizeC(t){ const m=(t||'').match(/(\d+(?:\.\d+)?)\s?(gb|mb)/i); return m?m[1]+' '+m[2].toUpperCase():null; }
+/* Audio languages a stream offers. Add-ons signal them two ways:
+   (1) an explicit behaviorHints.lang (e.g. the Georgian add-on tags one lang/row);
+   (2) flag emojis in the title — Torrentio prints 🇬🇧/🇷🇺/🇺🇦 to mark each torrent's
+   audio tracks. We map the flags STREDIO has tabs for (en/ru/uk/ka) and ignore the
+   rest. This is what lets the language tabs mirror the SOURCE, exactly like Stremio. */
+const SUPPORTED_STREAM_LANGS=['ka','en','ru','uk'];
+const FLAG_TO_LANG={GB:'en',US:'en',RU:'ru',UA:'uk',GE:'ka'};
+function parseStreamLangs(text){
+  const out=[]; const re=/([\u{1F1E6}-\u{1F1FF}])([\u{1F1E6}-\u{1F1FF}])/gu; let m;
+  while((m=re.exec(text||''))){
+    const cc=String.fromCharCode(m[1].codePointAt(0)-0x1F1E6+65)+String.fromCharCode(m[2].codePointAt(0)-0x1F1E6+65);
+    const l=FLAG_TO_LANG[cc]; if(l&&out.indexOf(l)<0) out.push(l);
+  }
+  return out;
+}
+/* The languages to bucket a mapped stream under — defaults to English when a source
+   gives no language signal, so language-agnostic add-ons keep working unchanged. */
+function streamLangs(s){
+  if(s&&Array.isArray(s.langs)&&s.langs.length) return s.langs;
+  if(s&&s.lang) return [s.lang];
+  return ['en'];
+}
+/* Normalise one Stremio stream object into the row shape the player renders.
+   The add-on's stream URL is used verbatim — never fetched or rewritten here. */
+function mapStreamC(s,addonName){
+  const label=[s.name,s.title,s.description].filter(Boolean).join(' \n ');
+  const url=s.url||null; const bh=s.behaviorHints||{};
+  const isHls=!!url&&(bh.streamType==='hls'||/\.(m3u8|txt)(\?|$)/i.test(url)||/\/hls\//i.test(url));
+  const flagLangs=parseStreamLangs(label);
+  const langs=bh.lang?[bh.lang]:flagLangs;
+  return {
+    source:addonName,
+    title:((s.title||s.description||s.name||'Stream').split('\n')[0].trim())||'Stream',
+    quality:detectQualityC(label), size:extractSizeC(label),
+    kind:isHls?'hls':'url', lang:bh.lang||flagLangs[0]||null, langs, audioLang:bh.audioLang||null, url,
+    subtitles:Array.isArray(s.subtitles)?s.subtitles.map(x=>({url:x.url,lang:x.lang})).filter(x=>x.url):undefined,
+  };
+}
+/* Aggregate streams for a video id across every installed stream add-on, in
+   parallel, entirely in the browser. Returns {streams, addons, langs}. */
+async function fetchStreamsDirect(videoId,type){
+  const addons=(window.INSTALLED_ADDONS||[]).filter(a=>addonHasResource(a,'stream',type));
+  if(!addons.length) return {streams:[],addons:0,langs:[]};
+  const path='stream/'+type+'/'+encodeURIComponent(videoId)+'.json';
+  const per=await Promise.all(addons.map(async a=>{
+    try{
+      const data=await fetchAddonJSON(addonBaseUrl(a.url),path);
+      return (data.streams||[]).map(s=>mapStreamC(s,(a.manifest&&a.manifest.name)||'Add-on')).filter(s=>s.url);
+    }catch(e){ return []; }   // one slow/broken add-on must not sink the rest
+  }));
+  const streams=per.flat();
+  // union of every audio language present across the streams, so the tabs mirror the
+  // source (a multi-audio torrent appears under each of its languages, like Stremio)
+  const langs=[...new Set(streams.flatMap(streamLangs))];
+  return {streams,addons:addons.length,langs};
+}
+/* normalise a Stremio catalog meta into the poster-card shape (ids are IMDb tt…) */
+function mapStremioMetaC(m){
+  const genres=m.genres||m.genre||[];
+  return { id:m.id, title:m.name||'Untitled',
+    year:String(m.releaseInfo||m.year||'').slice(0,4)||'—',
+    rating:m.imdbRating?+parseFloat(m.imdbRating).toFixed(1):0,
+    genre:(Array.isArray(genres)?genres[0]:genres)||'—', poster:m.poster||null };
+}
+/* ---- subtitles, fully client-side: fetch from the add-on/source, gunzip if
+   needed, convert SRT→VTT, hand the player a same-document blob: URL. No server
+   hop. (A subtitle host without permissive CORS can't be read from the browser —
+   the same limitation Stremio's web client has; such tracks are simply skipped.) */
+const SUB_LANG_NAMES={en:'English',eng:'English',es:'Spanish',spa:'Spanish',fr:'French',fre:'French',fra:'French',de:'German',ger:'German',deu:'German',it:'Italian',ita:'Italian',pt:'Portuguese',por:'Portuguese','pt-br':'Portuguese (BR)',pob:'Portuguese (BR)',ru:'Russian',rus:'Russian',ar:'Arabic',ara:'Arabic',hi:'Hindi',hin:'Hindi',ja:'Japanese',jpn:'Japanese',ko:'Korean',kor:'Korean',zh:'Chinese',chi:'Chinese',zho:'Chinese',nl:'Dutch',dut:'Dutch',nld:'Dutch',pl:'Polish',pol:'Polish',tr:'Turkish',tur:'Turkish',sv:'Swedish',swe:'Swedish',uk:'Ukrainian',ukr:'Ukrainian',ka:'Georgian',kat:'Georgian',geo:'Georgian',fa:'Persian',per:'Persian',fas:'Persian',he:'Hebrew',heb:'Hebrew',ro:'Romanian',rum:'Romanian',ron:'Romanian',el:'Greek',gre:'Greek'};
+function subLangName(code){ if(!code)return null; const c=String(code).toLowerCase();
+  return SUB_LANG_NAMES[c]||SUB_LANG_NAMES[c.split(/[-_]/)[0]]||null; }
+function srtToVttC(srt){
+  const body=String(srt).replace(/\r+/g,'').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g,'$1.$2');
+  return /^\s*WEBVTT/.test(body)?body:'WEBVTT\n\n'+body;
+}
+async function subtitleBlobUrl(srcUrl){
+  const r=await fetch(srcUrl); if(!r.ok) throw new Error('sub '+r.status);
+  let buf=new Uint8Array(await r.arrayBuffer());
+  const gz=/\.gz($|\?)/i.test(srcUrl)||(buf[0]===0x1f&&buf[1]===0x8b);
+  if(gz && 'DecompressionStream' in window){
+    try{
+      const stream=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+      buf=new Uint8Array(await new Response(stream).arrayBuffer());
+    }catch(e){}
+  }
+  const vtt=srtToVttC(new TextDecoder('utf-8').decode(buf));
+  return URL.createObjectURL(new Blob([vtt],{type:'text/vtt'}));
+}
+
+/* ---------- real streams from installed addons (browser → add-on direct) ---------- */
 function setStreams(html){document.getElementById('streamList').innerHTML=html;}
 
 /* ---------- season + episode chooser (TV / anime) ---------- */
@@ -7599,8 +7556,8 @@ async function playEpisode(season,ep){
   await loadRealStreams(seriesCtx.imdb+':'+season+':'+ep,'series');
   const all=window.currentStreams||[];
   // prefer the same source AND language, then same language, then anything available
-  const pick=all.find(x=>(x.lang||'en')===lang&&x.source===prevSource)
-           ||all.find(x=>(x.lang||'en')===lang)||all[0];
+  const pick=all.find(x=>streamLangs(x).includes(lang)&&x.source===prevSource)
+           ||all.find(x=>streamLangs(x).includes(lang))||all[0];
   if(pick)playStream(pick);
   else VP.openDemo();   // graceful fallback — keep playing instead of a dead "failed" screen
 }
@@ -7688,13 +7645,12 @@ function qualClass(q){return q==='4K'?'q-4k':q==='1080p'?'q-1080':'q-720';}
 function realStreamsHTML(streams){
   // Every row shows the current series/movie title (not the addon-supplied
   // codec/quality string), so the same name appears across every language tab.
-  // Torrentio + Georgian Dubbed are folded into one card, so the source line is
-  // always "Saturn".
+  // The source line names the add-on the streams came from.
   const mediaTitle=currentTitle||'';
+  const src=(streams[0]&&streams[0].source)||'';
   const rows=streams.map(s=>{
     const q=s.quality||'SD';
-    const detail=[s.size, s.seeds!=null?('◍ '+s.seeds.toLocaleString()+' '+t('stream.seeds')):null,
-      s.kind==='torrent'?t('stream.p2p_magnet'):t('stream.direct_link')].filter(Boolean).join(' · ');
+    const detail=[s.size, t('stream.direct_link')].filter(Boolean).join(' · ');
     const acts=`<button class="s-btn play" data-act="play" data-kind="${esc(s.kind||'url')}" data-url="${esc(s.url)}" aria-label="${esc(t('ui.play_aria')+' '+(mediaTitle||s.title))}">${esc(t('stream.play'))}</button>`;
     return `<div class="stream-row">
       <span class="quality-badge ${qualClass(q)}">${esc(q)}</span>
@@ -7705,11 +7661,10 @@ function realStreamsHTML(streams){
       <div class="stream-actions">${acts}</div>
     </div>`;
   }).join('');
-  return `<div class="stream-source-label">⬡ ${esc(t('stream.from'))}Saturn</div>${rows}`;
+  return `<div class="stream-source-label">⬡ ${esc(t('stream.from'))}${esc(src)}</div>${rows}`;
 }
 const LANG_DISPLAY={ka:'Georgian',en:'English',ru:'Russian',uk:'Ukrainian'};
-/* Show the language tab bar, exposing only the languages the user enabled in
-   their Saturn config (passed through from /api/streams). */
+/* Show the language tab bar, exposing the languages present in the returned streams. */
 function closeLangMenu(el){
   el.classList.remove('open');
   const tr=el.querySelector('.lang-select-trigger'); if(tr)tr.setAttribute('aria-expanded','false');
@@ -7748,25 +7703,9 @@ function renderStreamsForLang(lang){
     if(cur&&opt){ cur.innerHTML=opt.innerHTML; cur.dataset.lang=lang; }
     closeLangMenu(sel);
   }
-  const all=(window.currentStreams||[]).filter(s=>(s.lang||'en')===lang);
-  // Torrent sources arrive as a ranked fallback chain; show only the single best row
-  // (clean UX). The player auto-falls-back through the rest, and the ⚙ Quality menu
-  // lists them all for manual switching. Non-torrent rows (Georgian HLS) are shown as-is.
-  const torrents=all.filter(s=>s.kind==='torrent');
-  const others=all.filter(s=>s.kind!=='torrent');
-  const list=others.concat(torrents.slice(0,1));
+  const list=(window.currentStreams||[]).filter(s=>streamLangs(s).includes(lang));
   if(list.length){ setStreams(realStreamsHTML(list)); }
   else{ setStreams(`<div class="lang-empty">${esc(I18N.t('modal.not_dubbed',{lang:I18N.t('lang.'+lang)||LANG_DISPLAY[lang]||lang}))}</div>`); }
-}
-/* Saturn lock screen: streams stay hidden until the user verifies their key. */
-function renderLockedStreams(signedIn){
-  const sub=signedIn?I18N.t('saturn.locked_sub'):I18N.t('saturn.locked_signin');
-  setStreams(`<div class="streams-locked">
-    <div class="sl-ico" aria-hidden="true">⚿</div>
-    <div class="sl-title">${esc(I18N.t('saturn.locked'))}</div>
-    <div class="sl-sub">${esc(sub)}</div>
-    <button class="sl-btn" type="button" data-act="saturn-config">${esc(I18N.t('saturn.go_addons'))}</button>
-  </div>`);
 }
 /* No community streaming add-on installed → the platform is a pure media catalog &
    discovery interface. Surface NO third-party streams (not even demo rows); invite
@@ -7795,7 +7734,8 @@ async function loadRealStreams(videoId,mediaType){
   if(!streamSourceInstalled()){ renderCatalogOnly(); return; }
   setStreams(`<div class="stream-source-label"><span class="spinner"></span> ${esc(I18N.t('modal.searching_addons'))}</div>`);
   try{
-    const data=await fetch('/api/streams/'+encodeURIComponent(videoId)+'?type='+encodeURIComponent(type)).then(r=>r.json());
+    // Browser → each installed add-on directly. STREDIO's server never sees this.
+    const data=await fetchStreamsDirect(videoId,type);
     // Relevance guard. A stale token (user opened a different title) is always discarded.
     // But switching episodes from the in-player panel runs AFTER the detail modal has closed
     // (the player's open() clears the modal), so also accept the response while the player is
@@ -7803,12 +7743,6 @@ async function loadRealStreams(videoId,mediaType){
     // falls back to the demo clip instead of playing from the same source.
     if(t!==modalToken)return;
     if(!overlay.classList.contains('open')&&!document.getElementById('playerOverlay').classList.contains('open'))return;
-    // Saturn gate: Torrentio + Georgian Dubbed stay hidden until the key is verified.
-    if(data.saturn==='locked'){
-      showLangTabs(false);
-      renderLockedStreams(!!(window.AUTH&&AUTH.user));
-      return;
-    }
     if(data.addons===0){
       demoOrCatalogOnly(`<div class="demo-note">${I18N.t('modal.no_stream_addons_html')}</div>`);
       return;
@@ -7823,7 +7757,7 @@ async function loadRealStreams(videoId,mediaType){
     renderStreamsForLang(def);
   }catch(e){ if(modalAlive(t)) demoOrCatalogOnly(''); }
 }
-/* language dropdown: GB English (torrent) ·  Georgian (ge.movie) ·  Ukrainian (UAFlix) ·  Russian (HDRezka) —
+/* language dropdown: shows the languages present in the returned streams —
    only the enabled languages show; selecting one renders that language's streams. */
 (function(){
   const sel=document.getElementById('langTabs');
@@ -7842,16 +7776,11 @@ document.getElementById('streamList').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   if(b.dataset.act==='play'){
     // Prefer the full stream object (carries subtitles + audioLang + correct kind).
-    // ge.movie HLS rows for ka/en/ru SHARE one master URL, so disambiguate by the
+    // some HLS rows for different languages SHARE one master URL, so disambiguate by the
     // active language tab — otherwise clicking "English" could grab the Georgian row.
     const all=window.currentStreams||[], lang=window.currentLang;
-    const full=all.find(x=>x.url===b.dataset.url&&(x.lang||'en')===lang)||all.find(x=>x.url===b.dataset.url);
+    const full=all.find(x=>x.url===b.dataset.url&&streamLangs(x).includes(lang))||all.find(x=>x.url===b.dataset.url);
     playStream(full?{...full,title:`${currentTitle} (${currentYear})`}:{kind:b.dataset.kind,url:b.dataset.url||'',title:`${currentTitle} (${currentYear})`});
-  }else if(b.dataset.act==='saturn-config'){
-    // Lock screen → take the user to the Addons page (auth-gated) and open Saturn config.
-    try{ closeInfoModal(); }catch(_){}
-    navigate('addons');
-    if(window.AUTH&&AUTH.user){ setTimeout(()=>{ try{ openSaturn(); }catch(_){} },120); }
   }else if(b.dataset.act==='open-addons'){
     // Catalog-only notice → send the user to the Add-on catalog to install a stream source.
     try{ closeInfoModal(); }catch(_){}
@@ -7862,7 +7791,7 @@ document.getElementById('streamList').addEventListener('click',e=>{
 /* ---------- direct-to-sources sheet (add-on catalog cards) ----------
    Items from an installed add-on's catalog (sports/channels/etc.) usually carry
    custom ids that don't resolve to a TMDB detail page, so we skip the detail
-   modal entirely: open a lightweight sheet, query /api/streams for that add-on
+   modal entirely: open a lightweight sheet, query the add-on directly for that
    type, and hand the chosen source to the same player movies/series use. */
 (function(){
   const ov=document.getElementById('sourcesOverlay'); if(!ov)return;
@@ -7889,19 +7818,8 @@ document.getElementById('streamList').addEventListener('click',e=>{
     setTimeout(()=>{ try{ document.getElementById('sourcesDismiss').focus(); }catch(_){} },40);
     if(!id){ setBody(`<div class="lang-empty">${esc(I18N.t('sources.none'))}</div>`); return; }
     try{
-      const data=await fetch('/api/streams/'+encodeURIComponent(id)+'?type='+encodeURIComponent(type)).then(r=>r.json());
+      const data=await fetchStreamsDirect(id,type);   // browser → add-on direct
       if(!ov.classList.contains('open'))return;     // user already left
-      if(data.saturn==='locked'){
-        // a Saturn-gated source (Torrentio/Georgian) needs a verified key first
-        const sub=(window.AUTH&&AUTH.user)?I18N.t('saturn.locked_sub'):I18N.t('saturn.locked_signin');
-        setBody(`<div class="streams-locked">
-          <div class="sl-ico" aria-hidden="true">⚿</div>
-          <div class="sl-title">${esc(I18N.t('saturn.locked'))}</div>
-          <div class="sl-sub">${esc(sub)}</div>
-          <button class="sl-btn" type="button" data-act="saturn-config">${esc(I18N.t('saturn.go_addons'))}</button>
-        </div>`);
-        return;
-      }
       const streams=data.streams||[];
       window.currentStreams=streams;
       if(!streams.length){ setBody(`<div class="lang-empty">${esc(I18N.t('sources.none'))}</div>`); return; }
@@ -7916,9 +7834,6 @@ document.getElementById('streamList').addEventListener('click',e=>{
       const full=all.find(x=>x.url===b.dataset.url)||{kind:b.dataset.kind,url:b.dataset.url||''};
       closeSheet();
       playStream({...full,title:currentTitle+(currentYear?` (${currentYear})`:'')});
-    }else if(b.dataset.act==='saturn-config'){
-      closeSheet(); navigate('addons');
-      if(window.AUTH&&AUTH.user){ setTimeout(()=>{ try{ openSaturn(); }catch(_){} },120); }
     }
   });
   document.getElementById('sourcesDismiss').addEventListener('click',closeSheet);
@@ -7934,16 +7849,15 @@ document.addEventListener('click',e=>{
 
 /* ---------- add-on catalog: Official + Community sections ---------- *
  * Functional model (ties into the Terms & DMCA framing):
- *   • Upcoming Radar (official, catalog) drives the home "Upcoming Movies &
- *     Series" marquee. It's installed by default but IS removable — toggling it
- *     off hides the marquee (see upcomingInstalled() / renderUpcomingSection()).
- *   • Saturn (community, streaming) is the ONLY real third-party stream source.
- *     It is "Available" by default, so out-of-the-box the site is a pure media
- *     catalog & UI with NO third-party streams (see streamSourceInstalled()).
- *   • Install/Configure/Remove persist locally; Saturn's Configure opens the
- *     real TorBox-key flow that unlocks streams.                                */
+ *   • The official cards are all metadata/discovery helpers built on TMDB — they
+ *     drive home rows (Upcoming marquee, Studios, Trending/Top, Providers). None of
+ *     them host or fetch media; they only arrange catalog metadata.
+ *   • STREDIO ships NO stream sources. Out of the box it is a pure media catalog &
+ *     UI with NO third-party streams. A user may add their own stream add-on by URL
+ *     in the Community section; only then does the player surface sources
+ *     (see streamSourceInstalled()).                        */
 const ADDONS=[
-  /* — OFFICIAL — */
+  /* — OFFICIAL (metadata / discovery only) — */
   {id:'upcoming', section:'official', name:'Upcoming Movies & Series scrolling addon', iconCls:'puzzle', glyph:'✦', ver:'v1.3.0',
    tags:['catalog','metadata'], installed:true, noConfig:true, preview:true},
   {id:'studios', section:'official', name:'Studios row addon', iconCls:'puzzle', glyph:'▷', ver:'v1.0.0',
@@ -7952,9 +7866,7 @@ const ADDONS=[
    tags:['catalog','metadata'], installed:true},
   {id:'providers', section:'official', name:'Streaming Services rows addon', iconCls:'puzzle', glyph:'▭', ver:'v1.0.0',
    tags:['catalog','metadata'], installed:false},
-  /* — COMMUNITY — */
-  {id:'saturn', section:'community', name:'Saturn', iconCls:'saturn', ver:'v1.0.0',
-   tags:['community','streaming'], installed:false},
+  /* — COMMUNITY — user-installed third-party add-ons appear here (none ship with STREDIO) — */
 ];
 /* persist install state locally so it survives reloads */
 const ADDON_KEY='stredio.addons';
@@ -7963,7 +7875,7 @@ const ADDON_KEY='stredio.addons';
     ADDONS.forEach(a=>{if(!a.locked&&typeof s[a.id]==='boolean')a.installed=s[a.id]});}
   catch(e){ try{localStorage.removeItem(ADDON_KEY);}catch(_){} } // reset corrupt state instead of failing forever
 })();
-/* Install state syncs per-account (so Saturn + toggled rows follow you across
+/* Install state syncs per-account (so the toggled home rows follow you across
    devices), last-write-wins by timestamp. localStorage stays the source of truth
    for guests/offline; `owner` guards against one account inheriting another's
    toggles on a shared browser. */
@@ -7991,7 +7903,7 @@ function applyAddonsUI(){
   try{ if(typeof renderStudioSection==='function') renderStudioSection(); }catch(e){}
   try{ if(typeof renderCatalogSection==='function') renderCatalogSection(); }catch(e){}
   try{ if(typeof renderProviderSection==='function') renderProviderSection(); }catch(e){}
-  try{ if(typeof syncSaturnPlayback==='function') syncSaturnPlayback(); }catch(e){}
+  try{ if(typeof syncStreamReady==='function') syncStreamReady(); }catch(e){}
 }
 async function pullAddonState(){
   if(!_wAuthed()) return;
@@ -8011,12 +7923,11 @@ async function pullAddonState(){
     try{ localStorage.setItem(ADDON_OWNER_KEY,email); }catch(e){}
   }catch(e){}
 }
-/* Is a community streaming source installed? Saturn (Torrentio + Georgian Dubbed)
-   is the only real one — when it's not installed the player surfaces NO third-party
-   streams and the site stays a pure catalog & UI. */
+/* Is a third-party stream source installed? True once the account has installed at
+   least one add-on that provides streams (via the Add-on catalog). With none installed
+   the player surfaces NO third-party streams and the site stays a pure catalog & UI. */
 function streamSourceInstalled(){
-  const s=ADDONS.find(a=>a.id==='saturn');
-  return !!(s&&s.installed);
+  return (window.STREAM_SOURCES||0) > 0;
 }
 /* Is the "Upcoming Radar" add-on installed? It powers the home Upcoming marquee.
    Defaults to true if ADDONS isn't ready yet (it's installed-by-default), so an
@@ -8033,8 +7944,8 @@ function studiosInstalled(){
   catch(e){ return true; }
 }
 function addonIconHTML(a){
-  // Community add-ons (Saturn + any future ones) always use the Stremio puzzle/flower
-  // glyph tinted green; official add-ons keep the red puzzle / their own icon.
+  // Community add-ons always use the Stremio puzzle/flower glyph tinted green;
+  // official add-ons keep the red puzzle / their own icon.
   const community=a.section==='community';
   const usePuzzle=a.iconCls==='puzzle'||community;
   const cls='ic'+(usePuzzle?' puzzle':(a.iconCls?(' '+a.iconCls):''))+(community?' green':'');
@@ -8096,8 +8007,7 @@ _addonsSection&&_addonsSection.addEventListener('click',e=>{
   const cfg=e.target.closest('[data-configure]');
   if(cfg){
     const a=ADDONS.find(x=>x.id===cfg.dataset.configure); if(!a)return;
-    if(a.id==='saturn'){ if(typeof openSaturn==='function')openSaturn(); }
-    else if(a.id==='catalog'){ if(typeof openCatalogConfig==='function')openCatalogConfig(); }
+    if(a.id==='catalog'){ if(typeof openCatalogConfig==='function')openCatalogConfig(); }
     else if(a.id==='providers'){ if(typeof openProvidersConfig==='function')openProvidersConfig(); }
     else toast(t('addons.no_config',{name:a.name}),'var(--accent)');
     return;
@@ -8110,8 +8020,8 @@ _addonsSection&&_addonsSection.addEventListener('click',e=>{
   if(a.id==='studios'&&typeof renderStudioSection==='function') renderStudioSection();       // show/hide home studios row live
   if(a.id==='catalog'&&typeof renderCatalogSection==='function') renderCatalogSection();     // show/hide the six catalog rows live
   if(a.id==='providers'&&typeof renderProviderSection==='function') renderProviderSection(); // show/hide the seven provider rows live
-  syncSaturnPlayback();                 // footer playback line + play gate follow stream-source availability
-  if(a.installed) toast(a.id==='saturn'?t('saturn.installed_hint'):t('addons.toast_installed',{name:a.name}),'var(--success)');
+  syncStreamReady();                    // footer playback line + play gate follow stream-source availability
+  if(a.installed) toast(t('addons.toast_installed',{name:a.name}),'var(--success)');
   else            toast(t('addons.toast_removed',{name:a.name}),'var(--danger)');
 });
 
@@ -8119,7 +8029,7 @@ _addonsSection&&_addonsSection.addEventListener('click',e=>{
    Reads each checkbox's own label + category so the preview mirrors what's on screen,
    then hydrates each ghost row with real covers from the same /api/browse the home
    rows use (gracefully stays as gradient placeholders if the backend is offline).
-   rowsEl = the .saturn-langs group of checkboxes; screenEl = the preview viewport. */
+   rowsEl = the .optrow-list group of checkboxes; screenEl = the preview viewport. */
 const PREVIEW_POSTERS={};   // cat -> [{poster,backdrop}] cache, so toggles don't refetch
 function previewPosters(cat){
   if(PREVIEW_POSTERS[cat]) return Promise.resolve(PREVIEW_POSTERS[cat]);
@@ -8134,7 +8044,7 @@ function previewPosters(cat){
 }
 function renderCfgPreview(rowsEl,screenEl){
   if(!rowsEl||!screenEl)return;
-  const rows=[...rowsEl.querySelectorAll('.saturn-lang')]
+  const rows=[...rowsEl.querySelectorAll('.optrow')]
     .filter(lab=>lab.querySelector('input').checked)
     .map(lab=>({cat:lab.querySelector('input').value, label:lab.querySelector('span').textContent}));
   if(!rows.length){
@@ -8250,7 +8160,7 @@ function renderAddonPreview(id){
   let lastFocus=null;
   const preview=()=>renderCfgPreview($('catalogRows'),$('catalogPreviewScreen'));
   function paint(){
-    ov.querySelectorAll('#catalogRows .saturn-lang').forEach(lab=>{
+    ov.querySelectorAll('#catalogRows .optrow').forEach(lab=>{
       const cb=lab.querySelector('input');
       cb.checked=catalogRowEnabled(cb.value);
       lab.classList.toggle('on',cb.checked);
@@ -8273,7 +8183,7 @@ function renderAddonPreview(id){
   // toggling a checkbox updates that row on the home screen immediately (and persists)
   ov.querySelectorAll('#catalogRows input').forEach(cb=>{
     cb.addEventListener('change',()=>{
-      cb.closest('.saturn-lang').classList.toggle('on',cb.checked);
+      cb.closest('.optrow').classList.toggle('on',cb.checked);
       CATALOG_ROWS_ON[cb.value]=cb.checked;
       saveCatalogRows();
       renderCatalogSection();
@@ -8291,7 +8201,7 @@ function renderAddonPreview(id){
   let lastFocus=null;
   const preview=()=>renderCfgPreview($('providerRows'),$('providersPreviewScreen'));
   function paint(){
-    ov.querySelectorAll('#providerRows .saturn-lang').forEach(lab=>{
+    ov.querySelectorAll('#providerRows .optrow').forEach(lab=>{
       const cb=lab.querySelector('input');
       cb.checked=providerRowEnabled(cb.value);
       lab.classList.toggle('on',cb.checked);
@@ -8313,7 +8223,7 @@ function renderAddonPreview(id){
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&ov.classList.contains('open'))close(); });
   ov.querySelectorAll('#providerRows input').forEach(cb=>{
     cb.addEventListener('change',()=>{
-      cb.closest('.saturn-lang').classList.toggle('on',cb.checked);
+      cb.closest('.optrow').classList.toggle('on',cb.checked);
       PROVIDER_ROWS_ON[cb.value]=cb.checked;
       saveProviderRows();
       renderProviderSection();
@@ -8324,33 +8234,29 @@ function renderAddonPreview(id){
 })();
 
 /* ---------- backend addon round-trip (real /api/addons) ---------- */
-/* The curated cards above already represent the backend's catalog/subtitle/stream
-   addons (Cinemeta, OpenSubtitles v3, and the Torrentio + Georgian Dubbed pair the
-   UI folds into "Saturn"). This round-trip only refreshes Saturn's verified state
-   and surfaces any *extra* add-ons a user installed by URL. */
-const SATURN_IDS=['community.georgian.dubbed'];
-const CURATED_BACKEND_IDS=['com.linvo.cinemeta','org.stremio.opensubtitlesv3','community.georgian.dubbed'];
-window.saturn={langs:['ka','en','ru','uk']};
-const isSaturnId=a=>SATURN_IDS.includes((a.manifest&&a.manifest.id)||a.id);
+/* The curated cards above represent the backend's default metadata/subtitle add-ons
+   (Cinemeta, OpenSubtitles v3). This round-trip surfaces any *extra* add-ons a user
+   installed by URL and recomputes whether a third-party stream source is available. */
+const CURATED_BACKEND_IDS=['com.linvo.cinemeta','org.stremio.opensubtitlesv3'];
 const backendId=a=>(a.manifest&&a.manifest.id)||a.id;
-async function fetchSaturn(){
-  try{ window.saturn=await fetch('/api/saturn').then(r=>r.ok?r.json():{langs:[]}); }
-  catch(e){ window.saturn={langs:[]}; }
-  syncSaturnPlayback();
-  return window.saturn;
-}
-/* Streaming is ready once a community source is installed — no key to verify anymore
-   (every source is a direct link). Mirrors into the footer playback status line. */
-function syncSaturnPlayback(){
-  window.HAS_DEBRID=streamSourceInstalled();
+const providesStream=a=>(((a.manifest&&a.manifest.resources)||a.resources||[]).includes('stream'));
+window.STREAM_SOURCES=0;
+/* Streaming is ready once the account has installed an add-on that provides streams.
+   Mirrors into the footer playback status line. */
+function syncStreamReady(){
+  window.STREAM_READY=streamSourceInstalled();
   try{renderFooter();}catch(e){}
 }
 async function loadRemoteAddons(){
   const wrap=document.getElementById('remoteAddons');
   let list=[];
   try{ list=(await fetch('/api/addons').then(r=>r.json())).addons||[]; }
-  catch(e){ if(wrap)wrap.innerHTML=''; return; } // backend not running → curated cards still render
-  if(list.some(isSaturnId)) await fetchSaturn();   // learn Saturn's verified state
+  catch(e){ window.INSTALLED_ADDONS=[]; window.STREAM_SOURCES=0; syncStreamReady(); if(wrap)wrap.innerHTML=''; return; } // backend not running → curated cards still render
+  // The client's source of truth for the add-on collection. Every stream/subtitle/
+  // catalog request is made by the browser straight to these add-ons' own URLs.
+  window.INSTALLED_ADDONS=list;
+  window.STREAM_SOURCES=list.filter(providesStream).length;
+  syncStreamReady();
   renderAddons();
   if(!wrap)return;
   const extra=list.filter(a=>!CURATED_BACKEND_IDS.includes(backendId(a)));
@@ -8380,75 +8286,59 @@ _remoteAddonsEl&&_remoteAddonsEl.addEventListener('click',async e=>{
   }catch(e){toast(t('common.backend_unreachable'),'var(--danger)');}
 });
 
-/* ---------- Saturn configure modal: verify TorBox key → pick stream languages ---------- */
-(function(){
-  const ov=document.getElementById('saturnOverlay');
-  if(!ov)return;
-  const $=id=>document.getElementById(id);
-  const saveBtn=$('saturnSaveBtn'), saveSpin=$('saturnSaveSpin');
-  let lastFocus=null;
-
-  function renderState(){
-    const s=window.saturn||{langs:[]};
-    // language checkboxes reflect saved prefs (default all languages)
-    const langs=(Array.isArray(s.langs)&&s.langs.length)?s.langs:['ka','en','ru','uk'];
-    ov.querySelectorAll('.saturn-lang').forEach(lab=>{
-      const cb=lab.querySelector('input');
-      cb.checked=langs.includes(cb.value);
-      lab.classList.toggle('on',cb.checked);
-    });
-  }
-  window.openSaturn=async function(){
-    lastFocus=document.activeElement;
-    renderState();                 // paint from cache first so it feels instant
-    ov.classList.add('open'); ov.setAttribute('aria-hidden','false');
-    setTimeout(()=>{try{ saveBtn.focus(); }catch(e){}},40);
-    await fetchSaturn(); renderState();   // then refresh from the server
-  };
-  function closeSaturn(){
-    ov.classList.remove('open'); ov.setAttribute('aria-hidden','true');
-    try{ if(lastFocus)lastFocus.focus(); }catch(e){}
-  }
-  $('saturnDismiss').addEventListener('click',closeSaturn);
-  ov.addEventListener('click',e=>{ if(e.target===ov)closeSaturn(); });
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&ov.classList.contains('open'))closeSaturn(); });
-
-  // checkbox visual state
-  ov.querySelectorAll('.saturn-lang input').forEach(cb=>{
-    cb.addEventListener('change',()=>cb.closest('.saturn-lang').classList.toggle('on',cb.checked));
-  });
-
-  function busy(btn,spin,on){
-    btn.disabled=on; spin.hidden=!on;
-    btn.querySelector('.auth-submit-label').style.opacity=on?'.5':'';
-  }
-  // SAVE languages (no key needed — every source is a direct link)
-  saveBtn.addEventListener('click',async()=>{
-    const langs=[...ov.querySelectorAll('.saturn-lang input:checked')].map(c=>c.value);
-    if(!langs.length){ toast(t('saturn.need_lang'),'var(--danger)'); return; }
-    busy(saveBtn,saveSpin,true);
-    try{
-      const r=await fetch('/api/saturn/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({langs})});
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok){ toast('✕ '+(data.error||t('saturn.need_lang')),'var(--danger)'); return; }
-      window.saturn=data; syncSaturnPlayback(); toast(t('saturn.saved'),'var(--success)');
-      renderState(); loadRemoteAddons();
-    }catch(e){ toast(t('common.backend_unreachable'),'var(--danger)'); }
-    finally{ busy(saveBtn,saveSpin,false); }
-  });
-})();
 /* loadRemoteAddons() runs from refreshAuth() once the user is authenticated */
 
-/* wire addon install box → real POST /api/addons (validates the manifest server-side) */
+/* Normalise the many shapes a user may paste into a fetchable manifest URL, and
+   validate a manifest's shape — both done in the BROWSER so the install request,
+   like every other add-on request, goes browser → add-on. */
+function normalizeManifestUrlC(raw){
+  let url=(raw||'').trim(); if(!url)return null;
+  if(url.indexOf('stremio://')===0) url='https://'+url.slice('stremio://'.length);
+  if(!/^https?:\/\//i.test(url))return null;
+  let p; try{ p=new URL(url); }catch(e){ return null; }   // validate only
+  // Keep the URL byte-for-byte. Configured add-ons pack options into the path
+  // (e.g. Torrentio `…|torbox=KEY|…/manifest.json`); round-tripping through
+  // URL.toString() would percent-encode the `|`/`,` and mangle the config.
+  if(/\.json($|\?)/i.test(p.pathname)) return url;
+  const i=url.indexOf('?'), path=i<0?url:url.slice(0,i), qs=i<0?'':url.slice(i);
+  return path.replace(/\/+$/,'')+'/manifest.json'+qs;
+}
+function validateManifestC(m){
+  if(!m||typeof m!=='object')return 'Manifest is not a JSON object';
+  if(typeof m.id!=='string'||!/^[a-z0-9][a-z0-9._-]{0,200}$/i.test(m.id))return 'Manifest "id" is missing or malformed';
+  if(typeof m.name!=='string'||!m.name.trim()||m.name.length>200)return 'Manifest "name" is missing or too long';
+  if(!Array.isArray(m.resources)||!m.resources.length)return 'Manifest missing "resources"';
+  if(!Array.isArray(m.types)||!m.types.length)return 'Manifest missing "types"';
+  return null;
+}
+/* wire addon install box → browser fetches + validates the manifest, then POSTs the
+   sanitised record to /api/addons purely so the collection syncs across devices. */
 document.querySelectorAll('.install-box button').forEach(b=>{
   b.addEventListener('click',async()=>{
     const inp=b.closest('.install-box').querySelector('input');
-    const url=inp?inp.value.trim():'';
-    if(!url){toast(t('addons.paste_url'),'var(--danger)');return;}
-    if(!/^(https?|stremio):\/\/.+/i.test(url)){toast(t('addons.invalid_url'),'var(--danger)');return;}
+    const raw=inp?inp.value.trim():'';
+    if(!raw){toast(t('addons.paste_url'),'var(--danger)');return;}
+    const url=normalizeManifestUrlC(raw);
+    if(!url){toast(t('addons.invalid_url'),'var(--danger)');return;}
     toast(t('addons.fetching'),'var(--accent)');
+    // 1) Browser fetches the add-on manifest directly (CORS).
+    let manifest;
     try{
-      const r=await fetch('/api/addons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+      const r=await fetch(url,{headers:{accept:'application/json'}});
+      if(!r.ok){toast('✕ '+t('addons.install_fail')+' ('+r.status+')','var(--danger)');return;}
+      manifest=await r.json();
+    }catch(e){ toast('✕ '+t('addons.install_fail'),'var(--danger)'); return; }
+    const problem=validateManifestC(manifest);
+    if(problem){ toast('✕ '+problem,'var(--danger)'); return; }
+    // 2) Sanitise to the stored shape; POST for cross-device sync only.
+    const safeManifest={
+      id:manifest.id, name:manifest.name, version:manifest.version||'—',
+      description:manifest.description||'', types:manifest.types,
+      resources:manifest.resources.map(x=>typeof x==='string'?x:(x&&x.name)).filter(Boolean),
+      catalogs:Array.isArray(manifest.catalogs)?manifest.catalogs.map(c=>({type:c.type,id:c.id,name:c.name||c.id})):[],
+    };
+    try{
+      const r=await fetch('/api/addons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,manifest:safeManifest})});
       const data=await r.json().catch(()=>({}));
       if(!r.ok){toast('✕ '+(data.error||t('addons.install_fail')),'var(--danger)');return;}
       toast(t('addons.installed_ok',{name:(data.addon?.manifest?.name||'addon')}),'var(--success)');
@@ -8528,7 +8418,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       if(r.ok && !AUTH.user) window.setSessionToken('');
     }catch(e){ AUTH.user=null; }
     updateAuthUI();
-    if(AUTH.user){ try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){} }
+    if(AUTH.user){ try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){} }
   }
 
   /* ---- routing with guards (direct #addons/#settings URLs are blocked too) ---- */
@@ -8613,7 +8503,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       window.setSessionToken(data.token||'');   // persist for cross-restart sign-in
       const intent=authIntent;
       closeAuth(); updateAuthUI();
-      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){}
+      try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){}
       toast(t('auth.signed_in')+(AUTH.user&&AUTH.user.email?(' · '+AUTH.user.email):''),'var(--success)');
       navigate(intent||'browse');
     }catch(e){ $('authError').textContent=t('auth.err_backend'); setLoading(false); }
@@ -8623,7 +8513,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
     try{ syncFlush(true); _wStop(); }catch(e){}   // save any pending watch progress before the session ends
     try{ await fetch('/api/auth/logout',{method:'POST'}); }catch(e){}
     window.setSessionToken('');   // drop the persisted token so we don't re-auth
-    AUTH.user=null; window.HAS_DEBRID=false; window.saturn={langs:['ka','en','ru','uk']};
+    AUTH.user=null; window.STREAM_READY=false; window.STREAM_SOURCES=0;
     updateAuthUI(); try{renderFooter();}catch(e){}
     const ra=$('remoteAddons'); if(ra) ra.innerHTML='';
     toast(t('auth.signed_out'),'var(--accent)');
@@ -8669,7 +8559,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       if(!r.ok){ $('authError').textContent=data.error||t('auth.err_generic'); return; }
       AUTH.user=data.user||null; window.setSessionToken(data.token||''); const intent=authIntent;
       closeAuth(); updateAuthUI();
-      try{refreshSaturn();}catch(e){} try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){}
+      try{loadRemoteAddons();}catch(e){} try{syncPull();syncPush();}catch(e){} try{pullAddonState();}catch(e){}
       toast(t('auth.signed_in')+(AUTH.user&&AUTH.user.email?(' · '+AUTH.user.email):''),'var(--success)');
       navigate(intent||'browse');
     }catch(e){ $('authError').textContent=t('auth.err_backend'); }
@@ -8731,7 +8621,7 @@ document.querySelectorAll('.install-box button').forEach(b=>{
       }
     }catch(e){}
     // logged-in-only surfaces (avoid spurious 401s when signed out)
-    if(window.AUTH&&AUTH.user){ try{ refreshSaturn(); }catch(e){} try{ loadRemoteAddons(); }catch(e){} }
+    if(window.AUTH&&AUTH.user){ try{ loadRemoteAddons(); }catch(e){} }
   });
   // boot: paint static strings + active toggle, and translate the filter sliders
   I18N.apply(); I18N.syncButtons();
