@@ -5,7 +5,7 @@ server/node_modules/
 server/.env
 .env
 
-# server runtime data (contains your Real-Debrid token + installed addons)
+# server runtime data (installed addons, settings, watch state)
 server/data/
 
 # misc
