@@ -1287,6 +1287,17 @@
   .s-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(208,35,52,.08)}
   .s-btn.play{background:var(--accent);color:var(--ink);border-color:var(--accent)}
   .s-btn.play:hover{background:var(--accent-h)}
+  /* Each add-on-supplied stream object is drawn as one selectable box (not a "play"
+     button). Selecting it resolves that source's link. Full-width, left-aligned. */
+  .addon-stream{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    padding:10px 12px;border:1px solid var(--border);border-radius:4px;margin-bottom:8px;
+    background:var(--card);color:var(--text);cursor:pointer;transition:border-color .15s,background .15s;font:inherit}
+  .addon-stream:hover,.addon-stream:focus-visible{border-color:var(--accent);background:rgba(208,35,52,.08);outline:none}
+  .addon-stream .stream-info{flex:1;min-width:0}
+  .addon-stream .stream-title{display:block;font-size:16px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .addon-stream .stream-detail{display:block;font-family:var(--font-mono);font-size:13px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .addon-stream-chevron{flex-shrink:0;color:var(--text-muted);font-size:20px;line-height:1}
+  .addon-stream:hover .addon-stream-chevron{color:var(--accent)}
 
   /* external player menu */
   .ext-menu{position:absolute;right:0;bottom:calc(100% + 6px);background:#16131f;border:1px solid var(--border);
@@ -2969,7 +2980,7 @@
           <div class="m-genres" id="mGenres"></div>
           <div class="m-hero-actions">
             <button class="hero-btn hero-play" id="mWatch" type="button">
-              <span class="ic" aria-hidden="true">▶</span><span data-i18n="modal.watch">WATCH</span>
+              <span class="ic" aria-hidden="true">▶</span><span data-i18n="modal.watch">OPEN</span>
             </button>
             <button class="hero-add m-disc" id="mAdd" type="button" data-i18n-aria="mylist.add" aria-label="Add to My List">+</button>
           </div>
@@ -2996,7 +3007,7 @@
           <!-- STREAMS — langTabs + streamList markup/ids preserved verbatim -->
           <div class="m-streams">
             <div class="m-rail-head">
-              <h4 class="m-rail-label" data-i18n="modal.streams">STREAMS</h4>
+              <h4 class="m-rail-label" data-i18n="modal.streams">SOURCES</h4>
               <div id="langTabs" class="lang-select" hidden>
                 <button type="button" class="lang-select-trigger" aria-haspopup="listbox" aria-expanded="false">
                   <span class="lang-cur" data-lang="ka"><i class="flag flag-ka"></i>ქართული</span>
@@ -3331,7 +3342,7 @@ window.I18N=(function(){
   "authctl.account_menu": "Account menu",
   "authctl.signed_in_as": "Signed in as",
   "modal.close_aria": "Close details",
-  "modal.streams": "STREAMS",
+  "modal.streams": "SOURCES",
   "modal.not_dubbed": "This movie or show is not available yet in {lang}.",
   "lang.ka": "Georgian",
   "lang.en": "English",
@@ -3454,7 +3465,7 @@ window.I18N=(function(){
   "modal.as": "as {name}",
   "modal.show_all": "SHOW ALL",
   "modal.show_less": "SHOW LESS",
-  "modal.watch": "WATCH",
+  "modal.watch": "OPEN",
   "cta.resume_time": "RESUME · {time}",
   "cta.resume_ep": "RESUME {ep} · {time}",
   "player.resuming": "▸ Resuming from {time}",
@@ -3773,7 +3784,7 @@ window.I18N=(function(){
   "authctl.account_menu": "ანგარიშის მენიუ",
   "authctl.signed_in_as": "შესული ხართ როგორც",
   "modal.close_aria": "დეტალების დახურვა",
-  "modal.streams": "სტრიმები",
+  "modal.streams": "წყაროები",
   "modal.not_dubbed": "ეს ფილმი ან სერიალი ჯერ არ არის ხელმისაწვდომი {lang} ენაზე.",
   "lang.ka": "ქართულ",
   "lang.en": "ინგლისურ",
@@ -3896,7 +3907,7 @@ window.I18N=(function(){
   "modal.as": "როლი — {name}",
   "modal.show_all": "ყველას ჩვენება",
   "modal.show_less": "ნაკლების ჩვენება",
-  "modal.watch": "ყურება",
+  "modal.watch": "გახსნა",
   "cta.resume_time": "გაგრძელება · {time}",
   "cta.resume_ep": "გაგრძელება {ep} · {time}",
   "player.resuming": "▸ გაგრძელება {time}-დან",
@@ -4731,7 +4742,7 @@ function fmtClock(t){ if(!isFinite(t)||t<0)t=0; t=Math.floor(t);
 
 /* ---------- cross-device sync: watch history + resume progress ----------
    localStorage stays the instant, offline-safe source of truth; the server doc
-   (/api/watch-state) is the shared copy. PULL on sign-in + when the tab regains
+   (/api/library-state) is the shared copy. PULL on sign-in + when the tab regains
    focus (merge by recency); PUSH throttled to ~once/25s of activity, so a 2-hour
    watch is a handful of writes (gentle on Neon's free tier). Signed-in only —
    guests never sync. A per-account tombstone map (`sf:removed:<email>`) stops a
@@ -4766,7 +4777,7 @@ function _mergeTomb(a,b){
 async function syncPull(){
   if(!_wAuthed()||_wPulling) return; _wPulling=true;
   try{
-    const r=await fetch('/api/watch-state'); if(!r.ok) return;
+    const r=await fetch('/api/library-state'); if(!r.ok) return;
     const remote=await r.json();
     const tomb=_mergeTomb(removedAll(),remote.removed||{}); removedSave(tomb);
     saveHistory(_mergeHist(watchHistory(),remote.history||[],tomb));
@@ -4780,7 +4791,7 @@ function _wPushNow(keepalive){
   if(_wPushT){ clearTimeout(_wPushT); _wPushT=null; }
   _wPushPending=false; if(!_wAuthed()) return;
   const body=JSON.stringify({ history:watchHistory(), progress:progressAll(), removed:removedAll() });
-  try{ fetch('/api/watch-state',{method:'PUT',headers:{'Content-Type':'application/json'},body,keepalive:!!keepalive}).catch(()=>{}); }catch(e){}
+  try{ fetch('/api/library-state',{method:'PUT',headers:{'Content-Type':'application/json'},body,keepalive:!!keepalive}).catch(()=>{}); }catch(e){}
 }
 function syncPush(){ if(!_wAuthed()) return; _wPushPending=true; if(!_wPushT) _wPushT=setTimeout(()=>_wPushNow(false),WATCH_PUSH_MS); }
 function syncFlush(keepalive){ if(_wPushPending) _wPushNow(keepalive); }
@@ -6384,7 +6395,7 @@ function wireModalActions(ds){
     const tgt=document.getElementById(series?'epChooser':'streamList');
     if(tgt&&tgt.scrollIntoView)tgt.scrollIntoView({behavior:'smooth',block:'start'});
     // movies: kick off the best stream for the active language; series: user picks an episode
-    if(!series){ const first=document.querySelector('#streamList .s-btn.play'); if(first)first.click(); }
+    if(!series){ const first=document.querySelector('#streamList .addon-stream'); if(first)first.click(); }
   };
 }
 /* keyboard: open a focused poster with Enter / Space */
@@ -6398,25 +6409,19 @@ addEventListener('keydown',e=>{
 function slugify(t){return (t||'').trim().replace(/[^\w\s]/g,'').replace(/\s+/g,'.')}
 function buildStreams(title,year){
   const s=slugify(title)||'Title';
-  const PLAY=esc(t('stream.play')), FROM=esc(t('stream.from')), DIRECT=esc(t('stream.direct_link'));
+  const FROM=esc(t('stream.from')), DIRECT=esc(t('stream.direct_link'));
+  const item=(q,qc)=>`<button class="addon-stream" onclick="openPlayer()" aria-label="${s}.${year}.${q}">
+      <span class="quality-badge ${qc}">${q}</span>
+      <span class="stream-info">
+        <span class="stream-title">${s}.${year}.${q}</span>
+        <span class="stream-detail">${DIRECT}</span>
+      </span>
+      <span class="addon-stream-chevron" aria-hidden="true">›</span>
+    </button>`;
   return `
     <div class="stream-source-label">${FROM}Sample</div>
-    <div class="stream-row">
-      <span class="quality-badge q-1080">1080p</span>
-      <div class="stream-info">
-        <div class="stream-title">${s}.${year}.1080p</div>
-        <div class="stream-detail">${DIRECT}</div>
-      </div>
-      <div class="stream-actions"><button class="s-btn play" onclick="openPlayer()">${PLAY}</button></div>
-    </div>
-    <div class="stream-row">
-      <span class="quality-badge q-720">720p</span>
-      <div class="stream-info">
-        <div class="stream-title">${s}.${year}.720p</div>
-        <div class="stream-detail">${DIRECT}</div>
-      </div>
-      <div class="stream-actions"><button class="s-btn play" onclick="openPlayer()">${PLAY}</button></div>
-    </div>`;
+    ${item('1080p','q-1080')}
+    ${item('720p','q-720')}`;
 }
 /* ====================== premium video player ====================== */
 const VP=(function(){
@@ -6693,7 +6698,7 @@ const VP=(function(){
     if(s.kind==='hls'){ clearStallWatch(); loadHls(s.url,titleLabel(),s.audioLang); return; }
     load(s.url,titleLabel()); armStallWatch();   // direct (non-HLS) file
   }
-  async function playStream(s){
+  async function resolveAddonStream(s){
     curStream=s; open(titleLabel());
     try{ recordWatch(); }catch(e){}
     try{ armResume(); }catch(e){}        // resume from the saved timecode once metadata loads
@@ -7343,11 +7348,14 @@ const VP=(function(){
       case 'Escape': $('vpEpPanel').classList.contains('open')?closeEpPanel():($('vpMenu').classList.contains('open')?closeMenu():close()); break;
     } });
 
-  return { playStream, openDemo, close, setStatus, loading:showLoading, refreshSeriesUI,
+  return { resolveAddonStream, openDemo, close, setStatus, loading:showLoading, refreshSeriesUI,
            current:()=>curStream, applyEnhance };
 })();
 /* globals used by stream rows / demo onclick / Esc */
-function playStream(s){ return VP.playStream(s); }
+/* The single, add-on-agnostic entry point: hand it one stream object (a `streamLink`
+   plus its manifest `behaviors`) and the renderer resolves it. There is no separate
+   "play" command — this just acts on a data object the add-ons returned. */
+function resolveAddonStream(addonStream){ return VP.resolveAddonStream(addonStream); }
 function openPlayer(){ return VP.openDemo(); }
 function closePlayer(){ return VP.close(); }
 function toggleExtMenu(btn){
@@ -7400,13 +7408,26 @@ function extractSizeC(t){ const m=(t||'').match(/(\d+(?:\.\d+)?)\s?(gb|mb)/i); r
     an explicit behaviorHints.lang (some add-ons tag one language per stream row);
    audio tracks. We map the flags STREDIO has tabs for (en/ru/uk/ka) and ignore the
    rest. This is what lets the language tabs mirror the SOURCE. */
-const SUPPORTED_STREAM_LANGS=['ka','en','ru','uk'];
-const FLAG_TO_LANG={GB:'en',US:'en',RU:'ru',UA:'uk',GE:'ka'};
+/* Country (ISO-3166) → language (ISO-639) for the flag emoji an add-on may embed
+   in a stream label. This is ONLY a hint map for the most common dub flags; it is
+   NOT an allow-list. Any flag whose country is missing falls back to the country
+   code itself, and any add-on-declared behaviorHints.lang is taken verbatim — so
+   the language buckets always mirror whatever the installed add-ons return rather
+   than a fixed, hard-coded set. */
+const FLAG_COUNTRY_LANG={GB:'en',US:'en',AU:'en',CA:'en',IE:'en',NZ:'en',
+  RU:'ru',UA:'uk',GE:'ka',FR:'fr',DE:'de',IT:'it',ES:'es',MX:'es',PT:'pt',BR:'pt',
+  JP:'ja',KR:'ko',CN:'zh',TW:'zh',IN:'hi',TR:'tr',PL:'pl',NL:'nl',SE:'sv',NO:'no',
+  DK:'da',FI:'fi',CZ:'cs',GR:'el',IL:'he',SA:'ar',AE:'ar',IR:'fa',TH:'th',VN:'vi',
+  ID:'id',RO:'ro',HU:'hu',BG:'bg',RS:'sr',HR:'hr',SK:'sk'};
+/* Pull every language signal out of an add-on's free-text stream label: each pair
+   of regional-indicator characters → a country code → a language. Unknown countries
+   keep their lowercased code so nothing is silently dropped or remapped. */
 function parseStreamLangs(text){
   const out=[]; const re=/([\u{1F1E6}-\u{1F1FF}])([\u{1F1E6}-\u{1F1FF}])/gu; let m;
   while((m=re.exec(text||''))){
     const cc=String.fromCharCode(m[1].codePointAt(0)-0x1F1E6+65)+String.fromCharCode(m[2].codePointAt(0)-0x1F1E6+65);
-    const l=FLAG_TO_LANG[cc]; if(l&&out.indexOf(l)<0) out.push(l);
+    const l=FLAG_COUNTRY_LANG[cc]||cc.toLowerCase();
+    if(l&&out.indexOf(l)<0) out.push(l);
   }
   return out;
 }
@@ -7417,35 +7438,50 @@ function streamLangs(s){
   if(s&&s.lang) return [s.lang];
   return ['en'];
 }
-/* The add-on's stream URL is used verbatim — never fetched or rewritten here. */
-function mapStreamC(s,addonName){
-  const label=[s.name,s.title,s.description].filter(Boolean).join(' \n ');
-  const url=s.url||null; const bh=s.behaviorHints||{};
-  const isHls=!!url&&(bh.streamType==='hls'||/\.(m3u8|txt)(\?|$)/i.test(url)||/\/hls\//i.test(url));
+/* Normalise ONE raw stream object from an add-on into the shape the UI lists.
+   The add-on's own description/title is preserved VERBATIM in `label` — we never
+   substitute the movie/series name for it. `streamLink` is the add-on-supplied URL,
+   used as-is (never fetched or rewritten here). `behaviors` carries the add-on's
+   manifest.behaviorHints through untouched so the player can read streamType etc. */
+function mapAddonStream(s,addonName){
+  // the add-on's own caption, kept exactly as delivered (multi-line collapsed to
+  // single spaces only for display) — this is the title we render, unmodified.
+  const label=[s.name,s.title,s.description].filter(Boolean).join('\n');
+  const streamLink=s.url||null; const behaviors=s.behaviorHints||{};
+  const isHls=!!streamLink&&(behaviors.streamType==='hls'||/\.(m3u8|txt)(\?|$)/i.test(streamLink)||/\/hls\//i.test(streamLink));
   const flagLangs=parseStreamLangs(label);
-  const langs=bh.lang?[bh.lang]:flagLangs;
+  // honour an explicit per-stream language hint verbatim; otherwise fall back to the
+  // flags parsed from the label. No language is filtered out or forced to a fixed set.
+  const langs=behaviors.lang?[behaviors.lang]:flagLangs;
   return {
     source:addonName,
-    title:((s.title||s.description||s.name||'Stream').split('\n')[0].trim())||'Stream',
+    label:label||'Source',                              // add-on's verbatim caption (what we display)
+    title:label||'Source',                              // kept for back-compat callers
     quality:detectQualityC(label), size:extractSizeC(label),
-    kind:isHls?'hls':'url', lang:bh.lang||flagLangs[0]||null, langs, audioLang:bh.audioLang||null, url,
+    kind:isHls?'hls':'url', lang:behaviors.lang||flagLangs[0]||null, langs,
+    audioLang:behaviors.audioLang||null,
+    url:streamLink, link:streamLink, behaviors,
     subtitles:Array.isArray(s.subtitles)?s.subtitles.map(x=>({url:x.url,lang:x.lang})).filter(x=>x.url):undefined,
   };
 }
-/* Aggregate streams for a video id across every installed stream add-on, in
-   parallel, entirely in the browser. Returns {streams, addons, langs}. */
-async function fetchStreamsDirect(videoId,type){
+/* Ask every installed stream add-on for ITS array of stream objects for one video
+   id, in parallel, entirely in the browser (server is never involved). This is the
+   core request: "all installed add-ons, hand me your stream objects for this id."
+   The returned list is just data — a flat array of add-on-supplied sources plus the
+   union of whatever languages they happened to declare. Returns {streams, addons, langs}. */
+async function collectAddonStreams(videoId,type){
   const addons=(window.INSTALLED_ADDONS||[]).filter(a=>addonHasResource(a,'stream',type));
   if(!addons.length) return {streams:[],addons:0,langs:[]};
   const path='stream/'+type+'/'+encodeURIComponent(videoId)+'.json';
   const per=await Promise.all(addons.map(async a=>{
     try{
       const data=await fetchAddonJSON(addonBaseUrl(a.url),path);
-      return (data.streams||[]).map(s=>mapStreamC(s,(a.manifest&&a.manifest.name)||'Add-on')).filter(s=>s.url);
+      return (data.streams||[]).map(s=>mapAddonStream(s,(a.manifest&&a.manifest.name)||'Add-on')).filter(s=>s.url);
     }catch(e){ return []; }   // one slow/broken add-on must not sink the rest
   }));
   const streams=per.flat();
-  // union of every audio language present across the streams, so the tabs mirror the
+  // union of every language present across the returned streams — NOT clamped to a
+  // fixed list, so the language picker mirrors exactly what the add-ons provide.
   const langs=[...new Set(streams.flatMap(streamLangs))];
   return {streams,addons:addons.length,langs};
 }
@@ -7557,7 +7593,7 @@ async function playEpisode(season,ep){
   // prefer the same source AND language, then same language, then anything available
   const pick=all.find(x=>streamLangs(x).includes(lang)&&x.source===prevSource)
            ||all.find(x=>streamLangs(x).includes(lang))||all[0];
-  if(pick)playStream(pick);
+  if(pick)resolveAddonStream(pick);
   else VP.openDemo();   // graceful fallback — keep playing instead of a dead "failed" screen
 }
 function setupSeriesChooser(tvId,meta,token){
@@ -7641,29 +7677,52 @@ document.getElementById('epList').addEventListener('click',e=>{
   const b=e.target.closest('.ep-row'); if(b)selectEpisode(+b.dataset.season,+b.dataset.ep);
 });
 function qualClass(q){return q==='4K'?'q-4k':q==='1080p'?'q-1080':'q-720';}
-function realStreamsHTML(streams){
-  // Every row shows the current series/movie title (not the addon-supplied
-  // codec/quality string), so the same name appears across every language tab.
-  // The source line names the add-on the streams came from.
-  const mediaTitle=currentTitle||'';
+/* Render the data returned by the installed add-ons as a list of selectable items.
+   This is NOT a "play" control: each item is one stream object an add-on handed us,
+   drawn as its own select box. The label shown is the add-on's OWN caption, verbatim
+   — we never overwrite it with the movie/series title. Choosing an item just resolves
+   the add-on-supplied link; nothing here is a hard-coded "Watch"/"Stream" command. */
+function renderStreamList(streams){
   const src=(streams[0]&&streams[0].source)||'';
-  const rows=streams.map(s=>{
+  const items=streams.map(s=>{
     const q=s.quality||'SD';
-    const detail=[s.size, t('stream.direct_link')].filter(Boolean).join(' · ');
-    const acts=`<button class="s-btn play" data-act="play" data-kind="${esc(s.kind||'url')}" data-url="${esc(s.url)}" aria-label="${esc(t('ui.play_aria')+' '+(mediaTitle||s.title))}">${esc(t('stream.play'))}</button>`;
-    return `<div class="stream-row">
+    // the add-on's verbatim caption is the primary line; codec/size details follow it.
+    const caption=s.label||s.title||s.source||'';
+    const detail=[s.size, s.source].filter(Boolean).join(' · ');
+    return `<button class="addon-stream" data-act="addonStream" data-kind="${esc(s.kind||'url')}" data-url="${esc(s.url)}" aria-label="${esc(caption)}">
       <span class="quality-badge ${qualClass(q)}">${esc(q)}</span>
-      <div class="stream-info">
-        <div class="stream-title">${esc(mediaTitle||s.title)}</div>
-        <div class="stream-detail">${esc(detail)}</div>
-      </div>
-      <div class="stream-actions">${acts}</div>
-    </div>`;
+      <span class="stream-info">
+        <span class="stream-title">${esc(caption)}</span>
+        <span class="stream-detail">${esc(detail)}</span>
+      </span>
+      <span class="addon-stream-chevron" aria-hidden="true">›</span>
+    </button>`;
   }).join('');
-  return `<div class="stream-source-label">⬡ ${esc(t('stream.from'))}${esc(src)}</div>${rows}`;
+  return `<div class="stream-source-label">⬡ ${esc(t('stream.from'))}${esc(src)}</div>${items}`;
 }
-const LANG_DISPLAY={ka:'Georgian',en:'English',ru:'Russian',uk:'Ukrainian'};
-/* Show the language tab bar, exposing the languages present in the returned streams. */
+/* Friendly names for the language codes we can name; NOT an allow-list — any code we
+   don't recognise simply shows its uppercased self, so unknown add-on languages still
+   appear in the picker rather than being dropped. */
+const LANG_DISPLAY={ka:'Georgian',en:'English',ru:'Russian',uk:'Ukrainian',fr:'French',
+  de:'German',it:'Italian',es:'Spanish',pt:'Portuguese',ja:'Japanese',ko:'Korean',
+  zh:'Chinese',hi:'Hindi',tr:'Turkish',pl:'Polish',nl:'Dutch',sv:'Swedish',no:'Norwegian',
+  da:'Danish',fi:'Finnish',cs:'Czech',el:'Greek',he:'Hebrew',ar:'Arabic',fa:'Persian',
+  th:'Thai',vi:'Vietnamese',id:'Indonesian',ro:'Romanian',hu:'Hungarian',bg:'Bulgarian',
+  sr:'Serbian',hr:'Croatian',sk:'Slovak'};
+/* The label to show for one language code in the picker — localized via i18n when we
+   have a translation, otherwise the friendly English name, otherwise the raw code. */
+function langTabLabel(l){
+  const k='langtab.'+l, v=I18N.t(k);
+  if(v&&v!==k) return v;
+  return LANG_DISPLAY[l]||(l||'').toUpperCase();
+}
+/* One <li> option for a language code. The flag art only exists for a few locales;
+   any other code just gets the (blank) base flag chip — it is still listed. */
+function langOptHTML(l){
+  return '<li class="lang-opt" role="option" data-lang="'+esc(l)+'"><i class="flag flag-'+esc(l)+'"></i>'+esc(langTabLabel(l))+'</li>';
+}
+/* Show the language picker, exposing EVERY language present in the returned streams.
+   The option list is rebuilt from the data each time — never a fixed set of languages. */
 function closeLangMenu(el){
   el.classList.remove('open');
   const tr=el.querySelector('.lang-select-trigger'); if(tr)tr.setAttribute('aria-expanded','false');
@@ -7677,7 +7736,7 @@ function localizeLangTabs(){
   const el=document.getElementById('langTabs'); if(!el)return;
   el.querySelectorAll('.lang-cur,.lang-opt').forEach(o=>{
     const l=o.dataset.lang; if(!l)return;
-    o.innerHTML='<i class="flag flag-'+l+'"></i>'+esc(I18N.t('langtab.'+l)||l);
+    o.innerHTML='<i class="flag flag-'+l+'"></i>'+esc(langTabLabel(l));
   });
 }
 I18N.onChange(localizeLangTabs);
@@ -7685,9 +7744,14 @@ function showLangTabs(on,langs){
   const el=document.getElementById('langTabs'); if(!el)return;
   el.hidden=!on;
   if(on){
-    const set=(Array.isArray(langs)&&langs.length)?langs:['ka','en','ru','uk'];
-    el.querySelectorAll('.lang-opt').forEach(o=>{ o.style.display=set.includes(o.dataset.lang)?'':'none'; });
-    localizeLangTabs();
+    // Rebuild the option list from exactly the languages the add-ons returned — no
+    // fixed/limited set. The picker only appears at all when there's a choice to make.
+    const set=(Array.isArray(langs)&&langs.length)?langs:[];
+    const menu=el.querySelector('.lang-menu');
+    if(menu) menu.innerHTML=set.map(langOptHTML).join('');
+    // seed the trigger's current label with the first language
+    const cur=el.querySelector('.lang-cur');
+    if(cur&&set.length){ cur.dataset.lang=set[0]; cur.innerHTML='<i class="flag flag-'+set[0]+'"></i>'+esc(langTabLabel(set[0])); }
   }
   closeLangMenu(el);
 }
@@ -7703,8 +7767,8 @@ function renderStreamsForLang(lang){
     closeLangMenu(sel);
   }
   const list=(window.currentStreams||[]).filter(s=>streamLangs(s).includes(lang));
-  if(list.length){ setStreams(realStreamsHTML(list)); }
-  else{ setStreams(`<div class="lang-empty">${esc(I18N.t('modal.not_dubbed',{lang:I18N.t('lang.'+lang)||LANG_DISPLAY[lang]||lang}))}</div>`); }
+  if(list.length){ setStreams(renderStreamList(list)); }
+  else{ setStreams(`<div class="lang-empty">${esc(I18N.t('modal.not_dubbed',{lang:langTabLabel(lang)}))}</div>`); }
 }
 /* No community streaming add-on installed → the platform is a pure media catalog &
    discovery interface. Surface NO third-party streams (not even demo rows); invite
@@ -7734,7 +7798,7 @@ async function loadRealStreams(videoId,mediaType){
   setStreams(`<div class="stream-source-label"><span class="spinner"></span> ${esc(I18N.t('modal.searching_addons'))}</div>`);
   try{
     // Browser → each installed add-on directly. STREDIO's server never sees this.
-    const data=await fetchStreamsDirect(videoId,type);
+    const data=await collectAddonStreams(videoId,type);
     // Relevance guard. A stale token (user opened a different title) is always discarded.
     // But switching episodes from the in-player panel runs AFTER the detail modal has closed
     // (the player's open() clears the modal), so also accept the response while the player is
@@ -7747,12 +7811,14 @@ async function loadRealStreams(videoId,mediaType){
       return;
     }
     window.currentStreams=data.streams||[];
-    const langs=(Array.isArray(data.langs)&&data.langs.length)?data.langs:['ka','en','ru','uk'];
+    // Exactly the languages the installed add-ons declared — not clamped to any set.
+    const langs=(Array.isArray(data.langs)&&data.langs.length)?data.langs:[];
     window.currentLangs=langs;
-    showLangTabs(true,langs);
-    // default to the user's last-picked tab if they enabled it, else the first enabled language
+    // Only surface the picker when there's more than one language to choose between.
+    showLangTabs(langs.length>1,langs);
+    // default to the user's last-picked language if it's present, else the first available
     let def=window.currentLang;
-    if(!langs.includes(def)) def=langs[0];
+    if(!langs.includes(def)) def=langs[0]||def;
     renderStreamsForLang(def);
   }catch(e){ if(modalAlive(t)) demoOrCatalogOnly(''); }
 }
@@ -7773,13 +7839,14 @@ async function loadRealStreams(videoId,mediaType){
 /* actions for real stream rows (delegated so it survives re-render) */
 document.getElementById('streamList').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
-  if(b.dataset.act==='play'){
-    // Prefer the full stream object (carries subtitles + audioLang + correct kind).
-    // some HLS rows for different languages SHARE one master URL, so disambiguate by the
-    // active language tab — otherwise clicking "English" could grab the Georgian row.
+  if(b.dataset.act==='addonStream'){
+    // The user selected one add-on-supplied stream object from the list. Resolve it to
+    // the full object (it carries subtitles + audioLang + correct kind). Some HLS rows
+    // for different languages SHARE one master URL, so disambiguate by the active
+    // language tab — otherwise selecting "English" could grab the Georgian row.
     const all=window.currentStreams||[], lang=window.currentLang;
-    const full=all.find(x=>x.url===b.dataset.url&&streamLangs(x).includes(lang))||all.find(x=>x.url===b.dataset.url);
-    playStream(full?{...full,title:`${currentTitle} (${currentYear})`}:{kind:b.dataset.kind,url:b.dataset.url||'',title:`${currentTitle} (${currentYear})`});
+    const addonStream=all.find(x=>x.url===b.dataset.url&&streamLangs(x).includes(lang))||all.find(x=>x.url===b.dataset.url);
+    resolveAddonStream(addonStream?{...addonStream,title:`${currentTitle} (${currentYear})`}:{kind:b.dataset.kind,url:b.dataset.url||'',title:`${currentTitle} (${currentYear})`});
   }else if(b.dataset.act==='open-addons'){
     // Catalog-only notice → send the user to the Add-on catalog to install a stream source.
     try{ closeInfoModal(); }catch(_){}
@@ -7817,22 +7884,22 @@ document.getElementById('streamList').addEventListener('click',e=>{
     setTimeout(()=>{ try{ document.getElementById('sourcesDismiss').focus(); }catch(_){} },40);
     if(!id){ setBody(`<div class="lang-empty">${esc(I18N.t('sources.none'))}</div>`); return; }
     try{
-      const data=await fetchStreamsDirect(id,type);   // browser → add-on direct
+      const data=await collectAddonStreams(id,type);   // browser → add-on direct
       if(!ov.classList.contains('open'))return;     // user already left
       const streams=data.streams||[];
       window.currentStreams=streams;
       if(!streams.length){ setBody(`<div class="lang-empty">${esc(I18N.t('sources.none'))}</div>`); return; }
-      setBody(realStreamsHTML(streams));
+      setBody(renderStreamList(streams));
     }catch(e){ if(ov.classList.contains('open')) setBody(`<div class="lang-empty">${esc(I18N.t('sources.none'))}</div>`); }
   };
   // pick a source → play it in the shared player; or follow a locked-state CTA
   listEl.addEventListener('click',e=>{
     const b=e.target.closest('[data-act]'); if(!b)return;
-    if(b.dataset.act==='play'){
+    if(b.dataset.act==='addonStream'){
       const all=window.currentStreams||[];
-      const full=all.find(x=>x.url===b.dataset.url)||{kind:b.dataset.kind,url:b.dataset.url||''};
+      const addonStream=all.find(x=>x.url===b.dataset.url)||{kind:b.dataset.kind,url:b.dataset.url||''};
       closeSheet();
-      playStream({...full,title:currentTitle+(currentYear?` (${currentYear})`:'')});
+      resolveAddonStream({...addonStream,title:currentTitle+(currentYear?` (${currentYear})`:'')});
     }
   });
   document.getElementById('sourcesDismiss').addEventListener('click',closeSheet);
