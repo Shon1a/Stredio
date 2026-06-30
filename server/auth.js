@@ -531,26 +531,32 @@ export async function countActiveSessions() {
 }
 
 /* ------------------------------------------------------------------ *
- *  Per-user watch state — Continue Watching history + resume progress
+ *  Per-user library state — the account's private list entries + resume
+ *  positions, synced across that user's devices.
  *
- *  Unlike addons (shared config), each account's watch history and resume
+ *  Unlike addons (shared config), each account's library entries and resume
  *  timecodes are private and sync across that user's devices. Stored as its OWN
- *  per-user document (watch-<id>) rather than on the user record, so the hot
+ *  per-user document (library-<id>) rather than on the user record, so the hot
  *  readUsers() path that runs on every authed request stays small. Shape:
  *    { history:[…], progress:{ key:{pos,dur,at} }, removed:{ id:at }, updatedAt }
- *  `removed` is a tombstone map so a title deleted from the rail on one device
- *  doesn't resurrect from another device's older copy on the next sync.
+ *  `removed` is a tombstone map so an entry deleted on one device doesn't
+ *  resurrect from another device's older copy on the next sync.
  * ------------------------------------------------------------------ */
-const WATCH_DEFAULT = () => ({ history: [], progress: {}, removed: {} });
-const watchFile = (id) => join(DATA_DIR, 'watch-' + String(id).replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
-export async function getUserWatch(id) {
-  if (!id) return WATCH_DEFAULT();
-  const doc = await readJson(watchFile(id), null);
-  return (doc && typeof doc === 'object') ? doc : WATCH_DEFAULT();
+const LIBRARY_DEFAULT = () => ({ history: [], progress: {}, removed: {} });
+const libraryFile = (id) => join(DATA_DIR, 'library-' + String(id).replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
+// Pre-rename document name. getUserLibrary falls back to it so existing records
+// migrate transparently; the next setUserLibrary rewrites under the new name.
+// keyFor() reduces both to a basename, so this also covers the Postgres KV store.
+const legacyLibraryFile = (id) => join(DATA_DIR, 'watch-' + String(id).replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
+export async function getUserLibrary(id) {
+  if (!id) return LIBRARY_DEFAULT();
+  let doc = await readJson(libraryFile(id), null);
+  if (!doc) doc = await readJson(legacyLibraryFile(id), null);   // one-time migrate from watch-<id>
+  return (doc && typeof doc === 'object') ? doc : LIBRARY_DEFAULT();
 }
-export async function setUserWatch(id, data) {
+export async function setUserLibrary(id, data) {
   if (!id) return null;
-  await writeJson(watchFile(id), data);
+  await writeJson(libraryFile(id), data);
   return data;
 }
 

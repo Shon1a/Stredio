@@ -13,7 +13,7 @@ import {
   attachUser, requireAuth, requireAdmin, ensureAdminBootstrap,
   createUser, authenticate, authenticateGoogle, googleConfigured, googleClientId,
   createSession, destroySession, sessionCookie, clearCookie,
-  getUserWatch, setUserWatch,
+  getUserLibrary, setUserLibrary,
   getUserAddonState, setUserAddonState,
 } from './auth.js';
 import * as covers from './covers.js';
@@ -742,8 +742,8 @@ async function gateByImdb(items) {
  * refreshes in the background, so updates still land within a day.
  *
  * Applied only to GET on these exact paths, and only when the handler returns a
- * success body — errors (sendErr → 5xx) and any per-user endpoint (streams,
- * watch-state, addons) are deliberately excluded so no
+ * success body — errors (sendErr → 5xx) and any per-user endpoint
+ * (library-state, addons) are deliberately excluded so no
  * personalized or failed response ever gets cached. A handler that sets its own
  * Cache-Control (e.g. /api/subtitle) is left untouched. */
 const PUBLIC_CATALOG_GET = /^\/api\/(catalog|search|genres|browse|hero|meta\/|tv\/|introdb\/)/;
@@ -1509,25 +1509,26 @@ app.delete('/api/addons/:id', requireAuth, async (req, res) => {
  * ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ *
- *  Watch state — Continue Watching history + resume progress, synced
- *  across a signed-in user's devices. The browser keeps localStorage as the
- *  instant source of truth and PUSHes here throttled (~once/25s of activity),
- *  so a 2-hour watch is a handful of writes — gentle on the Postgres/Neon
- *  free tier. PUT MERGES with the stored doc (newest-per-id history, newest-
- *  per-key progress, tombstones for removals) so two devices never clobber.
+ *  Library state — the user's private list entries + resume positions,
+ *  synced across a signed-in user's devices. The browser keeps localStorage as
+ *  the instant source of truth and PUSHes here throttled (~once/25s of activity),
+ *  so a couple of hours of activity is a handful of writes — gentle on the
+ *  Postgres/Neon free tier. PUT MERGES with the stored doc (newest-per-id
+ *  history, newest-per-key progress, tombstones for removals) so two devices
+ *  never clobber.
  * ------------------------------------------------------------------ */
-const WATCH_HISTORY_CAP = 60;
-const WATCH_PROGRESS_CAP = 240;
-const WATCH_TOMB_TTL = 30 * 24 * 60 * 60 * 1000;  // forget a removal after 30 days
-function mergeWatchState(stored, incoming) {
+const LIBRARY_HISTORY_CAP = 60;
+const LIBRARY_PROGRESS_CAP = 240;
+const LIBRARY_TOMB_TTL = 30 * 24 * 60 * 60 * 1000;  // forget a removal after 30 days
+function mergeLibraryState(stored, incoming) {
   const s = stored || {}, i = incoming || {};
   const now = Date.now();
-  // tombstones (history removals): id -> at; keep newest, prune stale
+  // tombstones (entry removals): id -> at; keep newest, prune stale
   const removed = {};
   for (const src of [s.removed || {}, i.removed || {}]) {
     for (const id of Object.keys(src)) { const at = +src[id] || 0; if (at > (removed[id] || 0)) removed[id] = at; }
   }
-  for (const id of Object.keys(removed)) { if (now - removed[id] > WATCH_TOMB_TTL) delete removed[id]; }
+  for (const id of Object.keys(removed)) { if (now - removed[id] > LIBRARY_TOMB_TTL) delete removed[id]; }
   // history: union by id (newest `at`), drop tombstoned, sort newest-first, cap
   const hMap = new Map();
   for (const e of [...(s.history || []), ...(i.history || [])]) {
@@ -1538,7 +1539,7 @@ function mergeWatchState(stored, incoming) {
   const history = [...hMap.values()]
     .filter(e => { const t = removed[String(e.id)]; return !(t && t >= (+e.at || 0)); })
     .sort((a, b) => (+b.at || 0) - (+a.at || 0))
-    .slice(0, WATCH_HISTORY_CAP);
+    .slice(0, LIBRARY_HISTORY_CAP);
   // progress: union by key (newest `at`), cap to most-recent keys
   const sp = s.progress || {}, ip = i.progress || {}, pm = {};
   for (const k of new Set([...Object.keys(sp), ...Object.keys(ip)])) {
@@ -1546,25 +1547,25 @@ function mergeWatchState(stored, incoming) {
     pm[k] = (!a || (b && (+b.at || 0) >= (+a.at || 0))) ? (b || a) : a;
   }
   const progress = {};
-  Object.keys(pm).sort((a, b) => (+pm[b].at || 0) - (+pm[a].at || 0)).slice(0, WATCH_PROGRESS_CAP)
+  Object.keys(pm).sort((a, b) => (+pm[b].at || 0) - (+pm[a].at || 0)).slice(0, LIBRARY_PROGRESS_CAP)
     .forEach(k => { progress[k] = pm[k]; });
   return { history, progress, removed, updatedAt: now };
 }
 
-app.get('/api/watch-state', requireAuth, async (req, res) => {
-  const d = await getUserWatch(req.user.id);
+app.get('/api/library-state', requireAuth, async (req, res) => {
+  const d = await getUserLibrary(req.user.id);
   res.json({ history: d.history || [], progress: d.progress || {}, removed: d.removed || {} });
 });
 
-app.put('/api/watch-state', requireAuth, async (req, res) => {
+app.put('/api/library-state', requireAuth, async (req, res) => {
   const b = req.body || {};
   const incoming = {
     history: Array.isArray(b.history) ? b.history.slice(0, 200) : [],
     progress: (b.progress && typeof b.progress === 'object' && !Array.isArray(b.progress)) ? b.progress : {},
     removed: (b.removed && typeof b.removed === 'object' && !Array.isArray(b.removed)) ? b.removed : {},
   };
-  const merged = mergeWatchState(await getUserWatch(req.user.id), incoming);
-  await setUserWatch(req.user.id, merged);
+  const merged = mergeLibraryState(await getUserLibrary(req.user.id), incoming);
+  await setUserLibrary(req.user.id, merged);
   res.json(merged);
 });
 
