@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>STREDIO — Your Personal Media Library</title>
-<meta name="description" content="STREDIO is an open personal media library: browse a catalog, keep a watchlist and continue-watching, and connect your own Stremio-compatible add-ons. STREDIO hosts no media — add-ons you install supply the sources and your browser connects to them directly." />
+<meta name="description" content="STREDIO is an open personal media library: browse a catalog. STREDIO hosts no media — add-ons you install supply the sources and your browser connects to them directly." />
 <meta name="theme-color" content="#101016" />
 <meta name="color-scheme" content="dark" />
 <link rel="icon" type="image/svg+xml" href="/assets/stredio-icon.svg?v=3" />
@@ -845,7 +845,7 @@
     0%,100%{transform:translateY(0) rotate(-6deg)}
     50%{transform:translateY(-7px) rotate(6deg)}}
   @media (prefers-reduced-motion:reduce){.pzPiece{animation:none}}
-  /* ---- add-on catalog: Official + Community sections (Stremio-style list) ---- */
+  /* ---- add-on catalog: Official + Community sections ---- */
   .addon-section{margin-bottom:6px}
   .addon-sec-head{display:flex;align-items:baseline;gap:11px;margin:4px 0 15px;flex-wrap:wrap}
   .addon-sec-title{font-size:19px;font-weight:500;letter-spacing:.01em;color:var(--text)}
@@ -1907,10 +1907,13 @@
     .poster:hover .art img,.poster:focus-within .art img{transform:none}
     .poster .cw-remove{padding:7px 11px}
     .poster .cw-remove svg{width:16px;height:16px}
-    /* the hover/tap overlay is purely decorative on touch (a tap opens the modal), so kill
-       its blur outright — extra insurance against the iOS backdrop-filter bleed (see .ov)
-       even if a tap leaves :focus-within stuck on a card after the modal closes. */
-    .poster .ov{-webkit-backdrop-filter:none;backdrop-filter:none}
+    /* The hover/tap overlay is purely decorative on touch (a tap opens the modal). On iOS,
+       tapping a card sets :focus-within, which fires the .ov reveal (translateY(0)+visible)
+       and leaves the dark rgba(0,0,0,.5) panel STUCK at the card's bottom edge after the
+       modal closes — that's the persistent "black thing". Killing only the blur (previous
+       fix) didn't help because the panel's own dark background is what bleeds. Remove the
+       panel entirely on touch: it's never needed (no hover) and a tap opens the full modal. */
+    .poster .ov{display:none!important}
     /* upcoming-card titles only reveal on hover, which never fires on touch, so the heavy
        bottom gradient just darkens the backdrop art for no payoff — lighten it so the
        thumbnails read crisply on phones. */
@@ -4787,7 +4790,7 @@ addEventListener('focus',()=>{ if(_wAuthed()&&Date.now()-_wLastPull>WATCH_PULL_M
 addEventListener('pagehide',()=>{ try{ syncFlush(true); }catch(e){} });
 
 /* ============================================================
-   USER SETTINGS — Stremio-style player / interface preferences.
+   USER SETTINGS — / interface preferences.
    Stored locally per browser, applied live to the player and UI.
    Read at point-of-use by the player (autoplay, subtitles, external
    player); subtitle styling + the blur-unwatched class apply on change.
@@ -5806,7 +5809,7 @@ document.querySelectorAll('aside .nav-item[data-page]').forEach(el=>
 })();
 
 /* ---------- Terms & Conditions content (bilingual, rendered into #termsBody) ---------- *
- * Structure mirrors Stremio's T&C. Stredio is a media catalog & UI that does not host,
+ * Stredio is a media catalog & UI that does not host,
  * store, or distribute media; community add-ons are independent third-party software the
  * user installs at their own discretion. Static, trusted content — safe to inject as HTML. */
 const TERMS_CONTACT_EN=`<p>For general questions about these Terms or the Platform: <a href="mailto:contact@stredio.com">contact@stredio.com</a></p>
@@ -6523,7 +6526,7 @@ const VP=(function(){
   function destroyHls(){ if(hls){ try{hls.destroy();}catch(e){} hls=null; } }
   // Attach any per-stream subtitles the addon supplied (e.g. an addon's eng/rus VTT).
   // Fetched in the browser and turned into a same-document blob: <track> — no server
-  // hop (Stremio model). A subtitle host without CORS simply can't be read and is skipped.
+  // A subtitle host without CORS simply can't be read and is skipped.
   function addStreamSubs(s){
     if(!s||!Array.isArray(s.subtitles))return;
     s.subtitles.forEach(async sub=>{ if(!sub||!sub.url)return;
@@ -6747,7 +6750,7 @@ const VP=(function(){
     const id=window.currentImdb; if(!id){ buildMenu(); return; }
     subsLoading=true;
     try{
-      // Browser → each installed subtitle add-on directly (Stremio model).
+      // Browser → each installed subtitle add-on directly.
       const type=window.currentMediaType||'movie';
       const addons=(window.INSTALLED_ADDONS||[]).filter(a=>addonHasResource(a,'subtitles',type));
       const lists=await Promise.all(addons.map(async a=>{
@@ -7359,8 +7362,8 @@ function toast(msg,color){
   el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2400);
 }
 
-/* ================= client-side Stremio add-on transport =================
-   Stremio's architecture: the BROWSER talks to each installed add-on directly.
+/* ================= client-side add-on transport =================
+   Architecture: the BROWSER talks to each installed add-on directly.
    STREDIO's server is never in the path — it neither lists, fetches, proxies,
    ranks, nor filters streams/subtitles/catalogs. It only stores the user's
    installed-collection (the add-on URLs) so the collection syncs across the
@@ -7394,10 +7397,9 @@ function detectQualityC(t){ t=(t||'').toLowerCase();
   if(/720/.test(t))return'720p'; if(/480/.test(t))return'480p'; return''; }
 function extractSizeC(t){ const m=(t||'').match(/(\d+(?:\.\d+)?)\s?(gb|mb)/i); return m?m[1]+' '+m[2].toUpperCase():null; }
 /* Audio languages a stream offers. Add-ons signal them two ways:
-   (1) an explicit behaviorHints.lang (e.g. the Georgian add-on tags one lang/row);
-   (2) flag emojis in the title — Torrentio prints 🇬🇧/🇷🇺/🇺🇦 to mark each torrent's
+    an explicit behaviorHints.lang (some add-ons tag one language per stream row);
    audio tracks. We map the flags STREDIO has tabs for (en/ru/uk/ka) and ignore the
-   rest. This is what lets the language tabs mirror the SOURCE, exactly like Stremio. */
+   rest. This is what lets the language tabs mirror the SOURCE. */
 const SUPPORTED_STREAM_LANGS=['ka','en','ru','uk'];
 const FLAG_TO_LANG={GB:'en',US:'en',RU:'ru',UA:'uk',GE:'ka'};
 function parseStreamLangs(text){
@@ -7415,8 +7417,7 @@ function streamLangs(s){
   if(s&&s.lang) return [s.lang];
   return ['en'];
 }
-/* Normalise one Stremio stream object into the row shape the player renders.
-   The add-on's stream URL is used verbatim — never fetched or rewritten here. */
+/* The add-on's stream URL is used verbatim — never fetched or rewritten here. */
 function mapStreamC(s,addonName){
   const label=[s.name,s.title,s.description].filter(Boolean).join(' \n ');
   const url=s.url||null; const bh=s.behaviorHints||{};
@@ -7445,11 +7446,10 @@ async function fetchStreamsDirect(videoId,type){
   }));
   const streams=per.flat();
   // union of every audio language present across the streams, so the tabs mirror the
-  // source (a multi-audio torrent appears under each of its languages, like Stremio)
   const langs=[...new Set(streams.flatMap(streamLangs))];
   return {streams,addons:addons.length,langs};
 }
-/* normalise a Stremio catalog meta into the poster-card shape (ids are IMDb tt…) */
+/* normalise a catalog meta into the poster-card shape (ids are IMDb tt…) */
 function mapStremioMetaC(m){
   const genres=m.genres||m.genre||[];
   return { id:m.id, title:m.name||'Untitled',
@@ -7459,8 +7459,7 @@ function mapStremioMetaC(m){
 }
 /* ---- subtitles, fully client-side: fetch from the add-on/source, gunzip if
    needed, convert SRT→VTT, hand the player a same-document blob: URL. No server
-   hop. (A subtitle host without permissive CORS can't be read from the browser —
-   the same limitation Stremio's web client has; such tracks are simply skipped.) */
+   hop. (A subtitle host without permissive CORS can't be read from the browser; such tracks are simply skipped.) */
 const SUB_LANG_NAMES={en:'English',eng:'English',es:'Spanish',spa:'Spanish',fr:'French',fre:'French',fra:'French',de:'German',ger:'German',deu:'German',it:'Italian',ita:'Italian',pt:'Portuguese',por:'Portuguese','pt-br':'Portuguese (BR)',pob:'Portuguese (BR)',ru:'Russian',rus:'Russian',ar:'Arabic',ara:'Arabic',hi:'Hindi',hin:'Hindi',ja:'Japanese',jpn:'Japanese',ko:'Korean',kor:'Korean',zh:'Chinese',chi:'Chinese',zho:'Chinese',nl:'Dutch',dut:'Dutch',nld:'Dutch',pl:'Polish',pol:'Polish',tr:'Turkish',tur:'Turkish',sv:'Swedish',swe:'Swedish',uk:'Ukrainian',ukr:'Ukrainian',ka:'Georgian',kat:'Georgian',geo:'Georgian',fa:'Persian',per:'Persian',fas:'Persian',he:'Hebrew',heb:'Hebrew',ro:'Romanian',rum:'Romanian',ron:'Romanian',el:'Greek',gre:'Greek'};
 function subLangName(code){ if(!code)return null; const c=String(code).toLowerCase();
   return SUB_LANG_NAMES[c]||SUB_LANG_NAMES[c.split(/[-_]/)[0]]||null; }
@@ -7630,7 +7629,7 @@ function selectEpisode(season,ep){
   // record which episode is active so the in-player panel + next-episode button know where we are
   const eps=seriesCtx.epCache[season]||[]; const found=eps.find(x=>x.episode===ep);
   seriesCtx.season=season; seriesCtx.ep=ep; seriesCtx.epName=found?(found.name||''):'';
-  loadRealStreams(c._imdb+':'+season+':'+ep,'series');   // Stremio series id: tt…:season:episode
+  loadRealStreams(c._imdb+':'+season+':'+ep,'series');   // Stredio series id: tt…:season:episode
   // picking an episode should bring the freshly-loaded sources into view
   const sec=document.querySelector('.m-streams');
   if(sec)sec.scrollIntoView({behavior:'smooth',block:'start'});
@@ -7944,7 +7943,7 @@ function studiosInstalled(){
   catch(e){ return true; }
 }
 function addonIconHTML(a){
-  // Community add-ons always use the Stremio puzzle/flower glyph tinted green;
+  // Community add-ons always use the Stredio puzzle/flower glyph tinted green;
   // official add-ons keep the red puzzle / their own icon.
   const community=a.section==='community';
   const usePuzzle=a.iconCls==='puzzle'||community;
@@ -8297,7 +8296,6 @@ function normalizeManifestUrlC(raw){
   if(!/^https?:\/\//i.test(url))return null;
   let p; try{ p=new URL(url); }catch(e){ return null; }   // validate only
   // Keep the URL byte-for-byte. Configured add-ons pack options into the path
-  // (e.g. Torrentio `…|torbox=KEY|…/manifest.json`); round-tripping through
   // URL.toString() would percent-encode the `|`/`,` and mangle the config.
   if(/\.json($|\?)/i.test(p.pathname)) return url;
   const i=url.indexOf('?'), path=i<0?url:url.slice(0,i), qs=i<0?'':url.slice(i);
