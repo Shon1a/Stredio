@@ -26,37 +26,26 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
-<!-- Minow Knock: self-hosted display face for the intro sting. Same-origin so it loads fast
-     and reliably (no CDN/CSP latency that made the font-gate miss and swap mid-zoom). Declared
-     in CSS below and preloaded here so the fetch starts before the inline CSS even parses. -->
-<link rel="preload" as="font" type="font/woff2" href="/assets/fonts/MinowKnock-Regular.woff2" crossorigin />
-<!-- preload the above-the-fold self-hosted UI face so it starts downloading before
-     the inline CSS is parsed. crossorigin is required even same-origin — fonts are
-     always fetched in CORS mode. -->
-<link rel="preload" href="assets/fonts/Gotham-Bold.otf" as="font" type="font/otf" crossorigin />
-<link rel="preload" href="assets/fonts/ArchyEDT-Bold.woff2" as="font" type="font/woff2" crossorigin />
-<!-- Noto Sans Georgian is only a FALLBACK face (ArchyEDT covers ქართული), so load
-     its stylesheet non-render-blocking: media="print" lets the browser fetch it
-     without blocking first paint, then onload promotes it to all media. The
-     <noscript> copy keeps it working with JS disabled. -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;700&display=swap" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;700&display=swap" /></noscript>
+<!-- Elms Sans (Google) is the English/Latin UI face; BPG Nino Mtavruli (self-hosted) covers ქართული.
+     Preload the same-origin .ttf so it starts downloading before the inline CSS parses.
+     crossorigin is required even same-origin — fonts are always fetched in CORS mode. -->
+<link rel="preload" href="assets/fonts/bpg-nino-mtavruli.ttf" as="font" type="font/ttf" crossorigin />
+<!-- Elms Sans + a Noto Sans Georgian safety fallback, loaded non-render-blocking:
+     media="print" lets the browser fetch without blocking first paint, then onload
+     promotes it to all media; the <noscript> copy keeps it working with JS disabled. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Elms+Sans:wght@400;500;700&family=Noto+Sans+Georgian:wght@400;500;700&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Elms+Sans:wght@400;500;700&family=Noto+Sans+Georgian:wght@400;500;700&display=swap" /></noscript>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"STREDIO","applicationCategory":"MultimediaApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
 </script>
 <style>
-  /* ArchyEDT — the ქართული (Georgian) UI face. Gotham (Latin-only) sits ahead of it
-     in every font stack, so Latin glyphs render in Gotham and Georgian glyphs — which
-     Gotham lacks — fall through to ArchyEDT. The family ships a single weight, so every
-     CSS weight maps to this one file; no font-weight constraint serves 400-800 alike. */
-  @font-face{font-family:"ArchyEDT";font-style:normal;font-display:swap;
-    src:url("assets/fonts/ArchyEDT-Bold.woff2") format("woff2"),
-        url("assets/fonts/ArchyEDT-Bold.otf") format("opentype");}
-  /* Gotham Bold — the primary Latin/English UI face. Latin-only, so Georgian text
-     automatically falls through to ArchyEDT. No font-weight constraint so this single
-     file serves every requested weight. */
-  @font-face{font-family:"Gotham";font-style:normal;font-display:swap;
-    src:url("assets/fonts/Gotham-Bold.otf") format("opentype");}
+  /* BPG Nino Mtavruli — the ქართული (Georgian) UI face, self-hosted. Elms Sans (Latin-only,
+     from Google) leads every font stack, so Latin glyphs render in Elms Sans and Georgian
+     glyphs — which Elms Sans lacks — fall through to BPG Nino Mtavruli. The family ships a
+     single weight, so no font-weight constraint maps every CSS weight to this one file (700
+     is faux-bolded), exactly as the old ArchyEDT face did. */
+  @font-face{font-family:"BPG Nino Mtavruli";font-style:normal;font-display:swap;
+    src:url("assets/fonts/bpg-nino-mtavruli.ttf") format("truetype");}
   :root{
     /* surfaces — deep cinematic crimson grade: warm near-black, slightly blue-black */
     --bg:#000000; --bg-deep:#000000; --bg-2:#070707; --bg-3:#161419; --surface:#161419;
@@ -78,12 +67,13 @@
     --grad:linear-gradient(120deg,#8e1620 0%,#D02334 55%,#e0586a 100%);
     /* semantics, harmonized to sit beside crimson but stay unmistakably go/stop */
     --success:#5cd2a0; --danger:#ea6479;
-    /* fonts: Gotham is the Latin/English face, ArchyEDT the ქართული (Georgian) face.
-       Gotham leads the stack and covers EN; Georgian glyphs it lacks fall through to
-       ArchyEDT, then Noto Sans Georgian + system fonts. A touch of tracking (--track)
-       keeps small caps legible. */
-    --font:"Gotham","ArchyEDT","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"Gotham","ArchyEDT","Noto Sans Georgian",ui-monospace,"SF Mono","Cascadia Code","IBM Plex Mono","Courier New",monospace;
+    /* fonts: Elms Sans (Google) is the English/Latin face, BPG Nino Mtavruli the ქართული
+       (Georgian) face. Elms Sans leads the stack and covers EN; Georgian glyphs it lacks fall
+       through to BPG Nino Mtavruli, then Noto Sans Georgian + system fonts. --font-mono shares
+       the same faces (the design uses it for letter-spaced labels, not true monospace). A touch
+       of tracking (--track) keeps small caps legible. */
+    --font:"Elms Sans","BPG Nino Mtavruli","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"Elms Sans","BPG Nino Mtavruli","Noto Sans Georgian",ui-monospace,"SF Mono","Cascadia Code","IBM Plex Mono","Courier New",monospace;
     --track:.05em;
     --sidebar-w:230px;
     --page-pad:20px; --page-top:24px; --rail-fade:64px; --topbar-h:68px;
@@ -91,7 +81,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);font-family:var(--font);font-weight:400;letter-spacing:var(--track)}
   /* form controls don't inherit font-family by default — make every button/input
-     pick up ArchyEDT. Per-class fonts (e.g. var(--font-mono)) still win on specificity. */
+     pick up the UI font. Per-class fonts (e.g. var(--font-mono)) still win on specificity. */
   button,input,select,textarea{font-family:inherit;letter-spacing:inherit}
   body{overflow-x:hidden}
   .mono{font-family:var(--font-mono)}
@@ -238,7 +228,6 @@
     #userIcon,#chatIcon{display:none}
     /* collapsed search shouldn't reserve a flex slot/gap; the magnifier brings it back */
     #topbar .search{display:none}
-    #topbar .lang-toggle{margin-left:0;margin-right:0}         /* reclaim space for SIGN IN on narrow phones */
     /* primary nav: a horizontally-scrollable tab strip on its own row. Without this the
        Home / TV Shows / Movies / New & Popular / My List links are unreachable on touch. */
     .topnav{display:flex;order:10;flex:1 0 100%;gap:22px;margin:7px -12px 0;padding:8px 12px;
@@ -257,7 +246,6 @@
        26px-tall language buttons — below the ~44px guidance). #topbar prefix outranks
        the later max-width:520px shrink so these hold on the smallest phones too. */
     #topbar .nav-icon{width:42px;height:42px}
-    #topbar .lang-btn{padding:11px 12px;font-size:13px}
     #topbar .signin-btn{padding:11px 18px}
     /* opening search on a phone/tablet shouldn't keep the category strip visible too —
        hide it so the header stays two rows (controls + search) and the hero stays higher */
@@ -382,7 +370,7 @@
   /* display headline (EN + ქართული from one face). It's painted with the shared
      violet->lavender->light sweep (--grad) via background-clip to keep the wordmark
      in the UI's signature pigment. */
-  .hero-title{font-family:"Gotham","ArchyEDT","Noto Sans Georgian",system-ui,sans-serif !important;font-weight:400;
+  .hero-title{font-family:var(--font) !important;font-weight:400;
     color:#AF1827;-webkit-text-fill-color:#AF1827;
     font-size:clamp(34px,5vw,66px);line-height:1.18;letter-spacing:.01em;margin-bottom:16px;
     text-transform:uppercase;white-space:normal;overflow-wrap:break-word;word-break:break-word;
@@ -634,7 +622,7 @@
   .loadmore:hover{background:rgba(var(--accent-rgb),.1);color:var(--accent-h);border-color:var(--accent-h)}
 
   /* ---------- clickable section headers (Trending Movies →) ----------
-     ArchyEDT display caps (shared with the hero headline), bright type,
+     Elms Sans display caps (shared with the hero headline), bright type,
      with the signature violet->light gradient underline that grows on hover. */
   .strip-title{appearance:none;-webkit-appearance:none;background:none;border:none;cursor:pointer;
     display:inline-flex;align-items:baseline;gap:11px;
@@ -731,9 +719,9 @@
      >= the JS box so they never re-clamp/distort the computed size). */
   .upcoming-card .uc-logo{display:block;width:auto;height:auto;max-height:27px;max-width:134px;
     object-fit:contain;object-position:left bottom;filter:drop-shadow(0 1px 5px rgba(0,0,0,.75))}
-  /* Gotham Bold wordmark, upper-cased with wide tracking (THE ODYSSEY look).
+  /* Bold wordmark, upper-cased with wide tracking (THE ODYSSEY look).
      Uniform size for every card; wraps to two lines so full titles stay visible. */
-  .upcoming-card .uc-title{font-family:"Gotham",var(--font);font-size:11px;font-weight:700;
+  .upcoming-card .uc-title{font-family:var(--font);font-size:11px;font-weight:700;
     line-height:1.3;color:#fff;text-transform:uppercase;letter-spacing:.16em;max-width:100%;
     display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;
     overflow:hidden;text-overflow:ellipsis;word-break:break-word;
@@ -789,19 +777,17 @@
     transform:translateX(-110%);animation:sfSheen 1.7s cubic-bezier(.45,.05,.35,1) infinite}
   @keyframes sfSheen{0%{transform:translateX(-110%)}55%,100%{transform:translateX(110%)}}
   /* skeleton poster keeps the exact .poster / .gcard footprint but is inert.
-     The "loading" look is a faint topographic contour map: SVG fractal-noise turned
-     into iso-lines (feTurbulence → discrete alpha bands), with a soft sheen sweeping
-     across like a scanner passing over the map. */
-  .poster.sk{cursor:default;pointer-events:none;border-color:rgba(255,255,255,.06);
-    background:radial-gradient(125% 95% at 50% 38%,#1a1722,#100d15 68%,#0b090f 100%)}
+     The "loading" look is a moody black → dark-red gradient with a soft red glow
+     bleeding from the top, and a light shimmer sweeping across like a scanner. */
+  .poster.sk{cursor:default;pointer-events:none;border-color:rgba(208,35,52,.12);
+    background:
+      radial-gradient(120% 82% at 50% 16%,rgba(178,26,46,.42),rgba(86,12,24,.20) 44%,transparent 72%),
+      linear-gradient(155deg,#1a0a0f 0%,#120a0d 46%,#0a060a 100%)}
   .poster.sk:hover{transform:none;box-shadow:none}
-  /* topographic contour lines — the SVG draws thin iso-lines from layered noise */
-  .poster.sk::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.16;
-    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='440'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.013' numOctaves='2' seed='14' stitchTiles='stitch' result='n'/%3E%3CfeComponentTransfer in='n' result='c'%3E%3CfeFuncA type='discrete' tableValues='0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1'/%3E%3C/feComponentTransfer%3E%3CfeColorMatrix in='c' type='matrix' values='0 0 0 0 0.62 0 0 0 0 0.6 0 0 0 0 0.66 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='300' height='440' filter='url(%23t)'/%3E%3C/svg%3E") center/cover no-repeat}
-  /* a slow, faint sheen drifts over the contours (overrides the generic .sk diagonal sheen) */
+  /* a light shimmer sweeps across the card */
   .poster.sk::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
-    background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.035) 50%,transparent 65%);
-    transform:translateX(-110%);animation:sfSheen 3.2s ease-in-out infinite}
+    background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.06) 48%,rgba(255,255,255,.02) 56%,transparent 72%);
+    transform:translateX(-110%);animation:sfSheen 1.9s ease-in-out infinite}
 
   /* the brand loader — a swept gradient ring with a softly pulsing core. Use
      <span class="sf-loader"></span> (add .sm for a compact inline variant). */
@@ -921,14 +907,38 @@
   .install-box input::placeholder{color:var(--text-muted)}
 
   /* ===== Settings — grouped cards ===== */
-  .settings-grid{display:flex;flex-direction:column;gap:18px;max-width:880px;margin-top:6px}
+  /* centered hero heading for the settings page only */
+  #settings .section-title{text-align:center;padding-top:8px}
+  #settings .section-sub{text-align:center;max-width:620px;margin-left:auto;margin-right:auto}
+  /* masonry: cards of varying height flow into responsive columns (3 → 2 → 1) */
+  .settings-grid{column-width:340px;column-gap:18px;max-width:1180px;margin:6px auto 0}
+  .set-card{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;margin-bottom:18px;width:100%}
+  /* PROFILE card — identity at the top of the grid */
+  .set-profile .set-card-body{display:flex;align-items:center;gap:16px;padding:20px 22px}
+  .profile-avatar{width:60px;height:60px;border-radius:50%;flex:none;display:grid;place-items:center;
+    font-family:var(--font-mono);font-size:24px;font-weight:700;text-transform:uppercase;color:var(--accent);
+    background:radial-gradient(circle at 50% 36%,rgba(var(--accent-rgb),.30),rgba(var(--accent-rgb),.10));
+    border:2px solid rgba(var(--accent-rgb),.85);
+    box-shadow:0 0 18px rgba(var(--accent-rgb),.55),inset 0 0 14px rgba(var(--accent-rgb),.30)}
+  .profile-meta{min-width:0;display:flex;flex-direction:column;gap:4px}
+  .profile-name{font-size:18px;font-weight:600;color:var(--text);line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .profile-idline{display:flex;align-items:center;gap:8px;min-width:0}
+  .profile-sub{font-size:13px;color:var(--text-muted);line-height:1.4;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .profile-badge{flex:none;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--text);padding:3px 9px;border-radius:999px;
+    background:rgba(var(--accent-rgb),.18);box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.42)}
+  .profile-badge[hidden]{display:none}
   .set-card{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.018),transparent),var(--surface);
     border:1px solid var(--border);border-radius:16px;overflow:hidden;
     transition:border-color .25s,box-shadow .25s,transform .25s}
   .set-card:hover{border-color:rgba(var(--accent-rgb),.34);box-shadow:0 18px 50px -30px rgba(var(--accent-rgb),.75)}
   .set-card-head{display:flex;align-items:center;gap:14px;padding:17px 22px;
-    border-bottom:1px solid var(--border);
-    background:linear-gradient(90deg,rgba(var(--accent-rgb),.06),transparent 78%)}
+    border-bottom:1px solid rgba(var(--accent-rgb),.16);
+    background:
+      linear-gradient(342deg,rgba(var(--accent-rgb),.17),rgba(var(--accent-rgb),.03) 72%,transparent),
+      radial-gradient(150% 190% at 0% 0%,rgba(var(--accent-rgb),.22),transparent 58%)}
   .set-ic{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;
     background:rgba(var(--accent-rgb),.13);color:var(--accent);
     box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.24)}
@@ -973,6 +983,60 @@
   .blur-unwatched .vp-eppanel-list .ep-row:not(.watched):not(.on) .ep-still img{filter:blur(11px) brightness(.7);transition:filter .22s}
   .blur-unwatched #epList.ep-grid .ep-row:hover .ep-still img,
   .blur-unwatched .vp-eppanel-list .ep-row:hover .ep-still img{filter:none}
+
+  /* ── settings polish: sub-sections, live preview, inline control groups,
+        signal-dropdown, info note, clock ring ── */
+  /* grouped sub-section label inside a card body (Subtitles / Appearance / Controls).
+     The row above each group keeps its own border, so that line is the divider — no
+     border on the label itself (avoids a doubled hairline). */
+  .set-subhead{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--text-muted);margin:18px 0 2px}
+  .set-card-body .set-subhead:first-child{margin-top:8px}
+  .set-subhead + .setting-row{padding-top:6px}
+
+  /* inline control cluster — pill/swatch + dropdown sharing one row */
+  .ctl-group{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+  .ctl-group select{min-width:150px}
+  .ctl-group .set-outline-w{min-width:62px;text-align:center;padding-right:30px}
+
+  /* live subtitle preview — sample line styled with the chosen color/size/outline/bg */
+  .sub-preview{padding:4px 0 2px}
+  .sub-preview .sp-label{font-size:12.5px;color:var(--text-muted);margin:0 0 9px}
+  .sub-preview .sp-line{display:flex;justify-content:center;padding:14px 12px;border-radius:11px;
+    background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+  .sub-preview .sp-cue{font-family:var(--font);font-weight:600;color:#fff;line-height:1.4;
+    padding:2px 8px;border-radius:5px;max-width:100%;text-align:center;
+    display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+  /* mini swatch that mirrors the chosen subtitle background (checkerboard = transparent) */
+  .swatch{width:30px;height:30px;border-radius:8px;flex:none;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);background-color:#2a2730;
+    background-image:
+      linear-gradient(45deg,#5a5a5a 25%,transparent 25%),linear-gradient(-45deg,#5a5a5a 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#5a5a5a 75%),linear-gradient(-45deg,transparent 75%,#5a5a5a 75%);
+    background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0}
+
+  /* signal-bars glyph rendered inside the Auto-quality dropdown (left); chevron stays right */
+  .setting-row select.sel-signal{padding-left:42px;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='14' viewBox='0 0 16 14'%3E%3Crect x='0' y='9' width='3' height='5' rx='1' fill='%232ecc71'/%3E%3Crect x='5' y='5' width='3' height='9' rx='1' fill='%232ecc71'/%3E%3Crect x='11' y='1' width='3' height='13' rx='1' fill='%232ecc71'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23A9A8B2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat,no-repeat;
+    background-position:left 13px center,right 13px center}
+
+  /* info note (network usage, etc.) */
+  .set-note{display:flex;gap:9px;align-items:flex-start;padding:14px 0 6px;
+    font-size:13px;line-height:1.5;color:var(--text-muted)}
+  .set-note .note-ic{flex:none;width:16px;height:16px;margin-top:1px;color:var(--accent);opacity:.9}
+
+  /* circular clock/progress ring beside the popup-duration select */
+  .clock-ring{--p:58;width:34px;height:34px;border-radius:50%;flex:none;position:relative;
+    background:conic-gradient(var(--accent) calc(var(--p)*1%),rgba(255,255,255,.13) 0)}
+  .clock-ring::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--bg-3)}
+  .clock-ring::after{content:"";position:absolute;left:50%;top:50%;width:2px;height:9px;border-radius:1px;
+    background:var(--accent);transform-origin:50% 100%;
+    transform:translate(-50%,-100%) rotate(calc(var(--p)*3.6deg))}
 
   /* modal */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(3px)}
@@ -1042,9 +1106,9 @@
   .m-kicker{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:12px;
     letter-spacing:.28em;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
   .m-kicker::before{content:"";width:22px;height:1px;background:var(--accent);opacity:.7}
-  /* title: gradient-clipped display wordmark in the primary ArchyEDT face;
+  /* title: gradient-clipped display wordmark in the primary UI face;
      the .has-logo path swaps in the TMDB title-logo exactly like the old modal did */
-  #mTitle{font-family:"Gotham",var(--font);font-weight:700;background:var(--grad);-webkit-background-clip:text;
+  #mTitle{font-family:var(--font);font-weight:700;background:var(--grad);-webkit-background-clip:text;
     background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
     font-size:clamp(25px,3.4vw,44px);line-height:1.16;margin:0 0 12px;letter-spacing:.04em;
     filter:drop-shadow(0 2px 22px rgba(0,0,0,.55))}
@@ -1055,7 +1119,7 @@
   .m-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);
     font-size:14px;letter-spacing:.04em;color:#cfcada;margin:0 0 10px}
   .m-meta .star{color:var(--accent)}
-  .m-meta .m-tv-ic{opacity:.85;margin-right:2px}
+  .m-meta .m-tv-ic{width:15px;height:15px;opacity:.85;margin-right:5px;vertical-align:-3px}
   .m-genres{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
   .m-genres .chip{border:1px solid rgba(255,255,255,.22);border-radius:3px;padding:2px 9px;
     font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;color:#ded9ec;white-space:nowrap}
@@ -1368,7 +1432,7 @@
   .vp-overlay.open .vp-skip,.vp-overlay.open .vp-eppanel{pointer-events:auto}
   .vp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 26px;
     background:linear-gradient(180deg,rgba(0,0,0,.7),transparent);transition:opacity .25s ease}
-  .vp-title{font-family:"Gotham",var(--font);font-size:16px;font-weight:700;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.6);line-height:1.3}
+  .vp-title{font-family:var(--font);font-size:16px;font-weight:700;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.6);line-height:1.3}
   .vp-top-right{display:flex;align-items:center;gap:14px;flex-shrink:0}
   .vp-status{font-family:var(--font-mono);font-size:15px;color:var(--accent);display:flex;align-items:center;gap:6px;white-space:nowrap}
 
@@ -1575,7 +1639,7 @@
     .setting-row{flex-wrap:wrap;gap:10px}
     .setting-row label{flex:1 1 100%}
     .setting-row select,.setting-row input{flex:1 1 100%;max-width:none}
-    .setting-row .sw,.setting-row .lang-toggle{margin-left:auto}
+    .setting-row .sw{margin-left:auto}
     .setting-row input[type=color]{flex:0 0 auto;width:100%}
     .install-box{flex-wrap:wrap}
     .install-box button{width:100%}
@@ -1615,16 +1679,6 @@
   [hidden]{display:none!important}
 
   /* ---------- auth: topbar control ---------- */
-  /* language toggle — EN | ქარ segmented control, mirrors the topbar palette */
-  /* language selector — crimson-bordered pill, active language filled red */
-  .lang-toggle{display:inline-flex;align-items:center;flex-shrink:0;border:1px solid rgba(255,255,255,.22);
-    border-radius:4px;overflow:hidden;background:transparent;margin-left:8px;margin-right:4px}
-  .lang-btn{background:none;border:0;color:rgba(255,255,255,.6);font-family:var(--font-mono);
-    font-size:12px;letter-spacing:.08em;padding:6px 11px;cursor:pointer;transition:.2s;line-height:1}
-  .lang-btn+.lang-btn{border-left:1px solid rgba(255,255,255,.16)}
-  .lang-btn:hover{color:#fff}
-  .lang-btn.on{background:#fff;color:#000}
-  @media (max-width:520px){ .lang-btn{padding:7px 9px;font-size:12px} .lang-toggle{margin-right:6px} }
   /* SIGN IN crowds the single mobile row alongside the logo, language toggle and search
      magnifier — trim its horizontal bulk + type on phones. #topbar prefix beats the
      #topbar .signin-btn{padding:11px 18px} rule in the max-width:900px block. The 44px
@@ -1822,12 +1876,9 @@
     font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;line-height:1.6}
   @media(prefers-reduced-motion:reduce){ .cfg-preview-row{animation:none} }
 
-  /* Minow Knock — the intro display face, self-hosted (font ships weight 400; the splash asks
-     for 700 and gets faux-bold, exactly as your CodePen did). Declared inline so the face is
-     registered the instant CSS parses, letting document.fonts.load('400 …') gate the animation
-     on it. Same-origin + preloaded means it's loaded before the sting starts → no mid-zoom swap. */
-  @font-face{font-family:'Minow Knock';font-style:normal;font-weight:400;font-display:swap;
-    src:url('/assets/fonts/MinowKnock-Regular.woff2') format('woff2');}
+  /* The intro sting renders a single "o" in the UI font (Elms Sans). The animation is
+     gated on document.fonts.load('400 … "Elms Sans"') so the glyph can't reflow from a
+     fallback mid-zoom. */
 
   /* ---------- intro splash — your CodePen "netflix_style" sting, used verbatim ----------
      Your CSS is unchanged. The ONLY edit a browser forces: the Sass makelongshadow($n,$a)
@@ -1841,11 +1892,11 @@
     contain:layout paint;transform:translateZ(0)}
   #intro .txt{
     text-align:center;
-    font-family:'Minow Knock',sans-serif;
+    font-family:var(--font);
     font-size:12vmin;
     font-weight:700;
     animation:netflix_style 5.5s infinite;
-    /* start paused — JS resumes it only once the Minow Knock face is loaded, so the
+    /* start paused — JS resumes it only once the Elms Sans face is loaded, so the
        glyph never reflows from the fallback mid-zoom (the cold-cache "skip" in incognito) */
     animation-play-state:paused;
     outline:none;
@@ -2288,7 +2339,7 @@
      the <script> block from archive/anti-inspect-redirect.html back in right here. -->
 </head>
 <body class="nav-closed">
-<!-- intro splash: your "netflix_style" sting. Sequence: wait for the Minow Knock font so the
+<!-- intro splash: your "netflix_style" sting. Sequence: wait for the Elms Sans font so the
      glyph can't reflow mid-zoom (the cold-cache "skip"), play one 4s pass on a quiet main
      thread, then FREEZE on the logo's final frame while the home builds behind the splash —
      and only once the home is fully painted does the black curtain wipe down then up to reveal
@@ -2381,7 +2432,7 @@
   function markFont(){ fontReady=true; maybeStart(); }
   if(document.fonts && document.fonts.load){
     var cap=setTimeout(markFont,800);
-    document.fonts.load("400 100px 'Minow Knock'").then(function(){ clearTimeout(cap); markFont(); })
+    document.fonts.load("400 100px 'Elms Sans'").then(function(){ clearTimeout(cap); markFont(); })
                                                   .catch(function(){ clearTimeout(cap); markFont(); });
   } else { markFont(); }
   if(domReady) maybeStart();
@@ -2550,6 +2601,27 @@
 
       <div class="settings-grid">
 
+        <!-- PROFILE -->
+        <div class="set-card set-profile">
+          <div class="set-card-head">
+            <span class="set-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <div class="txt">
+              <h4 class="set-card-title" data-i18n="settings.profile_head">PROFILE</h4>
+              <p class="set-card-desc" data-i18n="settings.profile_desc">Your account on this device</p>
+            </div>
+          </div>
+          <div class="set-card-body">
+            <span class="profile-avatar" id="profileAvatar" aria-hidden="true">?</span>
+            <div class="profile-meta">
+              <div class="profile-name" id="profileName" data-i18n="settings.profile_guest">Not signed in</div>
+              <div class="profile-idline">
+                <span class="profile-sub" id="profileSub" data-i18n="settings.profile_local">Preferences are stored locally in your browser</span>
+                <span class="profile-badge" id="profileBadge" data-i18n="settings.profile_admin" hidden>Admin</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- INTERFACE -->
         <div class="set-card">
           <div class="set-card-head">
@@ -2561,10 +2633,10 @@
           </div>
           <div class="set-card-body">
             <div class="setting-row"><label data-i18n="settings.website_language">Website language</label>
-              <div class="lang-toggle" id="langToggle" role="group" aria-label="Language / ენა">
-                <button type="button" class="lang-btn" data-lang="en" title="English">EN</button>
-                <button type="button" class="lang-btn" data-lang="ka" title="ქართული">GE</button>
-              </div>
+              <select id="langSelect" aria-label="Language / ენა">
+                <option value="en">English</option>
+                <option value="ka">ქართული</option>
+              </select>
             </div>
             <div class="setting-row"><label data-i18n="settings.blur_unwatched">Blur unwatched episodes image</label>
               <span class="sw"><input type="checkbox" id="setBlurUnwatched" data-i18n-aria="settings.blur_unwatched"/><span class="sw-track"></span></span>
@@ -2586,16 +2658,19 @@
               <span class="sw"><input type="checkbox" id="setAutoplayNext" data-i18n-aria="settings.autoplay_next"/><span class="sw-track"></span></span>
             </div>
             <div class="setting-row"><label data-i18n="settings.next_popup">Next video popup duration</label>
-              <select id="setNextPopup" data-i18n-aria="settings.next_popup">
-                <option value="5">5 seconds</option>
-                <option value="10">10 seconds</option>
-                <option value="15">15 seconds</option>
-                <option value="20">20 seconds</option>
-                <option value="30">30 seconds</option>
-                <option value="35">35 seconds</option>
-                <option value="45">45 seconds</option>
-                <option value="60">60 seconds</option>
-              </select>
+              <div class="ctl-group">
+                <select id="setNextPopup" data-i18n-aria="settings.next_popup">
+                  <option value="5">5 seconds</option>
+                  <option value="10">10 seconds</option>
+                  <option value="15">15 seconds</option>
+                  <option value="20">20 seconds</option>
+                  <option value="30">30 seconds</option>
+                  <option value="35">35 seconds</option>
+                  <option value="45">45 seconds</option>
+                  <option value="60">60 seconds</option>
+                </select>
+                <span class="clock-ring" id="popupRing" aria-hidden="true"></span>
+              </div>
             </div>
           </div>
         </div>
@@ -2610,6 +2685,7 @@
             </div>
           </div>
           <div class="set-card-body">
+            <div class="set-subhead" data-i18n="settings.group_subtitles">Subtitles</div>
             <div class="setting-row"><label data-i18n="settings.sub_lang">Default subtitles language</label>
               <select id="setSubLang" data-i18n-aria="settings.sub_lang">
                 <option value="off" data-i18n="settings.sub_off">Off</option>
@@ -2618,6 +2694,14 @@
                 <option value="ru">Русский</option>
               </select>
             </div>
+
+            <div class="set-subhead" data-i18n="settings.group_appearance">Appearance</div>
+            <div class="sub-preview">
+              <div class="sp-label" data-i18n="settings.preview">Preview</div>
+              <div class="sp-line"><span class="sp-cue" id="subPreview" data-i18n="settings.preview_text">The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.</span></div>
+            </div>
+
+            <div class="set-subhead" data-i18n="settings.group_controls">Controls</div>
             <div class="setting-row"><label data-i18n="settings.sub_size">Default subtitles size</label>
               <select id="setSubSize" data-i18n-aria="settings.sub_size">
                 <option value="75">75%</option>
@@ -2634,15 +2718,27 @@
               <input type="color" id="setSubColor" value="#ffffff" data-i18n-aria="settings.sub_color"/>
             </div>
             <div class="setting-row"><label data-i18n="settings.sub_bg">Subtitles background color</label>
-              <select id="setSubBg" data-i18n-aria="settings.sub_bg">
-                <option value="transparent" data-i18n="settings.transparent">Transparent</option>
-                <option value="rgba(0,0,0,.6)" data-i18n="settings.bg_dim">Dimmed black</option>
-                <option value="#000000" data-i18n="settings.bg_black">Black</option>
-                <option value="#ffffff" data-i18n="settings.bg_white">White</option>
-              </select>
+              <div class="ctl-group">
+                <span class="swatch" id="subBgSwatch" aria-hidden="true"></span>
+                <select id="setSubBg" data-i18n-aria="settings.sub_bg">
+                  <option value="transparent" data-i18n="settings.transparent">Transparent</option>
+                  <option value="rgba(0,0,0,.6)" data-i18n="settings.bg_dim">Dimmed black</option>
+                  <option value="#000000" data-i18n="settings.bg_black">Black</option>
+                  <option value="#ffffff" data-i18n="settings.bg_white">White</option>
+                </select>
+              </div>
             </div>
             <div class="setting-row"><label data-i18n="settings.sub_outline">Subtitles outline color</label>
-              <input type="color" id="setSubOutline" value="#000000" data-i18n-aria="settings.sub_outline"/>
+              <div class="ctl-group">
+                <input type="color" id="setSubOutline" value="#000000" data-i18n-aria="settings.sub_outline"/>
+                <select id="setSubOutlineW" class="set-outline-w" data-i18n-aria="settings.sub_outline_w">
+                  <option value="0">0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -2658,10 +2754,14 @@
           </div>
           <div class="set-card-body">
             <div class="setting-row"><label data-i18n="settings.auto_quality">Auto quality</label>
-              <select><option data-i18n="settings.opt_best">Best available</option><option data-i18n="settings.opt_4k">4K preferred</option><option data-i18n="settings.opt_1080">1080p preferred</option></select>
+              <select class="sel-signal"><option data-i18n="settings.opt_best">Best available</option><option data-i18n="settings.opt_4k">4K preferred</option><option data-i18n="settings.opt_1080">1080p preferred</option></select>
             </div>
             <div class="setting-row"><label data-i18n="settings.language">Audio language</label>
               <select><option data-i18n="settings.opt_english">English</option><option data-i18n="settings.opt_original">Original</option></select>
+            </div>
+            <div class="set-note">
+              <svg class="note-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+              <span data-i18n="settings.network_note">Higher qualities use more data. On a metered or slow connection, pick a lower preference to reduce buffering.</span>
             </div>
           </div>
         </div>
@@ -3248,6 +3348,11 @@ window.I18N=(function(){
   "common.backend_unreachable_start": "✕ Backend not reachable — start the server",
   "settings.title": "Settings",
   "settings.sub": "Playback preferences are stored locally in your browser.",
+  "settings.profile_head": "PROFILE",
+  "settings.profile_desc": "Your account on this device",
+  "settings.profile_guest": "Not signed in",
+  "settings.profile_local": "Preferences are stored locally in your browser",
+  "settings.profile_signed_in": "Signed in",
   "settings.validate": "VALIDATE",
   "settings.remove": "REMOVE",
   "settings.not_set": "not set",
@@ -3292,6 +3397,14 @@ window.I18N=(function(){
   "settings.player_desc": "How subtitles render during playback",
   "settings.playback_desc": "Preferred stream quality and audio",
   "settings.advanced_desc": "Hand playback off to another app",
+  "settings.profile_admin": "Admin",
+  "settings.group_subtitles": "Subtitles",
+  "settings.group_appearance": "Appearance",
+  "settings.group_controls": "Controls",
+  "settings.preview": "Preview",
+  "settings.preview_text": "The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.",
+  "settings.sub_outline_w": "Outline width",
+  "settings.network_note": "Higher qualities use more data. On a metered or slow connection, pick a lower preference to reduce buffering.",
   "settings.external_player": "Play in external player",
   "settings.disabled": "Disabled",
   "settings.ext_opening": "Opening in {app}…",
@@ -3631,28 +3744,24 @@ window.I18N=(function(){
     commit(l);                                 // commit even if load failed (English fallback)
   }
   function syncButtons(){
-    document.querySelectorAll('.lang-btn').forEach(b=>{ const on=b.getAttribute('data-lang')===cur;
-      b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on)); });
+    const sel=document.getElementById('langSelect'); if(sel) sel.value=cur;
   }
   function lang(){ return cur; }
   /* build the in-app language picker from the repo manifest, so a language added
-     to index.json shows up automatically. Static buttons stay if the manifest fails. */
+     to index.json shows up automatically. Static options stay if the manifest fails. */
   function buildPicker(){
     if(!manifest||!Array.isArray(manifest.languages)||!manifest.languages.length) return;
-    document.querySelectorAll('.lang-toggle').forEach(box=>{
-      box.innerHTML=manifest.languages.map(function(l){
-        return '<button type="button" class="lang-btn" data-lang="'+l.code+'" title="'+(l.nativeName||l.name||l.code)+'">'+(l.short||l.code.toUpperCase())+'</button>';
-      }).join('');
-    });
+    const sel=document.getElementById('langSelect'); if(!sel) return;
+    sel.innerHTML=manifest.languages.map(function(l){
+      return '<option value="'+l.code+'">'+(l.nativeName||l.name||l.code)+'</option>';
+    }).join('');
     syncButtons();
   }
   async function loadManifest(){
     try{ const res=await fetch(CDN+'index.json',{cache:'force-cache'}); if(res.ok){ manifest=await res.json(); buildPicker(); } }catch(e){}
   }
-  // click handling is delegated on the container so it survives buildPicker() re-renders
-  document.querySelectorAll('.lang-toggle').forEach(box=>{
-    box.addEventListener('click',function(e){ const b=e.target.closest('.lang-btn'); if(b&&box.contains(b)) set(b.getAttribute('data-lang')); });
-  });
+  // change handling is delegated on the document so it survives buildPicker() re-renders
+  document.addEventListener('change',function(e){ if(e.target&&e.target.id==='langSelect') set(e.target.value); });
   document.documentElement.lang=cur; document.documentElement.setAttribute('data-lang',cur);
   loadManifest();                              // populate the picker from the repo manifest
   return { t:t, genre:genre, apply:apply, set:set, onChange:onChange, lang:lang, syncButtons:syncButtons , load:load };
@@ -3859,7 +3968,7 @@ function upcomingCardHTML(m,i){
   const art=img
     ? `<img src="${esc(img)}" loading="lazy" alt="" onerror="this.remove()"/>`
     : `<div class="uc-fallback">${esc(m.title)}</div>`;
-  // Upcoming cards always use the wide-tracked Gotham text title (no TMDB logo art).
+  // Upcoming cards always use the wide-tracked text title (no TMDB logo art).
   const titleMark=`<span class="uc-title">${esc(m.title)}</span>`;
   const genre=m.genre?`<span class="uc-genre">${esc(I18N.genre(m.genre))}</span>`:'';
   const info=`<div class="uc-info"><span>${esc(m.year)}</span>${genre}</div>`;
@@ -4410,6 +4519,7 @@ const SETTINGS_DEFAULTS={
   subColor:'#ffffff',
   subBg:'transparent',
   subOutline:'#000000',
+  subOutlineW:2,          // subtitle outline thickness in px (0 = none); drives the ::cue text-shadow
   blurUnwatched:false,    // blur stills of episodes you haven't started
   externalPlayer:'disabled', // disabled | vlc | infuse | outplayer | nplayer
   enhance:false,          // picture-enhance: CSS contrast/saturation bump + film-grain overlay
@@ -4425,11 +4535,21 @@ function saveSettings(){ try{ localStorage.setItem(SETTINGS_KEY,JSON.stringify(S
 function setSetting(k,v){ SETTINGS[k]=v; saveSettings(); applySetting(k); }
 /* side-effects that must reflect immediately (others are read at use-time) */
 function applySetting(k){
-  if(k==null||k==='subColor'||k==='subBg'||k==='subOutline'||k==='subSize') applySubtitleStyle();
+  if(k==null||k==='subColor'||k==='subBg'||k==='subOutline'||k==='subOutlineW'||k==='subSize'){ applySubtitleStyle(); updateSubtitlePreview(); }
+  if(k==null||k==='nextPopupSecs') updatePopupRing();
   if(k==null||k==='blurUnwatched') document.body.classList.toggle('blur-unwatched',!!SETTINGS.blurUnwatched);
   if(k==null||k==='enhance'||k==='enhanceLevel'||k==='clarity'||k==='clarityLevel'){ try{ VP.applyEnhance(); }catch(e){} }
 }
 function applyAllSettings(){ applySetting(null); }
+/* the subtitle "outline" — a multi-direction text-shadow (a real outline isn't a ::cue
+   prop), scaled by the chosen width. Shared so the player and the live preview match. */
+function subtitleOutlineShadow(){
+  const o=SETTINGS.subOutline;
+  const w=Math.max(0,Math.min(6,+SETTINGS.subOutlineW));
+  if(!o||o==='transparent'||!(w>0)) return '0 1px 3px rgba(0,0,0,.9)';
+  return `-${w}px -${w}px 0 ${o},${w}px -${w}px 0 ${o},-${w}px ${w}px 0 ${o},${w}px ${w}px 0 ${o},`
+    +`0 0 ${w*2}px ${o},0 2px 6px rgba(0,0,0,.85)`;
+}
 /* build/refresh the ::cue stylesheet from the current subtitle prefs */
 function applySubtitleStyle(){
   let st=document.getElementById('subCueStyle');
@@ -4437,13 +4557,38 @@ function applySubtitleStyle(){
   const c=SETTINGS.subColor||'#ffffff';
   const bg=(SETTINGS.subBg&&SETTINGS.subBg!=='transparent')?SETTINGS.subBg:'transparent';
   const size=Math.max(50,Math.min(300,+SETTINGS.subSize||100));
-  const o=SETTINGS.subOutline;
-  // simulate an outline with a multi-direction text-shadow (real outline isn't a ::cue prop)
-  const shadow=(o&&o!=='transparent')
-    ? `-2px -2px 0 ${o},2px -2px 0 ${o},-2px 2px 0 ${o},2px 2px 0 ${o},0 0 4px ${o},0 2px 6px rgba(0,0,0,.85)`
-    : '0 1px 3px rgba(0,0,0,.9)';
   st.textContent=`#playerVideo::cue{color:${c} !important;background:${bg} !important;`
-    +`font-size:${size}% !important;text-shadow:${shadow} !important;}`;
+    +`font-size:${size}% !important;text-shadow:${subtitleOutlineShadow()} !important;}`;
+}
+/* mirror the subtitle prefs into the Settings-page live preview + bg swatch */
+function updateSubtitlePreview(){
+  const el=document.getElementById('subPreview');
+  if(el){
+    const size=Math.max(50,Math.min(300,+SETTINGS.subSize||100));
+    const px=Math.max(12,Math.min(30,Math.round(15*size/100)));
+    const bg=(SETTINGS.subBg&&SETTINGS.subBg!=='transparent')?SETTINGS.subBg:'transparent';
+    el.style.color=SETTINGS.subColor||'#ffffff';
+    el.style.fontSize=px+'px';
+    el.style.textShadow=subtitleOutlineShadow();
+    el.style.background=bg;
+    el.style.padding=(bg==='transparent')?'2px 0':'2px 8px';
+  }
+  const sw=document.getElementById('subBgSwatch');
+  if(sw){ const bg=SETTINGS.subBg||'transparent'; sw.style.background=(bg==='transparent')?'':bg; }
+}
+/* fill the auto-play clock ring proportionally to the chosen popup duration (of 60s) */
+function updatePopupRing(){
+  const r=document.getElementById('popupRing'); if(!r)return;
+  const s=Math.max(0,Math.min(60,+SETTINGS.nextPopupSecs||0));
+  r.style.setProperty('--p',String(Math.round(s/60*100)));
+}
+/* derive a friendly display name from an email's local part when the account has no
+   stored name — "lawiletis.hakebi.69" → "Lawiletis Hakebi" — for the PROFILE card */
+function prettyNameFromEmail(email){
+  const local=String(email||'').split('@')[0]||'';
+  const name=local.split(/[._\-+]|\d+/).filter(Boolean)
+    .map(p=>p.charAt(0).toUpperCase()+p.slice(1)).join(' ').trim();
+  return name||local||'Account';
 }
 
 /* per-episode "watched" set (backs the blur-unwatched feature). An episode is
@@ -4479,6 +4624,7 @@ function initSettingsControls(){
   bind('setSubColor','subColor');
   bind('setSubBg','subBg');
   bind('setSubOutline','subOutline');
+  bind('setSubOutlineW','subOutlineW',true);
   bind('setExternalPlayer','externalPlayer');
 }
 
@@ -5778,7 +5924,7 @@ function enrichModalMeta(meta){
     const epTotal=(meta.seasonList||[]).reduce((a,s)=>a+(s.episodes||0),0);
     const segs=[meta.seasons===1?I18N.t('modal.season_one'):I18N.t('modal.seasons_count',{n:meta.seasons})];
     if(epTotal)segs.push(I18N.t('modal.episodes_count',{n:epTotal}));
-    parts.push(`<span><span class="m-tv-ic" aria-hidden="true">▦</span>${esc(segs.join(' · '))}</span>`);
+    parts.push(`<span><svg class="m-tv-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M7 3l5 3 5-3"/></svg>${esc(segs.join(' · '))}</span>`);
   }
   document.getElementById('mMeta').innerHTML=parts.join('');
   // GENRE CHIPS → separate sibling (never clobbered by the #mMeta rewrite)
@@ -8066,6 +8212,25 @@ document.querySelectorAll('.install-box button').forEach(b=>{
     }
     // the resume rail keys off AUTH.user, so refresh it whenever the session flips
     try{ renderContinueWatching(); }catch(e){}
+    // settings › PROFILE card mirrors the session
+    try{
+      const av=$('profileAvatar'), nm=$('profileName'), sub=$('profileSub'), badge=$('profileBadge');
+      if(av&&nm&&sub){
+        if(authed){
+          const email=AUTH.user.email||'account';
+          const disp=(AUTH.user.name||'').trim()||prettyNameFromEmail(email);
+          av.textContent=((disp.trim()[0]||email.trim()[0]||'?'));
+          nm.textContent=disp; nm.removeAttribute('data-i18n');
+          sub.textContent=email; sub.removeAttribute('data-i18n');
+          if(badge) badge.hidden=!AUTH.user.isAdmin;
+        }else{
+          av.textContent='?';
+          nm.textContent=t('settings.profile_guest'); nm.setAttribute('data-i18n','settings.profile_guest');
+          sub.textContent=t('settings.profile_local'); sub.setAttribute('data-i18n','settings.profile_local');
+          if(badge) badge.hidden=true;
+        }
+      }
+    }catch(e){}
   }
 
   async function refreshAuth(){

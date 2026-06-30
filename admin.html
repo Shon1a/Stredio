@@ -11,16 +11,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="dns-prefetch" href="https://image.tmdb.org" />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="preload" href="assets/fonts/bpg-nino-mtavruli.ttf" as="font" type="font/ttf" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Elms+Sans:wght@400;500;700&family=Noto+Sans+Georgian:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
-  /* Gotham (Latin/English) leads every font stack; ArchyEDT (ქართული/Georgian) trails
-     it so Georgian glyphs — which Gotham lacks — fall through to ArchyEDT. Both ship a
-     single weight, so neither @font-face carries a font-weight constraint. */
-  @font-face{font-family:"Gotham";font-style:normal;font-display:swap;
-    src:url("assets/fonts/Gotham-Bold.otf") format("opentype");}
-  @font-face{font-family:"ArchyEDT";font-style:normal;font-display:swap;
-    src:url("assets/fonts/ArchyEDT-Bold.woff2") format("woff2"),
-        url("assets/fonts/ArchyEDT-Bold.otf") format("opentype");}
+  /* BPG Nino Mtavruli — the ქართული (Georgian) UI face, self-hosted; matching index.html. Elms
+     Sans (Latin-only, from Google) leads every font stack, so Georgian glyphs it lacks fall
+     through to BPG Nino Mtavruli. Single weight, so no font-weight constraint maps every CSS
+     weight to this one file (700 is faux-bolded). */
+  @font-face{font-family:"BPG Nino Mtavruli";font-style:normal;font-display:swap;
+    src:url("assets/fonts/bpg-nino-mtavruli.ttf") format("truetype");}
   :root{
     /* surfaces — deep cinematic crimson grade: warm near-black; the translucent
        --bg lets the corner glow (body::before) bleed through for an ambient wash */
@@ -38,13 +37,14 @@
     --grad:linear-gradient(120deg,#8e1620 0%,#d02334 55%,#e0586a 100%);
     --success:#5cd2a0; --warn:#e6c264; --danger:#ea6479; --info:#6aa3e8;
     --success-rgb:92,210,160; --danger-rgb:234,100,121; --warn-rgb:230,194,100;
-    /* Gotham is the Latin/English face, ArchyEDT the ქართული (Georgian) face — matching
-       index.html. Gotham leads each stack; Georgian glyphs it lacks fall through to
-       ArchyEDT, then Noto Sans Georgian + system fonts. --font-display is kept as an
-       alias so the heading rules (.brand/.view-head h1/.stat .v/etc.) need no change. */
-    --font-display:"Gotham","ArchyEDT","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font:"Gotham","ArchyEDT","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-mono:"Gotham","ArchyEDT","Noto Sans Georgian",ui-monospace,"SF Mono","Cascadia Code","IBM Plex Mono","Courier New",monospace;
+    /* Elms Sans (Google) is the English/Latin face, BPG Nino Mtavruli the ქართული (Georgian)
+       face — matching index.html. Elms Sans leads each stack; Georgian glyphs it lacks fall
+       through to BPG Nino Mtavruli, then Noto Sans Georgian + system fonts. --font-mono shares
+       the same faces; --font-display is kept as an alias so the heading rules
+       (.brand/.view-head h1/.stat .v/etc.) need no change. */
+    --font-display:"Elms Sans","BPG Nino Mtavruli","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font:"Elms Sans","BPG Nino Mtavruli","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"Elms Sans","BPG Nino Mtavruli","Noto Sans Georgian",ui-monospace,"SF Mono","Cascadia Code","IBM Plex Mono","Courier New",monospace;
     --sidebar-w:212px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
