@@ -30,6 +30,10 @@
      Preload the same-origin .ttf so it starts downloading before the inline CSS parses.
      crossorigin is required even same-origin — fonts are always fetched in CORS mode. -->
 <link rel="preload" href="assets/fonts/bpg-nino-mtavruli.ttf" as="font" type="font/ttf" crossorigin />
+<!-- Minow Knock: self-hosted display face for the intro sting. Same-origin so it loads fast
+     and reliably (no CDN/CSP latency that made the font-gate miss and swap mid-zoom). Declared
+     in CSS below and preloaded here so the fetch starts before the inline CSS even parses. -->
+<link rel="preload" as="font" type="font/woff2" href="/assets/fonts/MinowKnock-Regular.woff2" crossorigin />
 <!-- Elms Sans + a Noto Sans Georgian safety fallback, loaded non-render-blocking:
      media="print" lets the browser fetch without blocking first paint, then onload
      promotes it to all media; the <noscript> copy keeps it working with JS disabled. -->
@@ -1876,9 +1880,12 @@
     font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;line-height:1.6}
   @media(prefers-reduced-motion:reduce){ .cfg-preview-row{animation:none} }
 
-  /* The intro sting renders a single "o" in the UI font (Elms Sans). The animation is
-     gated on document.fonts.load('400 … "Elms Sans"') so the glyph can't reflow from a
-     fallback mid-zoom. */
+  /* Minow Knock — the intro display face, self-hosted (font ships weight 400; the splash asks
+     for 700 and gets faux-bold, exactly as your CodePen did). Declared inline so the face is
+     registered the instant CSS parses, letting document.fonts.load('400 …') gate the animation
+     on it. Same-origin + preloaded means it's loaded before the sting starts → no mid-zoom swap. */
+  @font-face{font-family:'Minow Knock';font-style:normal;font-weight:400;font-display:swap;
+    src:url('/assets/fonts/MinowKnock-Regular.woff2') format('woff2');}
 
   /* ---------- intro splash — your CodePen "netflix_style" sting, used verbatim ----------
      Your CSS is unchanged. The ONLY edit a browser forces: the Sass makelongshadow($n,$a)
@@ -1892,11 +1899,11 @@
     contain:layout paint;transform:translateZ(0)}
   #intro .txt{
     text-align:center;
-    font-family:var(--font);
+    font-family:'Minow Knock',sans-serif;
     font-size:12vmin;
     font-weight:700;
     animation:netflix_style 5.5s infinite;
-    /* start paused — JS resumes it only once the Elms Sans face is loaded, so the
+    /* start paused — JS resumes it only once the Minow Knock face is loaded, so the
        glyph never reflows from the fallback mid-zoom (the cold-cache "skip" in incognito) */
     animation-play-state:paused;
     outline:none;
@@ -2339,7 +2346,7 @@
      the <script> block from archive/anti-inspect-redirect.html back in right here. -->
 </head>
 <body class="nav-closed">
-<!-- intro splash: your "netflix_style" sting. Sequence: wait for the Elms Sans font so the
+<!-- intro splash: your "netflix_style" sting. Sequence: wait for the Minow Knock font so the
      glyph can't reflow mid-zoom (the cold-cache "skip"), play one 4s pass on a quiet main
      thread, then FREEZE on the logo's final frame while the home builds behind the splash —
      and only once the home is fully painted does the black curtain wipe down then up to reveal
@@ -2432,7 +2439,7 @@
   function markFont(){ fontReady=true; maybeStart(); }
   if(document.fonts && document.fonts.load){
     var cap=setTimeout(markFont,800);
-    document.fonts.load("400 100px 'Elms Sans'").then(function(){ clearTimeout(cap); markFont(); })
+    document.fonts.load("400 100px 'Minow Knock'").then(function(){ clearTimeout(cap); markFont(); })
                                                   .catch(function(){ clearTimeout(cap); markFont(); });
   } else { markFont(); }
   if(domReady) maybeStart();
