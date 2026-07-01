@@ -7839,77 +7839,115 @@ _addonsSection&&_addonsSection.addEventListener('click',e=>{
   else            toast(t('addons.toast_removed',{name:a.name}),'var(--danger)');
 });
 
-/* ---------- official add-on list: CDN upgrade layer (mirrors the I18N loader) ----------
+/* ---------- official add-on list: driven by the Stredio-Heart core (WASM) ----------
  * The inline `const ADDONS` above stays the synchronous boot source, the offline
- * fallback, and the source of truth for the four behavior-critical ids and their
- * default install state — exactly like `const EN` / `const DICT` anchor i18n. This is a
- * PURE ASYNC UPGRADE: it reads the canonical official collection from the Stredio
- * official-addons repo over jsDelivr (manifest index.json -> payload addons.json, the
- * same two-step shape as the translations repo) and only REFINES display metadata of
- * the four / APPENDS new curated official cards. It can never drop, lock, re-section,
- * or flip the toggle of the four; it repaints ONLY the Add-ons grid (never the home
- * rows) and never touches the Render server (browser -> jsDelivr -> GitHub). Free-tier safe.
- * Repo: https://github.com/Shon1a/Stredio-official-addons */
+ * fallback, and the source of truth for the four behavior-critical ids + their install
+ * state — like `const EN` / `const DICT` anchor i18n. This upgrade layer reads the
+ * canonical official collection from the Stredio official-addons repo and MERGES it
+ * through the Stredio-Heart core compiled to WebAssembly — the SAME Rust merge_official
+ * rules every shell uses (https://github.com/Shon1a/Stredio-Heart). It only REFINES the
+ * four's display metadata / APPENDS new curated cards; it can never flip a toggle, and
+ * it never touches the Render server (browser -> jsDelivr -> GitHub). Free-tier safe.
+ * If the WASM core can't load (old browser / strict CSP), it falls back to an identical
+ * pure-JS merge; if the CDN is unreachable, the inline four stand. */
 (function(){
-  var ADDONS_CDN='https://cdn.jsdelivr.net/gh/Shon1a/Stredio-official-addons@master/'; // same literal style as CDN at ~3742
-  var DISPLAY=['name','ver','iconCls','glyph','tags','img'];   // CDN may refine ONLY these on known ids (NOT noConfig/preview/installed/locked — those gate behavior)
-  var ICON_OK=/^[a-z0-9 _-]{0,40}$/i;                          // iconCls is emitted into a class attr; keep CDN-supplied values inert (anti-XSS)
+  var ADDONS_CDN='https://cdn.jsdelivr.net/gh/Shon1a/Stredio-official-addons@master/';
+  var HEART_JS='https://cdn.jsdelivr.net/gh/Shon1a/Stredio-Heart@master/web/stredio_heart.js';
+  var DISPLAY=['name','ver','iconCls','glyph','tags','img'];   // fields the CDN may refine on a known id (NOT installed/locked/noConfig/preview/section/id)
+  async function fetchText(file){ try{ var r=await fetch(ADDONS_CDN+file,{cache:'force-cache'}); if(r.ok) return await r.text(); }catch(e){} return null; }
+  function parse(txt){ try{ return txt?JSON.parse(txt):null; }catch(e){ return null; } }
+  /* re-adopt persisted per-account toggles for any NEW id the merge appended (the four
+     already did at ~7716); keeps localStorage authoritative over CDN defaults. */
+  function reapplyLocal(){
+    try{ var raw=localStorage.getItem(ADDON_KEY); var s=raw?JSON.parse(raw):{};
+      ADDONS.forEach(function(a){ if(!a.locked&&typeof s[a.id]==='boolean') a.installed=s[a.id]; }); }catch(e){}
+  }
+  /* Pull the core's merged list back into the live ADDONS array IN PLACE. Only display
+     fields are copied onto known ids (never installed/locked/etc.), so a toggle the user
+     hits mid-load is never clobbered; genuinely new curated cards are pushed whole. Ids
+     stay stable, so localStorage / /api/addon-state and home-row gating keep resolving. */
+  function applyMerged(merged){
+    if(!Array.isArray(merged)) return;
+    merged.forEach(function(m){
+      if(!m||typeof m.id!=='string'||!m.id) return;
+      var cur=ADDONS.find(function(x){return x.id===m.id;});
+      if(cur){ DISPLAY.forEach(function(f){ if(f in m) cur[f]=m[f]; }); if(!Array.isArray(cur.tags)) cur.tags=[]; }
+      else   { if(!Array.isArray(m.tags)) m.tags=[]; ADDONS.push(m); }
+    });
+  }
+  /* PRIMARY: drive the Stredio-Heart WASM core. Resolves true once it has handled the
+     official collection; throws only if the core itself can't load, so the caller can
+     fall back to the JS path. */
+  async function loadViaCore(){
+    var mod=await import(HEART_JS); await mod.default();          // instantiate the wasm core (fetched from jsDelivr)
+    var rt=new mod.AddonRuntime(JSON.stringify(ADDONS));          // seed with the inline four (+ localStorage state)
+    rt.load_official();                                           // -> [FetchOfficialManifest]
+    var fx1=parse(rt.official_manifest_fetched(await fetchText('index.json')))||[];
+    var pf=fx1.find(function(e){return e&&e.FetchOfficialPayload;});  // core tells us the payload file
+    if(pf){
+      var fx2=parse(rt.official_payload_fetched(await fetchText(pf.FetchOfficialPayload.file)))||[];
+      applyMerged(parse(rt.addons_json()));                       // merge happened in Rust; adopt the result
+      reapplyLocal();
+      if(fx2.indexOf('Repaint')>=0){ try{ if(typeof renderAddons==='function') renderAddons(); }catch(e){} }
+    }
+    try{ rt.free(); }catch(e){}                                   // release the wasm object
+    return true;
+  }
+  /* FALLBACK: identical merge in pure JS (used only when the WASM core can't load). */
+  var ICON_OK=/^[a-z0-9 _-]{0,40}$/i;
   function safeIcon(v){ return (typeof v==='string'&&ICON_OK.test(v))?v:null; }
   function hasStream(raw){ return raw.transportUrl!=null || (Array.isArray(raw.resources)&&raw.resources.some(function(r){return r==='stream'||(r&&r.name==='stream');})); }
   function verOf(raw){ if(typeof raw.ver==='string') return raw.ver; if(typeof raw.version==='string') return 'v'+raw.version; return undefined; }
-  function upsertKnown(cur,raw){                     // refine an existing id (the four): DISPLAY fields only. returns true iff something actually changed
+  function upsertKnown(cur,raw){
     var changed=false;
     DISPLAY.forEach(function(f){
       if(f==='tags'){ if(Array.isArray(raw.tags)){ var tg=raw.tags.filter(function(t){return typeof t==='string';}); if(JSON.stringify(tg)!==JSON.stringify(cur.tags)){ cur.tags=tg; changed=true; } } return; }
       if(f==='ver'){ var vv=verOf(raw); if(typeof vv==='string'&&vv!==cur.ver){ cur.ver=vv; changed=true; } return; }
       if(f==='iconCls'){ var ic=safeIcon(raw.iconCls); if(ic!=null&&ic!==cur.iconCls){ cur.iconCls=ic; changed=true; } return; }
-      if(!(f in raw)) return;                        // absent -> keep inline value (never wipe)
+      if(!(f in raw)) return;
       var v=raw[f]; if((typeof v==='string'||v===null)&&v!==cur[f]){ cur[f]=v; changed=true; }
     });
-    if(!Array.isArray(cur.tags)) cur.tags=[];        // crash-guard for a.tags.map in addonCardHTML
+    if(!Array.isArray(cur.tags)) cur.tags=[];
     return changed;
-    // id, section, installed, locked, noConfig, preview are NEVER copied onto a known entry.
   }
-  function coerceNew(raw){                            // brand-new curated official card
+  function coerceNew(raw){
     var v=verOf(raw);
-    return { id:raw.id,
-      section:'official',
+    return { id:raw.id, section:'official',
       name:typeof raw.name==='string'?raw.name:raw.id,
       ver:(typeof v==='string'?v:''),
       iconCls:safeIcon(raw.iconCls)||'puzzle',
       glyph:typeof raw.glyph==='string'?raw.glyph:'',
       tags:Array.isArray(raw.tags)?raw.tags.filter(function(t){return typeof t==='string';}):[],
-      installed:(raw.defaultInstalled===true)||(raw.installed===true)||false,   // DEFAULT only
+      installed:(raw.defaultInstalled===true)||(raw.installed===true)||false,
       noConfig:!!raw.noConfig, preview:!!raw.preview, locked:!!raw.locked,
       img:typeof raw.img==='string'?raw.img:undefined };
   }
-  function merge(list){
+  function mergeJs(list){
     var changed=false;
     list.forEach(function(raw){
-      if(!raw||typeof raw.id!=='string'||!raw.id) return;             // shape guard
-      if(raw.section!=='official') return;                            // community ships empty; skip non-official
-      if(hasStream(raw)) return;                                      // neutral-conduit runtime guard
+      if(!raw||typeof raw.id!=='string'||!raw.id) return;
+      if(raw.section!=='official') return;
+      if(hasStream(raw)) return;
       var cur=ADDONS.find(function(x){return x.id===raw.id;});
-      if(cur){ if(upsertKnown(cur,raw)) changed=true; }               // refine only
-      else   { ADDONS.push(coerceNew(raw)); changed=true; }           // additive only (omission never removes)
+      if(cur){ if(upsertKnown(cur,raw)) changed=true; } else { ADDONS.push(coerceNew(raw)); changed=true; }
     });
     return changed;
   }
-  function reapplyLocal(){                            // persisted toggle beats CDN default for any NEW id (the four already did at ~7716)
-    try{ var raw=localStorage.getItem(ADDON_KEY); var s=raw?JSON.parse(raw):{};
-      ADDONS.forEach(function(a){ if(!a.locked&&typeof s[a.id]==='boolean') a.installed=s[a.id]; }); }catch(e){}
-  }
-  async function fetchJSON(file){ try{ var r=await fetch(ADDONS_CDN+file,{cache:'force-cache'}); if(r.ok) return await r.json(); }catch(e){} return null; }
-  async function loadOfficialAddons(){
-    var man=await fetchJSON('index.json');                            // STEP 1: manifest (mirror of loadManifest)
-    if(!man||man.schema!==1||!Array.isArray(man.collections)) return; // fail/unknown-major -> inline four stand
+  async function loadViaJs(){
+    var man=parse(await fetchText('index.json'));
+    if(!man||man.schema!==1||!Array.isArray(man.collections)) return;
     var off=man.collections.find(function(c){return c&&c.section==='official'&&typeof c.file==='string';});
     if(!off) return;
-    var data=await fetchJSON(off.file);                               // STEP 2: payload (mirror of load(code))
+    var data=parse(await fetchText(off.file));
     if(!data||data.schema!==1||!Array.isArray(data.addons)) return;
-    if(!merge(data.addons)) return;                                   // identical CDN data -> no-op, ZERO re-render/refetch
-    reapplyLocal();                                                   // localStorage beats CDN default for new ids
-    try{ if(typeof renderAddons==='function') renderAddons(); }catch(e){}  // repaint ONLY the Add-ons grid — never renderHome, never the server
+    if(!mergeJs(data.addons)) return;
+    reapplyLocal();
+    try{ if(typeof renderAddons==='function') renderAddons(); }catch(e){}
+  }
+  async function loadOfficialAddons(){
+    try{ if(await loadViaCore()){ window.__STREDIO_CORE='wasm'; return; } }catch(e){}  // core unavailable -> fall back
+    window.__STREDIO_CORE='js';
+    try{ await loadViaJs(); }catch(e){}
   }
   loadOfficialAddons();                               // fire-and-forget, exactly like loadManifest() at ~3803
 })();
