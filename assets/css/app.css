@@ -1,0 +1,2223 @@
+
+  /* BPG Nino Mtavruli — the ქართული (Georgian) UI face, self-hosted. Elms Sans (Latin-only,
+     from Google) leads every font stack, so Latin glyphs render in Elms Sans and Georgian
+     glyphs — which Elms Sans lacks — fall through to BPG Nino Mtavruli. The family ships a
+     single weight, so no font-weight constraint maps every CSS weight to this one file (700
+     is faux-bolded), exactly as the old ArchyEDT face did. */
+  @font-face{font-family:"BPG Nino Mtavruli";font-style:normal;font-display:swap;
+    src:url("/assets/fonts/bpg-nino-mtavruli.ttf") format("truetype");}
+  :root{
+    /* surfaces — deep cinematic crimson grade: warm near-black, slightly blue-black */
+    --bg:#000000; --bg-deep:#000000; --bg-2:#070707; --bg-3:#161419; --surface:#161419;
+    /* crimson-tinted glass + hairline so panels share the brand pigment */
+    --card:rgba(208,35,52,0.06); --border:rgba(208,35,52,0.18);
+    /* primary white type + a warm light-gray for muted copy */
+    --text:#FFFFFF; --text-muted:#A9A8B2;
+    /* the deep-crimson brand ramp (matches the cinematic reference grade) */
+    --crimson:#B9212E; --crimson-deep:#AF1827; --crimson-bright:#D02334;
+    --glow:#982D35; --badge:#9D2A37;
+    /* crimson ramp, dark -> light (the whole UI's shared pigment) */
+    --indigo-deep:#3a0c0c; --indigo:#7d1414; --indigo-blue:#8e1620;
+    --violet:#B9212E; --violet-bright:#D02334; --lavender:#e0586a;
+    --accent:#D02334; --accent-h:#e0455a; --highlight:#ffe0e0;
+    --accent-rgb:208,35,52; --violet-rgb:185,33,46; --indigo-rgb:125,20,20;
+    --glow-rgb:152,45,53; --badge-rgb:157,42,55;
+    --ink:#ffffff;                                   /* white text sits on the crimson accent fill */
+    /* signature sweep — the crimson dark->bright->light gradient, clipped onto the wordmark */
+    --grad:linear-gradient(120deg,#8e1620 0%,#D02334 55%,#e0586a 100%);
+    /* semantics, harmonized to sit beside crimson but stay unmistakably go/stop */
+    --success:#5cd2a0; --danger:#ea6479;
+    /* fonts: Elms Sans (Google) is the English/Latin face, BPG Nino Mtavruli the ქართული
+       (Georgian) face. Elms Sans leads the stack and covers EN; Georgian glyphs it lacks fall
+       through to BPG Nino Mtavruli, then Noto Sans Georgian + system fonts. --font-mono shares
+       the same faces (the design uses it for letter-spaced labels, not true monospace). A touch
+       of tracking (--track) keeps small caps legible. */
+    --font:"Elms Sans","BPG Nino Mtavruli","Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"Elms Sans","BPG Nino Mtavruli","Noto Sans Georgian",ui-monospace,"SF Mono","Cascadia Code","IBM Plex Mono","Courier New",monospace;
+    --track:.05em;
+    --sidebar-w:230px;
+    --page-pad:20px; --page-top:24px; --rail-fade:64px; --topbar-h:68px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--font);font-weight:400;letter-spacing:var(--track)}
+  /* form controls don't inherit font-family by default — make every button/input
+     pick up the UI font. Per-class fonts (e.g. var(--font-mono)) still win on specificity. */
+  button,input,select,textarea{font-family:inherit;letter-spacing:inherit}
+  body{overflow-x:hidden}
+  .mono{font-family:var(--font-mono)}
+  .display{font-family:var(--font);font-weight:300}
+  a{color:inherit;text-decoration:none}
+  /* hide every scrollbar (incl. the page's right-hand vertical bar) while keeping scroll working */
+  html{scrollbar-width:none;-ms-overflow-style:none}
+  ::-webkit-scrollbar{width:0;height:0;display:none}
+  ::-webkit-scrollbar-thumb{background:transparent}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* ---------- background layers ---------- */
+  /* particles removed for the cinematic grade — replaced by a smooth color-graded
+     gradient base, a soft radial crimson glow, and a crimson vignette */
+  #particles{display:none!important}
+  /* smooth dark gradient base: warm near-black deepening to bg-deep at the edges,
+     with a faint crimson tint mixed in so the dark reads warm, not pure neutral */
+  .bg-base{display:none}
+  .bg-glow{display:none}
+  #grain{display:none}
+  .vignette{display:none}
+  /* the glowing red viewport frame was removed to match the reference design —
+     no lit border / red glow tracing the window corners */
+  @media (prefers-reduced-motion: reduce){ .bg-glow{filter:blur(44px)} }
+
+  /* ---------- custom cursor ---------- */
+  #cursor{display:none!important}
+
+  /* ---------- focus visibility (keyboard) ---------- */
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+  [tabindex]:focus-visible,.nav-item:focus-visible,.poster:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  /* keyboard focus ring is always visible */
+
+  /* ---------- reduced motion ---------- */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+      transition-duration:.001ms!important;scroll-behavior:auto!important}
+    .reveal{opacity:1!important;transform:none!important}
+    #particles,#grain{display:none!important}
+  }
+
+  /* ---------- shell ---------- */
+  .shell{position:relative;z-index:2;display:flex;min-height:100vh}
+
+  /* sidebar = main menu */
+  aside{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;padding:24px 18px;
+    border-right:1px solid var(--border);background:rgba(0, 0, 0, 0.96);z-index:30;
+    display:flex;flex-direction:column;gap:28px;transition:transform .32s cubic-bezier(.2,.8,.2,1)}
+  .brand{font-size:18px;letter-spacing:.18em;font-weight:300}
+  .brand b{font-weight:500;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+  .brand.display{display:flex;align-items:center}
+  .brand.display img{height:26px;width:auto;display:block;filter:drop-shadow(0 1px 5px rgba(0,0,0,.6))}
+  .brand.display:hover{opacity:.85}
+  .nav-group h4{font-size:15px;letter-spacing:.22em;color:var(--text-muted);margin-bottom:12px}
+  .nav-group{display:flex;flex-direction:column;gap:2px}
+  .nav-item{font-size:17px;padding:9px 12px;border-radius:4px;color:var(--text-muted);
+    transition:.2s;display:flex;gap:10px;align-items:center}
+  .nav-item:hover{color:var(--text);background:rgba(var(--accent-rgb),.05)}
+  .nav-item.active{color:var(--accent);background:rgba(208,35,52,.08)}
+  .nav-item .dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.6}
+  aside .foot{margin-top:auto;font-size:15px;color:var(--text-muted);line-height:1.8}
+
+  /* sidebar overlays the content (drawer) — content always spans the full viewport */
+  main{margin-left:0;flex:1;min-width:0}
+
+  /* collapsible sidebar */
+  body.nav-closed aside{transform:translateX(-100%)}
+  .nav-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:29;
+    opacity:0;pointer-events:none;transition:opacity .3s}
+  .nav-backdrop.show{opacity:1;pointer-events:auto}
+  /* hamburger removed from the brand area to match the reference; the nav drawer
+     stays reachable via the "\" shortcut and the account icon */
+  .menu-btn{display:none}
+  aside .aside-close{display:none;position:absolute;top:18px;right:16px;background:none;border:none;
+    color:var(--text-muted);font-size:18px;cursor:pointer;transition:.2s}
+  aside .aside-close:hover{color:var(--accent)}
+
+  /* topbar — "HUD" control panel. The centred search field is a recessed cool-dark
+     panel whose top corners flare outward in S-curves ("bent" connectors) to bridge
+     into the logo + icon zones; that shape + its glowing crimson outline are painted
+     by the #topbarFrame SVG (drawn from the live search-box geometry, see JS). */
+  header{position:sticky;top:0;z-index:25;display:flex;align-items:center;gap:6px;
+    margin:0;padding:0 clamp(16px,3vw,48px);height:var(--topbar-h);overflow:visible;
+    /* clean Netflix-style overlay: dark at the top, fading to transparent over the hero */
+    background:linear-gradient(180deg,rgba(0,0,0,.9) 0%,rgba(0,0,0,.55) 50%,transparent 100%);
+    transition:background .3s ease}
+  /* the SVG canvas that paints the search bay + flared crimson outline; behind the
+     bar content (logo / input / icons all sit at z-index:1) */
+  .topbar-frame{display:none}
+  .topbar-frame .tb-flare{filter:drop-shadow(0 0 4px rgba(177,18,38,.5))}
+  header > :not(.topbar-frame){position:relative;z-index:1}
+  /* soft, layered crimson bloom across the top — ambient light, not a hard band */
+  header::before{content:none}
+  header::after{content:none}
+  header.scrolled{background:rgba(8,8,10,.96);box-shadow:0 2px 18px rgba(0,0,0,.55);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  /* stredio wordmark sits bare on the bar (no boxed tab) — matches the reference */
+  .brand-logo{display:flex;align-items:center;flex-shrink:0;height:44px;padding:0 6px;margin-right:2px;
+    background:none;border:none;border-radius:10px;transition:opacity .2s}
+  .brand-logo:hover{opacity:.85}
+  .brand-logo img{height:27px;width:auto;display:block;filter:drop-shadow(0 1px 5px rgba(0,0,0,.6))}
+  /* horizontal primary nav (STREDIO top bar) */
+  .topnav{display:flex;align-items:center;gap:clamp(12px,1.5vw,24px);margin-left:20px;margin-right:auto;flex-wrap:nowrap}
+  .topnav-link{font-size:15px;color:rgba(255,255,255,.82);cursor:pointer;white-space:nowrap;
+    letter-spacing:.01em;transition:color .2s;line-height:1;padding:6px 0;background:none;border:none}
+  .topnav-link:hover{color:#fff}
+  .topnav-link.active{color:#fff;font-weight:700}
+  /* minimal thin-stroke icon buttons — ivory, dimmed until hover */
+  .nav-icon{background:none;border:none;color:rgba(237,230,221,.68);width:38px;height:38px;border-radius:10px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s}
+  .nav-icon:hover{color:#fff;background:rgba(255,255,255,.10)}
+  .nav-icon svg{width:19px;height:19px;display:block;stroke-width:1.7}
+  @media (max-width:520px){ .brand-logo img{height:21px} }
+  /* centred search field — transparent; the recessed panel + flares behind it are
+     painted by the SVG. The wide side margins leave room for the flares ("ears"). */
+  /* search collapses to nothing; the magnifier icon (#searchIcon) expands a bar */
+  .search{flex:0 0 auto;min-width:0;align-self:center;height:38px;position:relative;border-radius:5px;
+    width:0;opacity:0;overflow:hidden;pointer-events:none;margin:0;
+    display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.55);border:1px solid transparent;
+    padding:0;transition:width .28s ease,opacity .2s ease,border-color .2s ease}
+  header.search-open .search{width:min(300px,46vw);opacity:1;overflow:visible;pointer-events:auto;
+    padding:0 14px;margin-left:8px;border-color:rgba(255,255,255,.4)}
+  .search input{order:1;flex:1;min-width:0;background:none;border:none;outline:none;color:#fff;font-family:inherit;font-size:11.5px}
+  .search input::placeholder{color:rgba(255,255,255,.45)}
+  .search .mono{display:none}                       /* hide the decorative magnifier / enter glyphs */
+  .search .filter-toggle{order:2;flex-shrink:0;color:rgba(255,255,255,.55)}
+  /* mobile: the flared SVG bay is impractical on narrow screens — hide it, collapse
+     the search back to its magnifier (tap to expand), and keep the primary category
+     nav reachable as a swipeable strip instead of dropping it entirely. */
+  /* Tablet + phone header reflow. Below ~900px the inline row (logo + 5-link nav +
+     search bay + icons + language + SIGN IN) stops fitting — at 700px it overflowed
+     ~170px, pushing the language toggle + SIGN IN entirely off-screen — so collapse to
+     a wrapped two-row header: controls on top, the category nav as a swipeable strip
+     beneath. Covers iPad portrait (768/834), split-screen and foldables. */
+  @media (max-width:900px){
+    /* #topbar (id) so these beat the later max-width:860px header{} block */
+    #topbar{flex-wrap:wrap;gap:7px;height:auto;min-height:0;padding:9px 12px}
+    .topbar-frame{display:none}
+    .brand-logo{height:36px;padding:0 2px;margin-right:auto}   /* push the icon cluster to the right edge */
+    /* the account icon only ever appears signed-out (signed-in shows the avatar chip),
+       where it just duplicates SIGN IN; the bell is a placeholder — drop both on phones
+       so the logo, search, language and SIGN IN all sit on one compact row */
+    #userIcon,#chatIcon{display:none}
+    /* collapsed search shouldn't reserve a flex slot/gap; the magnifier brings it back */
+    #topbar .search{display:none}
+    /* primary nav: a horizontally-scrollable tab strip on its own row. Without this the
+       Home / TV Shows / Movies / New & Popular / My List links are unreachable on touch. */
+    .topnav{display:flex;order:10;flex:1 0 100%;gap:22px;margin:7px -12px 0;padding:8px 12px;
+      overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+      border-top:1px solid var(--border);
+      -webkit-mask-image:linear-gradient(90deg,#000 90%,transparent);
+      mask-image:linear-gradient(90deg,#000 90%,transparent)}
+    .topnav::-webkit-scrollbar{display:none}
+    .topnav-link{font-size:14px;padding:11px 0;white-space:nowrap}   /* ~40px tap height */
+    /* expanded search becomes a full-width bordered row beneath the controls.
+       #topbar.search-open (id) so it outranks the collapsed #topbar .search above */
+    #topbar.search-open .search{display:flex;order:9;flex:1 0 100%;width:auto;opacity:1;overflow:visible;pointer-events:auto;
+      height:44px;margin:7px 0 0;padding:9px 14px;
+      background:#0d0d10;border:1px solid rgb(208 35 52);border-radius:10px}
+    /* touch ergonomics: bigger tap targets across phones + tablets (was 34px icons /
+       26px-tall language buttons — below the ~44px guidance). #topbar prefix outranks
+       the later max-width:520px shrink so these hold on the smallest phones too. */
+    #topbar .nav-icon{width:42px;height:42px}
+    #topbar .signin-btn{padding:11px 18px}
+    /* opening search on a phone/tablet shouldn't keep the category strip visible too —
+       hide it so the header stays two rows (controls + search) and the hero stays higher */
+    #topbar.search-open .topnav{display:none}
+    /* the header is now TWO rows (controls + nav strip ≈ 110px tall), not the 68px
+       desktop bar, so the hero's negative top margin — which uses --topbar-h to slide
+       up behind the overlay — fell ~45px short and left a black strip above the
+       backdrop. Re-point --topbar-h on the hero to the real two-row height so it
+       reaches the very top again (the header stays auto-height; this only feeds the
+       hero's pull-up). */
+    .hero{--topbar-h:114px}
+  }
+  .filter-toggle{background:none;border:none;color:rgba(237,230,221,.5);font-size:17px;cursor:pointer;line-height:1;
+    padding:0 4px;transition:.2s;display:flex;align-items:center}
+  .filter-toggle:hover,.filter-toggle.on{color:#EDE6DD}
+  .enter{background:none;border:none;color:var(--accent);letter-spacing:.15em;font-size:16px;cursor:pointer;
+    padding:8px 14px;transition:.2s}
+  .enter:hover{color:var(--accent-h)}
+
+  /* filter dropdown (lives under the search bar) */
+  .filter-panel{position:absolute;top:100%;right:0;left:auto;width:min(360px,90vw);margin-top:8px;
+    border:1px solid var(--border);border-radius:10px;padding:18px 20px;display:none;z-index:40;background:var(--bg-2);
+    box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .filter-panel.open{display:block;animation:fpop .25s ease-out}
+  @keyframes fpop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .fp-row{display:flex;align-items:flex-start;gap:18px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .fp-row:last-of-type{border-bottom:none}
+  .fp-row > .k{width:72px;flex-shrink:0;font-size:15px;letter-spacing:.16em;color:var(--text-muted);padding-top:6px}
+  .pills{display:flex;flex-wrap:wrap;gap:7px}
+  .pill-btn{font-size:16px;padding:5px 11px;border:1px solid var(--border);border-radius:20px;cursor:pointer;
+    color:var(--text-muted);transition:.2s;background:none}
+  .pill-btn:hover,.pill-btn.on{border-color:var(--accent);color:var(--accent)}
+  .fp-row input[type=range]{width:200px;margin-top:6px;accent-color:var(--accent)}
+  .fp-out{font-family:var(--font-mono);font-size:16px;color:var(--text-muted);margin-left:12px}
+  .fp-foot{display:flex;justify-content:flex-end;margin-top:8px}
+  .clearall{font-size:16px;color:var(--accent);cursor:pointer}
+
+  /* page */
+  .page{display:none;padding:var(--page-top) var(--page-pad) 80px}
+  /* the live page borrows the hero-title's Nabla palette as ambient light:
+     a deep-indigo (#3d2e9e) + violet (#7b66dc) glow pools at the top corners
+     — mirroring the headline's indigo→lavender gradient — with a faint
+     lavender pool rising from the bottom and a soft indigo-fill (#1d1947)
+     tint at the very top. All layers dissolve into the black base, and the
+     wash is pinned to the viewport so it reads as environmental lighting that
+     ties the whole surface to the headline rather than a flat panel fill. */
+  .page.active{display:block;background:transparent}
+
+  /* ---------- featured hero carousel ---------- */
+  /* full-bleed: pull out of the page padding so the backdrop spans edge-to-edge
+     and sits flush beneath the sticky header */
+  /* Sized so the hero + the two "Upcoming" marquees together fill the first screen.
+     The hero is pulled to the very top of the viewport (its negative top margin cancels
+     the page padding + topbar), so we reserve ~392px below it — hero bottom-margin (22)
+     + the upcoming heading + the two 122px marquee rails + their margins — and let the
+     hero take the rest. The slimmer (122px) rails free up vertical room, so the hero now
+     claims more of the screen while the bottom of the "Upcoming Series" row still lands
+     just above the fold, keeping Continue Watching / the categorised rows below it. */
+  .hero{position:relative;margin:calc((var(--page-top) + var(--topbar-h)) * -1) calc(var(--page-pad) * -1) 22px;
+    min-height:clamp(410px,calc(100vh - 352px),820px);display:flex;align-items:flex-end;overflow:hidden;
+    background:#000;isolation:isolate;touch-action:pan-y;cursor:grab}
+  /* the hero is a draggable carousel — grab affordance on desktop, grabbing while a drag
+     is in flight; suppress text selection so a mouse drag swipes instead of highlighting */
+  .hero.dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
+  /* prefer the small-viewport unit where supported so the mobile URL bar can't shove
+     the upcoming rows below the fold */
+  @supports (height:100svh){ .hero{min-height:clamp(410px,calc(100svh - 352px),820px)} }
+  /* horizontal scroll-snap track — the slides sit side-by-side in one flex row and the
+     whole row translates so exactly one slide fills the viewport at a time. (Was a stacked
+     opacity crossfade; now a real draggable, snapping, parallax track à la a scroll gallery.)
+     The track is positioned in px by JS (heroPlace); the .animating class supplies the
+     snap/auto-advance glide and is removed inline while a finger drag is in flight. */
+  .hero-track{position:absolute;inset:0;display:flex;will-change:transform;
+    transform:translate3d(0,0,0)}
+  .hero-track.animating,
+  .hero-track.animating .hero-media{transition:transform .62s cubic-bezier(.22,.61,.36,1)}
+  .hero-slide{position:relative;flex:0 0 100%;height:100%;display:flex;align-items:flex-end;
+    overflow:hidden}
+  /* parallax layer: the bg lives inside an oversized frame (116% wide, centred) that JS
+     pans a fraction of the track distance, so the backdrop trails the scroll for depth.
+     The 8% overscan each side keeps the frame's edges off-screen at the ±7% max pan. */
+  .hero-media{position:absolute;top:0;bottom:0;left:-8%;width:116%;will-change:transform;z-index:0}
+  /* base transform = the Ken Burns END frame, so a slide that loses .active HOLDS the
+     zoomed frame instead of snapping back out. The active animation's `from{scale(1.06)}`
+     overrides this while it's drifting in. */
+  .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center 20%;
+    transform:scale(1.14) translate3d(-1.4%,-1.6%,0);will-change:transform}
+  /* neutral cinematic grade: a soft near-black wash in opposite corners so the
+     image sinks into the #101016 background instead of carrying a violet cast */
+  .hero-bg::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(125deg,rgba(0,0,0,.45) 0%,transparent 46%,rgba(0,0,0,.3) 100%)}
+  /* premium slow "Ken Burns" drift + subtle saturation lift, only on the live slide */
+  /* duration tied to the slide delay so the drift lands on its END frame exactly as the
+     slide swaps — at that instant the animated value == the base value, so removing
+     .active causes no jump (was 9s: it stopped mid-drift and snapped back). */
+  .hero-slide.active .hero-bg{animation:heroKen var(--hero-delay,4s) ease-out forwards}
+  @keyframes heroKen{from{transform:scale(1.06) translate3d(0,0,0)}
+    to{transform:scale(1.14) translate3d(-1.4%,-1.6%,0)}}
+  /* legibility + cinematic depth: bottom fade into the #101016 bg, left wash,
+     soft top & edge vignette — all neutral black so the hero dissolves into the page */
+  .hero-slide::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      linear-gradient(0deg,#000 1%,rgba(0,0,0,.72) 24%,rgba(0,0,0,.12) 58%,transparent 86%),
+      linear-gradient(90deg,rgba(0,0,0,.92) 0%,rgba(0,0,0,.5) 40%,rgba(0,0,0,.05) 70%,transparent 100%),
+      radial-gradient(120% 90% at 80% 8%,transparent 45%,rgba(0,0,0,.5) 100%)}
+  .hero::before{content:none}
+  /* the foreground copy is PINNED — a sibling of the scrolling track (not inside a slide), so
+     it stays put while the backdrops scroll/parallax behind it. heroFillContent swaps its copy
+     on each slide change; z-index lifts it above the track. */
+  .hero-inner{position:relative;z-index:2;max-width:660px;padding:0 var(--page-pad) clamp(30px,5vh,58px)}
+  /* the text cross-fades + rises in on every slide swap (new nodes auto-run this). The action
+     BUTTONS are deliberately excluded so PLAY / MY LIST never flicker — they hold dead still. */
+  .hero-inner > *{animation:heroRise .55s cubic-bezier(.2,.7,.2,1) both}
+  .hero-inner .hero-title{animation-delay:.04s}
+  .hero-inner .hero-meta{animation-delay:.10s}
+  .hero-inner .hero-plot{animation-delay:.14s}
+  .hero-inner .hero-actions{animation:none}
+  @keyframes heroRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .hero-kicker{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);
+    font-size:15px;letter-spacing:.28em;color:var(--accent);margin-bottom:14px;text-transform:uppercase}
+  .hero-kicker::before{content:"";width:24px;height:1px;background:var(--accent);opacity:.7}
+  /* display headline (EN + ქართული from one face). It's painted with the shared
+     violet->lavender->light sweep (--grad) via background-clip to keep the wordmark
+     in the UI's signature pigment. */
+  .hero-title{font-family:var(--font) !important;font-weight:400;
+    color:#AF1827;-webkit-text-fill-color:#AF1827;
+    font-size:clamp(34px,5vw,66px);line-height:1.18;letter-spacing:.01em;margin-bottom:16px;
+    text-transform:uppercase;white-space:normal;overflow-wrap:break-word;word-break:break-word;
+    filter:drop-shadow(0 3px 22px rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(175,24,39,.25))}
+  /* a TMDB title-logo (PNG wordmark) replaces the gradient text title when present;
+     neutralise the text-only styling so the <img> child sits clean */
+  .hero-title.has-logo{background:none;-webkit-text-fill-color:initial;color:initial;
+    -webkit-background-clip:border-box;background-clip:border-box;filter:none;margin-bottom:0}
+  /* Normalise on a fixed HEIGHT (not max-height) so every TMDB logo renders at the
+     same visual weight regardless of its intrinsic px size — otherwise a short logo
+     (Jujutsu Kaisen) looks tiny and the ka vs en file for one show differ in size.
+     max-width caps ultra-wide wordmarks; over that they scale down keeping ratio. */
+  .hero-logo{display:block;width:auto;height:clamp(60px,8.5vw,108px);max-width:min(82%,560px);
+    object-fit:contain;object-position:left center;margin:0 0 15px;
+    filter:drop-shadow(0 2px 22px rgba(0,0,0,.55))}
+  /* plain inline "8.5  2019" — no badge boxes */
+  /* "8.5  2019" — rating bold white, year muted gray */
+  .hero-meta{display:flex;align-items:center;gap:14px;font-family:var(--font-mono);
+    font-size:16px;color:#d6d6da;margin-bottom:18px;flex-wrap:wrap;font-weight:600}
+  .hero-meta span:first-child{color:#fff;font-weight:800}
+  .hero-meta span:empty{display:none}
+  .hero-meta span+span:not(:empty)::before{content:"•";margin-right:14px;opacity:.5}
+  /* ~2 line synopsis paragraph in muted gray, shown directly beneath the title */
+  .hero-plot{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    font-size:15.5px;line-height:1.6;color:var(--text-muted);margin:0 0 14px;max-width:600px;
+    text-shadow:0 1px 16px rgba(0,0,0,.6)}
+  .hero-actions{display:flex;align-items:center;gap:12px}
+  .hero-btn{display:inline-flex;align-items:center;gap:9px;border:none;cursor:pointer;
+    font-family:inherit;font-size:16px;letter-spacing:.02em;border-radius:6px;padding:12px 28px;
+    transition:transform .15s,background .2s,border-color .2s,color .2s,box-shadow .2s}
+  .hero-btn:active{transform:scale(.97)}
+  /* solid crimson PLAY — white, bold, uppercase */
+  .hero-play{background:#D02334;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+    box-shadow:0 8px 26px rgba(208,35,52,.32)}
+  .hero-play:hover{background:#e0455a;box-shadow:0 10px 34px rgba(208,35,52,.5)}
+  .hero-play .ic{font-size:17px}
+  /* "+ My List" — translucent grey pill (Netflix style) */
+  .hero-add{background:rgba(109,109,114,.45);border:none;color:#fff;font-weight:700;
+    text-transform:uppercase;letter-spacing:.04em;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .hero-add:hover{background:rgba(132,132,140,.6)}
+  .hero-add .ic{font-size:20px;font-weight:400;line-height:1}
+  .hero-add.on{background:rgba(208,35,52,.92);color:#fff}
+  /* progress-bar dots: the active bar fills over the autoplay interval */
+  .hero-dots{position:absolute;z-index:4;right:var(--page-pad);bottom:clamp(30px,5vh,58px);
+    display:flex;gap:9px;align-items:center}
+  .hero-dot{position:relative;width:30px;height:6px;border-radius:6px;border:none;padding:0;cursor:pointer;
+    background:rgba(208,35,52,.30);overflow:hidden;transition:width .3s,background .3s}
+  .hero-dot:hover{background:rgba(208,35,52,.5)}
+  .hero-dot.active{width:46px;background:rgba(208,35,52,.25)}
+  .hero-dot.active::after{content:"";position:absolute;inset:0;transform-origin:left;
+    background:#D02334;animation:heroDotFill var(--hero-delay,4s) linear forwards}
+  @keyframes heroDotFill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  .hero.paused .hero-dot.active::after,
+  .hero.paused .hero-slide.active .hero-bg{animation-play-state:paused}
+  @media(max-width:640px){
+    /* smaller reserve (tighter headings/margins on phones) so both upcoming rows
+       still clear the fold under a typical mobile viewport — slimmer rails let the
+       hero grow here too */
+    .hero{min-height:clamp(360px,calc(100svh - 320px),620px)}
+    /* The desktop scrim is built for a wide frame — a 90deg left wash up to rgba(0,0,0,.92)
+       plus a diagonal corner grade. On a narrow phone that wash darkens the whole image
+       edge-to-edge, so the backdrop reads as near-black mud behind the copy. Drop the side
+       wash + corner grade here and use a single bottom-anchored gradient: the artwork stays
+       visible through the upper ~60% while the headline/plot/actions keep a legible base. */
+    .hero-bg::after{background:none}
+    .hero-slide::after{background:
+      linear-gradient(0deg,#000 0%,rgba(0,0,0,.9) 14%,rgba(0,0,0,.52) 36%,rgba(0,0,0,.12) 60%,transparent 80%),
+      linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.1) 15%,transparent 28%)}
+    /* dots are pinned to the very bottom edge; the content block reserves enough
+       padding to clear them with a real gap (the progress bar sat right under PLAY on
+       notched phones once the safe-area inset lifted it — both now share that inset so
+       the ~26px gap holds on every device) */
+    .hero-inner{padding-bottom:calc(46px + env(safe-area-inset-bottom,0px))}
+    .hero-plot{font-size:14.5px;line-height:1.5;margin-bottom:16px;max-width:92%}
+    .hero-meta{margin-bottom:16px;font-size:14px}
+    .hero-btn{padding:11px 22px;font-size:17px}
+    /* collapse "+ My List" to an icon-only disc — the label can't fit a 44px box */
+    .hero-add{width:44px;height:44px;padding:0;gap:0;border-radius:50%;justify-content:center}
+    .hero-add .hero-add-t{display:none}
+    .hero-dots{right:auto;left:var(--page-pad);bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+    .hero-dot{width:22px}.hero-dot.active{width:34px}
+  }
+  /* landscape phones / short windows: the tall hero min-height nearly fills the
+     viewport, burying the "Upcoming" rows — cap it so they peek above the fold.
+     max-height:600px keeps tablets in landscape (height 768+) on the full hero. */
+  @media (orientation:landscape) and (max-height:600px){
+    .hero{min-height:min(82svh,440px)}
+    .hero-inner{padding-bottom:clamp(14px,4vh,30px)}
+    .hero-dots{bottom:clamp(12px,3vh,24px)}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .hero-slide.active .hero-bg{animation:none}
+    .hero-bg{transform:scale(1.06)}   /* no drift → keep the gentle static frame, not the zoomed end */
+    .hero-media{transform:none!important}   /* no parallax pan */
+    .hero-inner > *{animation:none}
+    .hero-dot.active::after{animation:none;transform:scaleX(1)}
+  }
+
+  /* strips */
+  .strip{margin-top:38px}
+  .strip:first-child{margin-top:6px}
+  /* push the Continue Watching row below the fold on first paint too, so only the
+     hero + upcoming rows show before scrolling (same viewport-scaling gap as the
+     first categorised row) */
+  #continueRow .strip{margin-top:clamp(18px,2.4vh,34px)}
+  /* push the first categorised row (Trending Movies) further down so its heading
+     stays below the fold on first paint — only hero + upcoming should show before
+     scrolling. Scales with viewport so it clears taller screens too. */
+  #strips .strip:first-child{margin-top:clamp(30px,4vh,50px)}
+  /* the two upcoming marquees are one block under a single heading — pull the second
+     (series) row up tight against the first instead of the default 38px strip gap */
+  .strip[data-row="upcoming-series"]{margin-top:6px}
+  .strip-head{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+  .strip-head .mono{font-size:clamp(15px,1.7vw,22px);letter-spacing:.04em;color:#e9e9ec;font-weight:700;text-transform:uppercase}
+  /* full-bleed carousel: the rail breaks out of the page padding so the row —
+     and its accent scroll line — span the full viewport width. The first poster
+     is re-aligned under the label via matching scroll padding. */
+  /* pull the rail up by the row's new top padding so the heading→row gap is unchanged */
+  .strip-rail{position:relative;margin:-12px calc(var(--page-pad) * -1) 0}
+  .strip-row{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;
+    /* top padding gives the hover lift (-6px + scale) room to grow into; without it
+       overflow-y:hidden slices the top edge of the cover on hover */
+    padding:12px var(--page-pad) 6px;scroll-padding-inline:var(--page-pad);
+    scroll-snap-type:x mandatory;scroll-behavior:smooth;
+    /* hide the native scrollbar: its thumb is a solid handle that can't feather at
+       both ends. We render a custom .strip-scroll line below instead. */
+    scrollbar-width:none;-ms-overflow-style:none;
+    /* fade the full-bleed poster row into the page edges on BOTH sides. The mask is
+       pinned to the row's own box (the viewport edges), so as posters scroll under it
+       the left and right fades stay put — fade-in and fade-out persist either way. */
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 var(--rail-fade),#000 calc(100% - var(--rail-fade)),transparent);
+    mask-image:linear-gradient(to right,transparent,#000 var(--rail-fade),#000 calc(100% - var(--rail-fade)),transparent)}
+  .strip-row::-webkit-scrollbar{display:none;width:0;height:0}
+  /* custom scroll line — full control over the look the native scrollbar can't give:
+     a faint full-width track (edge-faded by the same mask) with a brighter thumb that
+     feathers to transparent at BOTH ends via its own gradient, so the active handle
+     fades in and out no matter where it sits. */
+  .strip-scroll{position:relative;height:2px;margin:2px var(--page-pad) 0;border-radius:2px;
+    background:rgba(208,35,52,.10);
+    -webkit-mask-image:linear-gradient(to right,transparent,#000 var(--rail-fade),#000 calc(100% - var(--rail-fade)),transparent);
+    mask-image:linear-gradient(to right,transparent,#000 var(--rail-fade),#000 calc(100% - var(--rail-fade)),transparent)}
+  .strip-scroll[hidden]{display:none}
+  .strip-scroll-thumb{position:absolute;top:0;height:100%;left:0;width:20%;
+    /* feathered ends: transparent → accent → transparent so the thumb fades in/out
+       on both the left and right edges as it travels the track */
+    background:linear-gradient(to right,transparent,var(--accent) 22%,var(--accent) 78%,transparent);
+    opacity:.7;transition:opacity .2s}
+  .strip-rail:hover .strip-scroll-thumb{opacity:1}
+  /* compact circular nav buttons — vertically centred over the poster row so the
+     target is obvious and the rest of each cover stays clickable */
+  .strip-arrow{position:absolute;top:calc(50% - 5px);transform:translateY(-50%);z-index:6;
+    width:42px;height:42px;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--accent);font-size:24px;line-height:1;padding-bottom:2px;
+    background:rgba(13,12,22,.72);border:1px solid rgba(var(--accent-rgb),.18);
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    box-shadow:0 4px 14px rgba(0,0,0,.45);
+    opacity:.55;transition:opacity .2s,color .2s,background .2s,border-color .2s,transform .15s}
+  .strip-arrow.l{left:calc(var(--page-pad) - 6px)}
+  .strip-arrow.r{right:calc(var(--page-pad) - 6px)}
+  .strip-rail:hover .strip-arrow{opacity:1}
+  .strip-arrow:focus-visible{opacity:1;outline:none}
+  .strip-arrow:hover{color:var(--ink);background:var(--accent);border-color:var(--accent);
+    transform:translateY(-50%) scale(1.08)}
+  .strip-arrow:active{transform:translateY(-50%) scale(.96)}
+  .strip-arrow:disabled{opacity:0!important;pointer-events:none}
+  @media(hover:none){.strip-arrow{display:none}}  /* touch: swipe to scroll */
+  .poster{flex:0 0 auto;width:160px;height:240px;border-radius:4px;position:relative;overflow:hidden;
+    border:1px solid var(--border);cursor:pointer;transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s,border-color .25s;scroll-snap-align:start;background:var(--bg-3)}
+  .poster:hover{box-shadow:0 14px 34px rgba(0,0,0,.55);border-color:rgba(208,35,52,.4)}
+  .poster .art{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:14px}
+  .poster .art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .4s ease}
+  /* cover art fades in once decoded (onload→.rdy) — no placeholder→image flash on reload */
+  .poster .art img.cov{opacity:0;transition:opacity .4s ease,transform .4s ease}
+  .poster .art img.cov.rdy{opacity:1}
+  .poster:hover .art img,.poster:focus-within .art img{transform:scale(1.1)}
+  .poster .art .t{font-size:16px;font-weight:400;line-height:1.25;position:relative;z-index:0;color:var(--text-muted)}
+  /* rating badge — one crimson chip, pinned to the TOP-RIGHT corner of the cover */
+  .poster .rate{position:absolute;top:8px;right:8px;left:auto;font-size:13px;
+    padding:2px 7px;border-radius:4px;font-family:var(--font-mono);font-weight:700;z-index:2;
+    background:#9D2A37;color:#fff;border:none;letter-spacing:.02em;
+    box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  /* (series) content-type marker — a crimson-OUTLINED "TV" chip in the TOP-LEFT corner,
+     transparent fill so it reads as a tag, not a second score */
+  .poster .tvtag{position:absolute;top:8px;left:8px;z-index:2;
+    font-size:13px;font-weight:700;letter-spacing:.06em;font-family:var(--font-mono);
+    padding:2px 7px;border-radius:4px;color:#9D2A37;
+    background:transparent;border:1.5px solid #9D2A37;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  /* score tiers collapsed into the single crimson badge for the new brand */
+  .rate.r-red,.rate.r-yellow,.rate.r-green,.rate.r-blue,.rate.r-nr{color:#fff;background:#9D2A37;border:none}
+  .rate.r-nr{letter-spacing:.06em}
+  /* Continue Watching: a small ✕ in the TOP-LEFT corner removes the title from the rail.
+     Hidden until the card is hovered/focused (or always shown on touch, which has no hover). */
+  /* sized & positioned to mirror the .tvtag chip: same top-left corner, same content-driven
+     box (padding:3px 7px + 1.5px border around the 14px icon ≈ the tvtag's 13px "TV" chip),
+     rounded rect (not a circle) so the two corner markers read as a matched set. */
+  .cw-remove{position:absolute;top:8px;left:8px;z-index:4;padding:3px 10px;
+    display:grid;place-items:center;border:1.5px solid transparent;border-radius:4px;cursor:pointer;
+    background:rgba(0,0,0,.62);color:#fff;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+    opacity:0;transform:scale(.85);transition:opacity .2s,transform .2s,background .2s;
+    box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .cw-remove svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
+  .poster:hover .cw-remove,.poster:focus-within .cw-remove,.cw-remove:focus-visible{opacity:1;transform:scale(1)}
+  .cw-remove:hover{background:var(--accent,#d02334)}
+  @media (hover:none){ .cw-remove{opacity:1;transform:scale(1)} }
+  /* Continue Watching — a thin crimson resume bar pinned to the bottom edge of the
+     cover, showing how far through the title you are. Only rendered on cards that
+     carry a saved timecode (posterHTML opts.progress). Sits ABOVE the frosted hover
+     panel (z-index 5 > .ov's 3) so the progress stays visible while hovering. The
+     poster's own overflow:hidden + 4px radius clip it cleanly into the corners. */
+  .poster .cw-progress{position:absolute;left:0;right:0;bottom:0;height:5px;z-index:5;
+    background:rgba(0,0,0,.55);border-radius:0 0 4px 4px;overflow:hidden;pointer-events:none}
+  .poster .cw-progress>i{display:block;height:100%;min-width:3px;
+    background:var(--accent,#d02334);box-shadow:0 0 6px rgba(208,35,52,.6);transition:width .3s ease}
+  /* hover: a frosted info panel slides up from the bottom (CodePen "Movie Poster
+     Interaction") while the cover image gently zooms (see .poster:hover .art img). */
+  .poster .ov{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);
+    transform:translateY(101%);visibility:hidden;
+    transition:transform .34s cubic-bezier(.2,.7,.2,1),visibility 0s linear .34s;
+    display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:13px 13px 15px;z-index:3;color:#fff}
+  /* backdrop-filter is applied ONLY on the hover/focus reveal, NEVER on the parked state.
+     Safari does NOT clip a backdrop-filter to an ancestor's overflow:hidden+border-radius,
+     so a parked panel's blur layer bled a dark bar across every card's bottom edge (the
+     "black thing"). visibility:hidden alone didn't stop it on some iOS builds. Gating the
+     filter behind the reveal means touch devices (hover:none → panel never reveals) get no
+     blur layer at all, so there's nothing to bleed; desktop still blurs on hover as before. */
+  .poster:hover .ov,.poster:focus-visible .ov,.poster:focus-within .ov{transform:translateY(0);visibility:visible;
+    -webkit-backdrop-filter:blur(14px) saturate(120%);backdrop-filter:blur(14px) saturate(120%);
+    transition:transform .34s cubic-bezier(.2,.7,.2,1),visibility 0s}
+  .poster .ov .ov-title{font-size:14.5px;font-weight:700;line-height:1.25;color:#fff;
+    display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .poster .ov .ov-meta{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75);font-family:var(--font-mono)}
+  .poster .ov .ov-meta .ov-star{color:#e3c414;font-weight:700}
+  .poster .ov .pill{font-size:12px;border:1px solid rgba(255,255,255,.35);border-radius:50px;padding:3px 10px;width:max-content;max-width:100%;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(255,255,255,.08);color:#fff}
+  .poster .ov .stream{font-size:13px;color:var(--accent);letter-spacing:.08em;font-weight:700}
+  /* thumbnail-row card = poster cover only (no title label below) */
+  .pcard{flex:0 0 auto;width:160px;scroll-snap-align:start}
+  .pcard .poster{width:100%}
+
+  /* grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:16px}
+  .gcard .poster{width:100%;height:auto;aspect-ratio:2/3}
+  .gcard .cap{margin-top:8px}
+  .gcard .cap .t{font-size:16px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gcard .cap .y{font-size:16px;color:var(--text-muted);font-family:var(--font-mono);margin-top:2px}
+  .loadmore{margin:46px auto 0;display:block;border:1px solid var(--accent);color:var(--accent);background:none;
+    padding:12px 30px;border-radius:4px;letter-spacing:.12em;font-size:16px;cursor:pointer;
+    transition:background .2s,color .2s,border-color .2s}
+  .loadmore:hover{background:rgba(var(--accent-rgb),.1);color:var(--accent-h);border-color:var(--accent-h)}
+
+  /* ---------- clickable section headers (Trending Movies →) ----------
+     Elms Sans display caps (shared with the hero headline), bright type,
+     with the signature violet->light gradient underline that grows on hover. */
+  .strip-title{appearance:none;-webkit-appearance:none;background:none;border:none;cursor:pointer;
+    display:inline-flex;align-items:baseline;gap:11px;
+    font-family:var(--font);font-weight:700;
+    font-size:clamp(15px,1.7vw,22px);letter-spacing:.04em;line-height:1.1;color:#e9e9ec;text-transform:uppercase;
+    padding:2px 0 6px;position:relative;transition:color .2s ease}
+  /* underline divider + chevron arrow removed for the crimson brand — the heading
+     is a flat uppercase red wordmark with a subtle hover brighten only */
+  .strip-title::after{display:none}
+  .strip-title .arr{display:none}
+  .strip-title:hover{color:#fff}
+  .strip-title:focus-visible{outline:2px solid var(--accent);outline-offset:5px;border-radius:3px}
+  /* static (studio / continue rows): same heavy face, non-clickable */
+  .strip-title.static{cursor:default}
+  .strip-title.static:hover{color:#e9e9ec}
+
+  /* ---------- studio logo cards ----------
+     TMDB serves each studio's colour/black primary logo, so the brand marks sit on
+     a light "plate" and render in full detail (flattening them to white silhouettes
+     on a dark card turned the WB shield / DC roundel / Marvel box into blobs). The
+     plates are a deliberate, premium accent against the dark theme. */
+  .studio-card{flex:0 0 auto;width:212px;height:126px;border-radius:11px;position:relative;overflow:hidden;
+    cursor:pointer;border:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(160deg,#ffffff,#ecebf3);
+    display:grid;place-items:center;padding:0;scroll-snap-align:start;
+    box-shadow:0 2px 10px rgba(0,0,0,.35);
+    transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s}
+  .studio-card:hover,.studio-card:focus-visible{transform:translateY(-6px) scale(1.02);
+    box-shadow:0 12px 34px rgba(208,35,52,.3);outline:none}
+  /* logos are normalised to one optical size: contain inside a uniform 164x76 box,
+     then a per-studio --logo-scale equalises their geometric-mean footprint so a thin
+     wordmark (Sony 6.5:1) and a square emblem (DC 1:1) read as the same size. The box
+     + caps sit inside the 212x126 plate so nothing is ever cropped. */
+  .studio-card img{width:auto;height:auto;max-width:164px;max-height:76px;object-fit:contain;
+    transform:scale(var(--logo-scale,1));transition:transform .25s}
+  .studio-card .studio-name{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;text-align:center;
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;color:#3a3550;
+    background:linear-gradient(180deg,transparent,rgba(255,255,255,.92));opacity:0;transition:opacity .25s}
+  .studio-card:hover .studio-name,.studio-card:focus-visible .studio-name{opacity:1}
+
+  /* ---------- upcoming movies: auto-scrolling landscape marquee ----------
+     A continuously-translating track of compact (188×112) landscape
+     covers. The card list is duplicated once inside the track, so animating the
+     track to translateX(-50%) loops seamlessly (the second copy sits exactly
+     where the first started). Speed is set in JS (px/sec → animationDuration) so
+     it stays "medium" regardless of how many titles load. Edge fade masks hide
+     the wrap seam; hover pauses; reduced-motion stops it entirely. */
+  /* min-height reserves the marquee's final footprint (112px card + 6+4 padding) from
+     first paint, so loadUpcomingRow() filling the empty track causes ZERO layout shift
+     instead of shoving every row below it down 122px. */
+  .um-rail{position:relative;overflow:hidden;padding:6px 0 4px;min-height:122px;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);
+            mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+  /* The scroll is a Web Animations API loop built in fillUpcoming() only AFTER the
+     track width is measured, so it never paints an un-measured end-frame (the old
+     flicker). WAAPI (not a CSS animation) is deliberate: a CSS animation RESTARTS from
+     frame 0 every time the home view is hidden then re-shown — e.g. visiting #addons and
+     clicking Home back — which made the cards snap to the start and re-scroll. A WAAPI
+     animation keeps its timeline across display:none→block, so the row stays where it
+     was. Hover/focus pause and the reverse (second-row) direction are wired in JS too.
+     translateZ(0) + backface-hidden keep the row on its own compositor layer so the
+     moving cards never shimmer. */
+  .um-track{display:flex;gap:14px;width:max-content;will-change:transform;
+    transform:translateZ(0);-webkit-backface-visibility:hidden;backface-visibility:hidden}
+  /* interactive: clicking a card opens the same detail/streams modal a poster does */
+  .upcoming-card{flex:0 0 auto;width:188px;height:112px;border-radius:11px;position:relative;
+    overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,.08);background:var(--bg-3);
+    box-shadow:0 2px 10px rgba(0,0,0,.35);user-select:none;
+    transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+  .upcoming-card:hover,.upcoming-card:focus-visible{transform:translateY(-3px);
+    border-color:rgba(208,35,52,.45);box-shadow:0 14px 30px rgba(0,0,0,.55)}
+  .upcoming-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .upcoming-card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+  .upcoming-card:hover img,.upcoming-card:focus-visible img{transform:scale(1.06)}
+  /* gradient scrim so the title mark stays legible over the backdrop art; deepens on
+     hover to back the revealed meta row. */
+  .upcoming-card .uc-grad{position:absolute;inset:0;transition:background .25s ease;
+    background:linear-gradient(180deg,rgba(10,8,18,0) 38%,rgba(10,8,18,.82) 100%)}
+  .upcoming-card:hover .uc-grad,.upcoming-card:focus-visible .uc-grad{
+    background:linear-gradient(180deg,rgba(10,8,18,0) 8%,rgba(10,8,18,.92) 100%)}
+  .upcoming-card .uc-meta{position:absolute;left:0;right:0;bottom:0;padding:8px 10px 9px;
+    display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:5px;min-height:34px}
+  /* meta row (year · ★rating · genre) stays collapsed until hover/focus, then slides in */
+  .upcoming-card .uc-info{display:flex;align-items:center;gap:9px;font-family:var(--font-mono);
+    font-size:12px;color:rgba(255,255,255,.82);letter-spacing:.02em;max-height:0;opacity:0;
+    transform:translateY(5px);overflow:hidden;transition:max-height .25s ease,opacity .2s ease,transform .25s ease}
+  .upcoming-card:hover .uc-info,.upcoming-card:focus-visible .uc-info{max-height:28px;opacity:1;transform:none}
+  .upcoming-card .uc-info .uc-star{color:#e3c414;font-weight:700}
+  .upcoming-card .uc-info .uc-genre{border:1px solid rgba(255,255,255,.32);border-radius:50px;
+    padding:2px 9px;background:rgba(255,255,255,.08);color:#fff;font-size:11px;
+    max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* title-logo: exact width/height are set per-image by umFitLogo() to equalise
+     optical footprint; these caps just bound the brief pre-load state (and must be
+     >= the JS box so they never re-clamp/distort the computed size). */
+  .upcoming-card .uc-logo{display:block;width:auto;height:auto;max-height:27px;max-width:134px;
+    object-fit:contain;object-position:left bottom;filter:drop-shadow(0 1px 5px rgba(0,0,0,.75))}
+  /* Bold wordmark, upper-cased with wide tracking (THE ODYSSEY look).
+     Uniform size for every card; wraps to two lines so full titles stay visible. */
+  .upcoming-card .uc-title{font-family:var(--font);font-size:11px;font-weight:700;
+    line-height:1.3;color:#fff;text-transform:uppercase;letter-spacing:.16em;max-width:100%;
+    display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;
+    overflow:hidden;text-overflow:ellipsis;word-break:break-word;
+    text-shadow:0 1px 4px rgba(0,0,0,.6);
+    opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .25s ease}
+  .upcoming-card:hover .uc-title,.upcoming-card:focus-visible .uc-title{opacity:1;transform:none}
+  .upcoming-card .uc-title[hidden]{display:none}
+  /* fallback art when a title has no backdrop/poster (offline/missing) */
+  .upcoming-card .uc-fallback{position:absolute;inset:0;display:grid;place-items:center;
+    padding:0 10px;text-align:center;font-size:12px;color:var(--text-muted)}
+  /* reduced-motion: fillUpcoming() skips building the WAAPI scroll entirely (see UM_REDUCE) */
+
+  /* ---------- drill-down (category / studio / search) view ---------- */
+  #catview{margin-top:6px}
+  .cat-head{display:flex;align-items:center;gap:20px;margin:4px 0 30px;flex-wrap:wrap}
+  .cat-back{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--accent);background:none;
+    color:var(--accent);padding:12px 24px;border-radius:4px;cursor:pointer;font-size:16px;letter-spacing:.12em;
+    transition:background .2s,color .2s,border-color .2s,transform .15s}
+  .cat-back:hover{background:rgba(var(--accent-rgb),.1);color:var(--accent-h);border-color:var(--accent-h)}
+  .cat-back:active{transform:scale(.97)}
+  .cat-back-ic{font-size:18px;line-height:1;transition:transform .2s}
+  .cat-back:hover .cat-back-ic{transform:translateX(-3px)}
+  .cat-title{font-size:clamp(26px,4.2vw,42px);font-weight:300;margin:0;letter-spacing:-.01em;line-height:1.1}
+  .cat-title:focus{outline:none}   /* focus is moved here on drill-in for screen readers; no visible ring */
+  .cat-pager{display:flex;align-items:center;justify-content:center;gap:22px;margin:42px 0 6px;min-height:46px;flex-wrap:wrap}
+  .cat-pager .page-info{font-family:var(--font-mono);font-size:14px;color:var(--text-muted);letter-spacing:.1em}
+  .cat-pager .loadmore{margin:0;display:inline-block}
+
+  .reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease-out,transform .6s ease-out}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ---------- skeleton loading + loaders (shown before live data arrives) ---------- */
+  /* skeleton surfaces: a dark base block with a soft violet sheen sweeping across.
+     Sizes are driven by the host element (.poster, .gcard, inline width/height) so
+     the real card drops in with zero layout shift. */
+  .sk,.sk-line{position:relative;overflow:hidden;isolation:isolate;
+    background:
+      radial-gradient(120% 80% at 50% 0%,rgba(var(--accent-rgb),.05),transparent 60%),
+      linear-gradient(180deg,#1d1a23 0%,#16141c 100%)}
+  .sk-line{border-radius:7px;height:14px;
+    background:linear-gradient(90deg,#211d28,#1a1721)}
+  /* a single bright highlight sweeps diagonally across — wide + soft so it reads as a
+     polished "loading" sheen on near-black, not a faint static streak */
+  .sk::after,.sk-line::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:linear-gradient(105deg,
+      transparent 25%,
+      rgba(255,255,255,.045) 42%,
+      rgba(var(--accent-rgb),.16) 49%,
+      rgba(255,225,228,.22) 50.5%,
+      rgba(var(--accent-rgb),.16) 52%,
+      rgba(255,255,255,.045) 59%,
+      transparent 75%);
+    transform:translateX(-110%);animation:sfSheen 1.7s cubic-bezier(.45,.05,.35,1) infinite}
+  @keyframes sfSheen{0%{transform:translateX(-110%)}55%,100%{transform:translateX(110%)}}
+  /* skeleton poster keeps the exact .poster / .gcard footprint but is inert.
+     The "loading" look is a moody black → dark-red gradient with a soft red glow
+     bleeding from the top, and a light shimmer sweeping across like a scanner. */
+  .poster.sk{cursor:default;pointer-events:none;border-color:rgba(208,35,52,.12);
+    background:
+      radial-gradient(120% 82% at 50% 16%,rgba(178,26,46,.42),rgba(86,12,24,.20) 44%,transparent 72%),
+      linear-gradient(155deg,#1a0a0f 0%,#120a0d 46%,#0a060a 100%)}
+  .poster.sk:hover{transform:none;box-shadow:none}
+  /* a light shimmer sweeps across the card */
+  .poster.sk::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.06) 48%,rgba(255,255,255,.02) 56%,transparent 72%);
+    transform:translateX(-110%);animation:sfSheen 1.9s ease-in-out infinite}
+
+  /* the brand loader — a swept gradient ring with a softly pulsing core. Use
+     <span class="sf-loader"></span> (add .sm for a compact inline variant). */
+  .sf-loader{width:46px;height:46px;display:inline-block;position:relative;flex:0 0 auto;vertical-align:middle}
+  .sf-loader::before{content:"";position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 90deg,rgba(208,35,52,0) 0deg,rgba(208,35,52,.18) 130deg,var(--accent) 330deg,var(--accent-h) 360deg);
+    -webkit-mask:radial-gradient(farthest-side,#0000 calc(100% - 3.5px),#000 calc(100% - 3.5px));
+            mask:radial-gradient(farthest-side,#0000 calc(100% - 3.5px),#000 calc(100% - 3.5px));
+    filter:drop-shadow(0 0 7px rgba(208,35,52,.45));animation:sfSpin .9s linear infinite}
+  .sf-loader::after{content:"";position:absolute;inset:35%;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px rgba(208,35,52,.55);animation:sfCore 1.15s ease-in-out infinite}
+  @keyframes sfSpin{to{transform:rotate(1turn)}}
+  @keyframes sfCore{0%,100%{transform:scale(.5);opacity:.4}50%{transform:scale(1);opacity:.95}}
+  .sf-loader.sm{width:18px;height:18px}
+  .sf-loader.sm::before{-webkit-mask:radial-gradient(farthest-side,#0000 calc(100% - 2px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,#0000 calc(100% - 2px),#000 calc(100% - 2px));filter:none}
+  .sf-loader.sm::after{display:none}
+  /* centred section loader: loader + label, for any "loading…" panel */
+  .sf-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;padding:54px 20px;width:100%}
+  .sf-loading .lbl{font-family:var(--font-mono);font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--text-muted);animation:sfFade 1.6s ease-in-out infinite}
+  @keyframes sfFade{0%,100%{opacity:.45}50%{opacity:.9}}
+
+  @media(prefers-reduced-motion:reduce){
+    .sk::after,.sk-line::after{animation:none;transform:none;
+      background:linear-gradient(100deg,transparent,rgba(var(--accent-rgb),.10) 50%,transparent)}
+    .poster.sk::after{animation:none;transform:none;
+      background:linear-gradient(105deg,transparent,rgba(var(--accent-rgb),.08) 50%,transparent)}
+    .sf-loader::before{animation-duration:1.8s}
+    .sf-loader::after,.sf-loading .lbl{animation:none}
+  }
+
+  /* addons + settings */
+  .section-title{font-size:clamp(28px,4vw,46px);font-weight:300;padding:50px 0 8px;letter-spacing:-.01em}
+  .section-sub{color:var(--text-muted);font-size:16px;margin-bottom:36px;max-width:560px;line-height:1.7}
+  /* ---- animated puzzle-piece mascot for the add-on catalog header ---- */
+  .addons-head{display:flex;align-items:center;gap:clamp(14px,2vw,20px)}
+  .pzPiece{width:clamp(44px,6.2vw,62px);height:clamp(44px,6.2vw,62px);flex:none;overflow:visible;
+    transform-origin:50% 58%;animation:pzFloat 4.4s ease-in-out infinite;
+    filter:drop-shadow(0 7px 16px rgba(var(--accent-rgb),.34))}
+  .pzPiece rect[data-fill]{fill:var(--accent)}
+  @keyframes pzFloat{
+    0%,100%{transform:translateY(0) rotate(-6deg)}
+    50%{transform:translateY(-7px) rotate(6deg)}}
+  @media (prefers-reduced-motion:reduce){.pzPiece{animation:none}}
+  /* ---- add-on catalog: Official + Community sections ---- */
+  .addon-section{margin-bottom:6px}
+  .addon-sec-head{display:flex;align-items:baseline;gap:11px;margin:4px 0 15px;flex-wrap:wrap}
+  .addon-sec-title{font-size:19px;font-weight:500;letter-spacing:.01em;color:var(--text)}
+  .addon-sec-count{font-family:var(--font-mono);font-size:13px;color:var(--text-muted)}
+  .addon-sec-disclaimer{font-size:13.5px;line-height:1.6;color:#c4bedb;background:rgba(var(--accent-rgb),.06);
+    border:1px solid var(--border);border-left:2px solid rgba(var(--accent-rgb),.5);border-radius:5px;
+    padding:11px 14px;margin:-4px 0 18px;max-width:780px}
+  .addon-divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:32px 0 28px}
+  .addon-grid{display:flex;flex-direction:column;gap:12px}
+
+  .addon{display:flex;gap:15px;align-items:center;background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;padding:15px 18px;position:relative;overflow:hidden;transition:border-color .2s,background .2s}
+  .addon:hover{border-color:rgba(var(--accent-rgb),.34);background:#26222b}
+  .addon.installed::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(90deg,transparent,rgba(208,35,52,.10),transparent);
+    transform:translateX(-100%);animation:shimmer 2.4s ease-in-out}
+  @keyframes shimmer{to{transform:translateX(100%)}}
+  .addon .ic{width:40px;height:40px;border-radius:9px;background:rgba(208,35,52,.1);display:grid;place-items:center;
+    color:var(--accent);font-size:19px;flex-shrink:0;overflow:hidden}
+  .addon .ic img{width:100%;height:100%;object-fit:cover;display:block;background:#0d0c16}
+  /* "Upcoming Radar" — red jigsaw puzzle piece, gentle breathing glow */
+  .addon .ic.puzzle{position:relative;overflow:hidden;
+    background:radial-gradient(circle at 50% 50%,rgba(var(--accent-rgb),.20),rgba(var(--accent-rgb),.05) 72%)}
+  .addon .ic.puzzle .pzPieceIc{width:24px;height:24px;overflow:visible;
+    animation:pz-pulse 2.6s ease-in-out infinite}
+  .addon .ic.puzzle .pzPieceIc rect[data-fill]{fill:var(--accent)}
+  /* Community add-ons — same puzzle/flower glyph tinted green */
+  .addon .ic.puzzle.green{background:radial-gradient(circle at 50% 50%,rgba(92,210,160,.20),rgba(92,210,160,.05) 72%)}
+  .addon .ic.puzzle.green .pzPieceIc{animation:pz-pulse-green 2.6s ease-in-out infinite}
+  .addon .ic.puzzle.green .pzPieceIc rect[data-fill]{fill:var(--success)}
+  @keyframes pz-pulse{
+    0%,100%{transform:scale(.9);filter:drop-shadow(0 0 1px rgba(var(--accent-rgb),.35))}
+    50%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(var(--accent-rgb),.7))}
+  }
+  @keyframes pz-pulse-green{
+    0%,100%{transform:scale(.9);filter:drop-shadow(0 0 1px rgba(92,210,160,.35))}
+    50%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(92,210,160,.7))}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .addon .ic.puzzle .pzPieceIc{animation:none;transform:scale(.96)}
+  }
+  .addon .body{flex:1;min-width:0}
+  .addon .name{font-size:16px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:9px;flex-wrap:wrap;line-height:1.3}
+  .addon .ver{font-size:13px;font-weight:400;color:var(--text-muted);font-family:var(--font-mono)}
+  .addon .desc{font-size:14px;color:var(--text-muted);margin-top:5px;line-height:1.5;
+    overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical}
+  .addon .desc .mono{color:var(--text-muted)}
+  .tags{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .tag{font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(var(--accent-rgb),.07);color:var(--text-muted);font-family:var(--font-mono)}
+  .badge{font-size:12px;padding:3px 9px;border-radius:20px;white-space:nowrap;font-weight:500}
+  .badge.ok{background:rgba(92,210,160,.13);color:var(--success)}
+  .badge.warn{background:rgba(234,100,121,.12);color:var(--danger)}
+  .badge.muted{background:rgba(255,255,255,.06);color:var(--text-muted)}
+  .addon .acts{display:flex;flex-direction:row;gap:8px;flex-shrink:0;align-items:center}
+  .minibtn{font-size:13.5px;padding:7px 15px;border-radius:5px;border:1px solid var(--border);background:none;
+    color:var(--text-muted);cursor:pointer;transition:.18s;white-space:nowrap}
+  .minibtn:hover{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.06)}
+  .minibtn.install{border-color:rgba(var(--accent-rgb),.55);color:var(--accent)}
+  .minibtn.install:hover{border-color:var(--accent);background:rgba(var(--accent-rgb),.13);color:var(--accent-h)}
+  .minibtn.danger{color:var(--danger);border-color:rgba(234,100,121,.4)}
+  .minibtn.danger:hover{border-color:var(--danger);color:#fff;background:rgba(234,100,121,.16)}
+  .minibtn.is-default{color:var(--text-muted);border-style:dashed;cursor:default}
+  .minibtn.is-default:hover{border-color:var(--border);color:var(--text-muted);background:none}
+  @media(max-width:640px){
+    .addon{flex-wrap:wrap;align-items:flex-start}
+    .addon .ic{order:1}
+    .addon .body{flex:1 1 100%;order:2;width:100%}
+    .addon .acts{order:3;width:100%;justify-content:flex-end;margin-top:6px}
+    .addon .acts .minibtn{flex:1;text-align:center;max-width:170px}
+  }
+  .install-box{display:flex;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:14px;margin:10px 0 26px}
+  .install-box input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--font-mono);font-size:16px}
+  .install-box input::placeholder{color:var(--text-muted)}
+
+  /* ===== Settings — grouped cards ===== */
+  /* centered hero heading for the settings page only */
+  #settings .section-title{text-align:center;padding-top:8px}
+  #settings .section-sub{text-align:center;max-width:620px;margin-left:auto;margin-right:auto}
+  /* masonry: cards of varying height flow into responsive columns (3 → 2 → 1) */
+  .settings-grid{column-width:340px;column-gap:18px;max-width:1180px;margin:6px auto 0}
+  .set-card{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;margin-bottom:18px;width:100%}
+  /* PROFILE card — identity at the top of the grid */
+  .set-profile .set-card-body{display:flex;align-items:center;gap:16px;padding:20px 22px}
+  .profile-avatar{width:60px;height:60px;border-radius:50%;flex:none;display:grid;place-items:center;
+    font-family:var(--font-mono);font-size:24px;font-weight:700;text-transform:uppercase;color:var(--accent);
+    background:radial-gradient(circle at 50% 36%,rgba(var(--accent-rgb),.30),rgba(var(--accent-rgb),.10));
+    border:2px solid rgba(var(--accent-rgb),.85);
+    box-shadow:0 0 18px rgba(var(--accent-rgb),.55),inset 0 0 14px rgba(var(--accent-rgb),.30)}
+  .profile-meta{min-width:0;display:flex;flex-direction:column;gap:4px}
+  .profile-name{font-size:18px;font-weight:600;color:var(--text);line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .profile-idline{display:flex;align-items:center;gap:8px;min-width:0}
+  .profile-sub{font-size:13px;color:var(--text-muted);line-height:1.4;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .profile-badge{flex:none;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--text);padding:3px 9px;border-radius:999px;
+    background:rgba(var(--accent-rgb),.18);box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.42)}
+  .profile-badge[hidden]{display:none}
+  .set-card{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.018),transparent),var(--surface);
+    border:1px solid var(--border);border-radius:16px;overflow:hidden;
+    transition:border-color .25s,box-shadow .25s,transform .25s}
+  .set-card:hover{border-color:rgba(var(--accent-rgb),.34);box-shadow:0 18px 50px -30px rgba(var(--accent-rgb),.75)}
+  .set-card-head{display:flex;align-items:center;gap:14px;padding:17px 22px;
+    border-bottom:1px solid rgba(var(--accent-rgb),.16);
+    background:
+      linear-gradient(342deg,rgba(var(--accent-rgb),.17),rgba(var(--accent-rgb),.03) 72%,transparent),
+      radial-gradient(150% 190% at 0% 0%,rgba(var(--accent-rgb),.22),transparent 58%)}
+  .set-ic{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;
+    background:rgba(var(--accent-rgb),.13);color:var(--accent);
+    box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.24)}
+  .set-ic svg{width:21px;height:21px;display:block}
+  .set-card-head .txt{min-width:0}
+  .set-card-title{font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--text);line-height:1.2}
+  .set-card-desc{font-size:12.5px;color:var(--text-muted);margin-top:3px;line-height:1.5}
+  .set-card-body{padding:2px 22px 6px}
+
+  .setting-row{display:flex;align-items:center;gap:16px;padding:15px 0;border-bottom:1px solid rgba(255,255,255,.055)}
+  .set-card-body .setting-row:last-child{border-bottom:none}
+  .setting-row label{flex:1 1 auto;font-size:15.5px;color:var(--text);line-height:1.4}
+  .setting-row .ctl-sp{display:none}           /* legacy spacer — label flex now pushes controls right */
+  .setting-row input,.setting-row select{background-color:var(--bg-3);border:1px solid var(--border);color:var(--text);
+    padding:9px 13px;border-radius:9px;font-family:var(--font-mono);font-size:15px;outline:none;
+    transition:border-color .18s,box-shadow .18s}
+  .setting-row input{flex:0 1 320px}
+  .setting-row select{min-width:210px;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:36px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23A9A8B2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 13px center}
+  .setting-row input:hover,.setting-row select:hover{border-color:rgba(var(--accent-rgb),.45)}
+  .setting-row input:focus-visible,.setting-row select:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.2)}
+  /* toggle switch (Auto-Play / Blur unwatched, etc.) */
+  .sw{position:relative;display:inline-flex;width:46px;height:26px;flex:0 0 auto}
+  .sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:2}
+  .sw-track{position:absolute;inset:0;background:var(--bg-3);border:1px solid var(--border);border-radius:999px;transition:background .18s,border-color .18s}
+  .sw-track::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+    background:#fff;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .sw input:checked+.sw-track{background:#2ecc71;border-color:#2ecc71}
+  .sw input:checked+.sw-track::after{transform:translateX(20px)}
+  .sw input:focus-visible+.sw-track{box-shadow:0 0 0 3px rgba(46,204,113,.35)}
+  /* color swatch inputs (subtitle color / outline) */
+  .setting-row input[type=color]{flex:0 0 auto;width:130px;height:42px;padding:5px;border-radius:999px;
+    background:var(--bg-3);border:1px solid var(--border);cursor:pointer;transition:border-color .18s,box-shadow .18s}
+  .setting-row input[type=color]:hover{border-color:rgba(var(--accent-rgb),.5)}
+  .setting-row input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+  .setting-row input[type=color]::-webkit-color-swatch{border:none;border-radius:999px}
+  .setting-row input[type=color]::-moz-color-swatch{border:none;border-radius:999px}
+  /* Interface › "Blur unwatched episodes image" — stills of episodes you haven't
+     started are blurred until hovered (both the modal grid and the in-player panel). */
+  .blur-unwatched #epList.ep-grid .ep-row:not(.watched):not(.on) .ep-still img,
+  .blur-unwatched .vp-eppanel-list .ep-row:not(.watched):not(.on) .ep-still img{filter:blur(11px) brightness(.7);transition:filter .22s}
+  .blur-unwatched #epList.ep-grid .ep-row:hover .ep-still img,
+  .blur-unwatched .vp-eppanel-list .ep-row:hover .ep-still img{filter:none}
+
+  /* ── settings polish: sub-sections, live preview, inline control groups,
+        signal-dropdown, info note, clock ring ── */
+  /* grouped sub-section label inside a card body (Subtitles / Appearance / Controls).
+     The row above each group keeps its own border, so that line is the divider — no
+     border on the label itself (avoids a doubled hairline). */
+  .set-subhead{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--text-muted);margin:18px 0 2px}
+  .set-card-body .set-subhead:first-child{margin-top:8px}
+  .set-subhead + .setting-row{padding-top:6px}
+
+  /* inline control cluster — pill/swatch + dropdown sharing one row */
+  .ctl-group{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+  .ctl-group select{min-width:150px}
+  .ctl-group .set-outline-w{min-width:62px;text-align:center;padding-right:30px}
+
+  /* live subtitle preview — sample line styled with the chosen color/size/outline/bg */
+  .sub-preview{padding:4px 0 2px}
+  .sub-preview .sp-label{font-size:12.5px;color:var(--text-muted);margin:0 0 9px}
+  .sub-preview .sp-line{display:flex;justify-content:center;padding:14px 12px;border-radius:11px;
+    background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+  .sub-preview .sp-cue{font-family:var(--font);font-weight:600;color:#fff;line-height:1.4;
+    padding:2px 8px;border-radius:5px;max-width:100%;text-align:center;
+    display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+  /* mini swatch that mirrors the chosen subtitle background (checkerboard = transparent) */
+  .swatch{width:30px;height:30px;border-radius:8px;flex:none;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);background-color:#2a2730;
+    background-image:
+      linear-gradient(45deg,#5a5a5a 25%,transparent 25%),linear-gradient(-45deg,#5a5a5a 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#5a5a5a 75%),linear-gradient(-45deg,transparent 75%,#5a5a5a 75%);
+    background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0}
+
+  /* signal-bars glyph rendered inside the Auto-quality dropdown (left); chevron stays right */
+  .setting-row select.sel-signal{padding-left:42px;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='14' viewBox='0 0 16 14'%3E%3Crect x='0' y='9' width='3' height='5' rx='1' fill='%232ecc71'/%3E%3Crect x='5' y='5' width='3' height='9' rx='1' fill='%232ecc71'/%3E%3Crect x='11' y='1' width='3' height='13' rx='1' fill='%232ecc71'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23A9A8B2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat,no-repeat;
+    background-position:left 13px center,right 13px center}
+
+  /* info note (network usage, etc.) */
+  .set-note{display:flex;gap:9px;align-items:flex-start;padding:14px 0 6px;
+    font-size:13px;line-height:1.5;color:var(--text-muted)}
+  .set-note .note-ic{flex:none;width:16px;height:16px;margin-top:1px;color:var(--accent);opacity:.9}
+
+  /* circular clock/progress ring beside the popup-duration select */
+  .clock-ring{--p:58;width:34px;height:34px;border-radius:50%;flex:none;position:relative;
+    background:conic-gradient(var(--accent) calc(var(--p)*1%),rgba(255,255,255,.13) 0)}
+  .clock-ring::before{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--bg-3)}
+  .clock-ring::after{content:"";position:absolute;left:50%;top:50%;width:2px;height:9px;border-radius:1px;
+    background:var(--accent);transform-origin:50% 100%;
+    transform:translate(-50%,-100%) rotate(calc(var(--p)*3.6deg))}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(3px)}
+  .overlay.open{display:flex}
+  /* ============================================================ *
+   *  DETAIL MODAL — cinematic redesign (all .m- prefixed, real tokens).
+   *  Episode-grid rules are SCOPED TO #epList so the shared in-player
+   *  .vp-eppanel-list .ep-row stays a compact list, not 16:9 cards.
+   * ============================================================ */
+  /* shell: widen the box; hero + body scroll as one inner pane */
+  .modal{width:min(1180px,100%);max-height:92vh;background:var(--bg-2);border:1px solid var(--border);
+    border-radius:0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 90px rgba(0,0,0,.6);
+    transform:translateY(40px);opacity:0;transition:.4s cubic-bezier(.2,.8,.2,1);position:relative}
+  .overlay.open .modal{transform:none;opacity:1}
+  /* scroll the hero+body as one pane, but hide the scrollbar (scroll still works) */
+  .m-scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;-ms-overflow-style:none}
+  .m-scroll::-webkit-scrollbar{width:0;height:0;display:none}
+
+  /* glass-disc control family — mute / close / + share one look */
+  .m-disc{display:grid;place-items:center;border-radius:50%;background:rgba(13,12,22,.55);
+    border:1px solid rgba(255,255,255,.32);color:#fff;backdrop-filter:blur(6px);cursor:pointer;
+    transition:border-color .2s,background .2s,color .2s}
+  .m-disc:hover{border-color:#fff;background:rgba(30,28,46,.7);color:var(--accent-h)}
+
+  /* HERO */
+  .m-hero{position:relative;width:100%;aspect-ratio:16/9;max-height:56vh;background:var(--bg-3);overflow:hidden;flex:0 0 auto}
+  /* #mPoster repurposed as the media bg — neutralise the grid .poster hover/lift/border */
+  .m-hero-bg{position:absolute!important;inset:0;width:100%;height:100%;border:0;border-radius:0;cursor:default;
+    animation:heroKen 12s ease-out forwards;transform-origin:50% 42%;transition:opacity 1.1s cubic-bezier(.4,0,.2,1)}
+  .m-hero-bg:hover{transform:none;box-shadow:none;border-color:transparent}
+  .m-hero-bg .art{position:absolute;inset:0;padding:0}
+  .m-hero-bg .art img,.m-hero-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  /* ambient placeholder = the portrait grid poster, blurred+dimmed so it reads as backdrop art
+     (never a stretched poster); the real landscape backdrop crossfades in over it on load */
+  .m-hero-bg .art img.m-ambient{filter:blur(28px) brightness(.45) saturate(1.1);transform:scale(1.15)}
+  .m-hero-bg .art img.m-backdrop{opacity:0;transition:opacity .55s ease}
+  .m-hero-bg .art img.m-backdrop.rdy{opacity:1}
+  .m-hero-trailer-slot{position:absolute;inset:0;z-index:1}
+  /* scale the embed up + center it so YouTube's top title bar / chrome is cropped outside
+     the 16:9 hero (the slot is overflow:hidden). Keeps the muted trailer chrome-free. */
+  .m-hero-trailer-slot iframe{position:absolute;top:50%;left:50%;width:100%;height:100%;border:0;
+    transform:translate(-50%,-50%) scale(1.35);transform-origin:center;
+    opacity:0;transition:opacity 1.1s cubic-bezier(.4,0,.2,1);pointer-events:none}
+  .m-hero-trailer-slot iframe.on{opacity:1}
+  .m-hero-scrim{position:absolute;inset:0;z-index:2;pointer-events:none;background:
+    linear-gradient(0deg,var(--bg-2) 2%,rgba(0,0,0,.72) 26%,rgba(0,0,0,.1) 60%,transparent 88%),
+    linear-gradient(90deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.4) 42%,transparent 75%),
+    radial-gradient(120% 90% at 82% 6%,transparent 45%,rgba(0,0,0,.5) 100%)}
+  .m-hero-inner{position:absolute;left:clamp(16px,3vw,34px);right:clamp(16px,3vw,34px);
+    bottom:clamp(14px,2.4vw,28px);z-index:3;max-width:min(74%,660px)}
+  .m-hero-inner>*{animation:heroRise .7s cubic-bezier(.2,.7,.2,1) both}
+  .m-hero-inner>.m-kicker{animation-delay:.04s}
+  .m-hero-inner>#mTitle{animation-delay:.10s}
+  .m-hero-inner>.m-meta{animation-delay:.16s}
+  .m-hero-inner>.m-genres{animation-delay:.20s}
+  .m-hero-inner>.m-hero-actions{animation-delay:.26s}
+  .modal .close.m-disc{position:absolute;top:clamp(12px,2vw,18px);right:clamp(12px,2vw,18px);
+    z-index:4;width:40px;height:40px;font-size:18px;line-height:1}
+  .m-mute{position:absolute;right:clamp(14px,2.4vw,24px);bottom:clamp(14px,2.4vw,24px);
+    z-index:4;width:40px;height:40px;font-size:16px;display:none}
+  .m-hero.has-trailer .m-mute{display:grid}
+  .m-mute[aria-pressed="false"]{border-color:var(--accent);color:var(--accent)}
+  /* the speaker glyph is geometrically centred, but its solid cone (left) outweighs the
+     thin ✕ / waves (right), so it reads as pushed left — nudge it right to optically centre */
+  .m-mute .m-mute-ic{display:flex;transform:translateX(1.5px)}
+  .m-kicker{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:12px;
+    letter-spacing:.28em;color:var(--accent);margin-bottom:12px;text-transform:uppercase}
+  .m-kicker::before{content:"";width:22px;height:1px;background:var(--accent);opacity:.7}
+  /* title: gradient-clipped display wordmark in the primary UI face;
+     the .has-logo path swaps in the TMDB title-logo exactly like the old modal did */
+  #mTitle{font-family:var(--font);font-weight:700;background:var(--grad);-webkit-background-clip:text;
+    background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    font-size:clamp(25px,3.4vw,44px);line-height:1.16;margin:0 0 12px;letter-spacing:.04em;
+    filter:drop-shadow(0 2px 22px rgba(0,0,0,.55))}
+  #mTitle.has-logo{background:none;-webkit-text-fill-color:initial;color:initial;
+    -webkit-background-clip:border-box;background-clip:border-box;filter:none;margin:0 0 12px}
+  #mTitle .title-logo{display:block;width:auto;height:clamp(40px,7vw,72px);max-width:min(100%,360px);
+    object-fit:contain;object-position:left center;filter:drop-shadow(0 2px 22px rgba(0,0,0,.55))}
+  .m-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);
+    font-size:14px;letter-spacing:.04em;color:#cfcada;margin:0 0 10px}
+  .m-meta .star{color:var(--accent)}
+  .m-meta .m-tv-ic{width:15px;height:15px;opacity:.85;margin-right:5px;vertical-align:-3px}
+  .m-genres{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+  .m-genres .chip{border:1px solid rgba(255,255,255,.22);border-radius:3px;padding:2px 9px;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;color:#ded9ec;white-space:nowrap}
+  .m-hero-actions{display:flex;align-items:center;gap:12px}
+  .m-hero-actions .hero-play{padding:11px 24px;font-size:15px}
+  .m-hero-actions .hero-add{width:44px;height:44px;font-size:20px}
+
+  /* BODY GRID */
+  .m-body{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:clamp(20px,3vw,34px);padding:clamp(20px,3vw,32px)}
+  .m-main{min-width:0;display:flex;flex-direction:column;gap:26px}
+  .m-tagline{font-style:italic;color:var(--accent);font-size:15px;line-height:1.5;margin:0 0 -12px}
+  .m-plot{font-size:16px;color:var(--text-muted);line-height:1.65;max-width:64ch;margin:0}
+
+  /* shared section-label spine + ka (no-caps) guard */
+  .m-rail-label{font-family:var(--font-mono);font-size:13px;letter-spacing:.2em;color:var(--text-muted);
+    text-transform:uppercase;display:flex;align-items:center;gap:12px;margin:0 0 14px}
+  .m-rail-label::after{content:"";flex:1;height:1px;background:var(--border)}
+  :root[data-lang="ka"] .m-rail-label,:root[data-lang="ka"] .m-kicker{text-transform:none;letter-spacing:.12em;color:var(--accent)}
+
+  /* STREAMS rail head: label + lang dropdown on one row (wide screens) */
+  .m-streams .m-rail-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+  .m-streams .m-rail-head .m-rail-label{margin:0;flex:1 1 auto}
+  .m-streams .m-rail-head .lang-select{margin:0;flex:0 0 auto}
+
+  /* EPISODE CARD GRID — SCOPED TO #epList ONLY (in-player .ep-row untouched) */
+  #epList.ep-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;
+    max-height:none;overflow:visible;padding:0}
+  #epList.ep-grid .ep-row{display:block;position:relative;border:1px solid var(--border);border-radius:8px;
+    overflow:hidden;background:var(--bg-3);cursor:pointer;text-align:left;padding:0;
+    transition:border-color .2s,box-shadow .2s,transform .2s cubic-bezier(.2,.7,.2,1)}
+  #epList.ep-grid .ep-row:hover{border-color:rgba(var(--accent-rgb),.5)}
+  #epList.ep-grid .ep-row.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 8px 26px rgba(0,0,0,.4)}
+  #epList.ep-grid .ep-still{position:relative;aspect-ratio:16/9;overflow:hidden;display:block;background:var(--bg-3)}
+  #epList.ep-grid .ep-still img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+  #epList.ep-grid .ep-row:hover .ep-still img{transform:scale(1.05)}
+  #epList.ep-grid .ep-row.on .ep-still img{filter:brightness(1.06)}
+  #epList.ep-grid .ep-still.no-still{display:grid;place-items:center;background:linear-gradient(150deg,#000000,#160000)}
+  #epList.ep-grid .ep-still.no-still::after{content:attr(data-n);font-family:var(--font-mono);font-size:32px;color:rgb(49 0 0 / 61%)}
+  #epList.ep-grid .ep-num{position:absolute;top:8px;left:8px;z-index:2;font-family:var(--font-mono);font-size:12px;
+    letter-spacing:.06em;color:#ffffff;background:rgba(10,8,20,.62);border:1px solid var(--border);
+    padding:2px 8px;border-radius:4px;backdrop-filter:blur(4px)}
+  #epList.ep-grid .ep-row.on .ep-num{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  #epList.ep-grid .ep-body{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:18px 10px 9px;text-align:left;display:block;
+    background:linear-gradient(to top,rgba(0, 0, 0, 0),rgba(0, 0, 0, 0) 55%,transparent)}
+  #epList.ep-grid .ep-name{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;
+    font-size:12.5px;color:var(--text);line-height:1.28;white-space:normal;overflow:hidden}
+  #epList.ep-grid .ep-sub{display:block;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);
+    margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #epList.ep-grid .ep-row.on .ep-name{color:var(--highlight)}
+  #epList.ep-grid .ep-skel{aspect-ratio:16/9;border-radius:8px;border:1px solid var(--border);
+    background:linear-gradient(100deg,var(--bg-3) 30%,rgba(var(--accent-rgb),.08) 50%,var(--bg-3) 70%);
+    background-size:200% 100%;animation:mShimmer 1.2s linear infinite}
+  @keyframes mShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+  #epList.ep-grid .ep-empty{grid-column:1/-1;font-family:var(--font-mono);font-size:13px;color:var(--text-muted);padding:8px 0}
+
+  /* CASTS & CREDITS sidebar.
+     NOTE: this is an <aside>, so it inherits the global nav `aside{}` rule
+     (position:fixed;width:230px;height:100vh;display:flex;background;border-right;z-index:30).
+     Reset every one of those leaked properties so it behaves as a plain panel. */
+  .m-cast{align-self:start;position:sticky;top:0;left:auto;display:block;width:auto;height:auto;
+    min-height:0;padding:0;gap:0;background:none;border:0;z-index:auto;transform:none;transition:none}
+  /* the nav slides out via `body.nav-closed aside{transform:translateX(-100%)}` (specificity
+     0,1,2). #mCast is an <aside>, so that leak shoves it a column-width to the left — kill it
+     here at higher specificity (0,2,1) and when the nav is open too. */
+  body.nav-closed .m-cast,body .m-cast{transform:none;transition:none}
+  .m-cast-director{display:flex;align-items:center;gap:12px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+  .m-cast-director .m-avatar{width:38px;height:38px}
+  .m-cast-director .m-cd-name{font-size:14px;color:var(--text)}
+  .m-cast-director .m-cd-role{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-top:2px}
+  :root[data-lang="ka"] .m-cast-director .m-cd-role{text-transform:none;letter-spacing:.06em}
+  .m-cast-list{display:flex;flex-direction:column}
+  .m-cast-item{display:flex;align-items:center;gap:12px;padding:7px 0}
+  .m-cast-item.m-hidden{display:none}
+  .m-avatar{position:relative;width:44px;height:44px;flex:0 0 auto;border-radius:50%;overflow:hidden;border:1px solid var(--border);background:var(--bg-3)}
+  /* No-photo fallback: a branded "unknown person" silhouette logo (see avatarHTML).
+     A subtle violet-tinted ground keeps it on-theme; the glyph stays muted so a rail
+     full of unknowns reads quietly rather than shouting initials. */
+  .m-avatar.fallback{background:radial-gradient(118% 118% at 50% 16%,color-mix(in srgb,var(--accent) 16%,var(--bg-3)),var(--bg-3))}
+  .m-avatar-ph{position:absolute;inset:0;width:100%;height:100%;display:block;color:var(--text-muted)}
+  .m-avatar-ph svg{width:100%;height:100%;display:block;fill:currentColor}
+  .m-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .m-cast-body{min-width:0}
+  .m-cast-name{font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .m-cast-char{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .m-showall{display:flex;align-items:center;gap:8px;margin-top:12px;background:none;border:0;cursor:pointer;
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+  :root[data-lang="ka"] .m-showall,:root[data-lang="ka"] .m-cast-char{text-transform:none}
+  .m-showall-chev{transition:transform .2s}
+  .m-showall[aria-expanded="true"] .m-showall-chev{transform:rotate(180deg)}
+
+  /* RESPONSIVE */
+  @media(max-width:760px){
+    /* minmax(0,1fr) — a bare 1fr is minmax(auto,1fr), whose auto floor is set by the
+       widest child's min-content (~476px here); the modal then clips it via m-scroll's
+       overflow-x:hidden, cutting off the synopsis/streams. 0 lets the track shrink. */
+    .m-body{grid-template-columns:minmax(0,1fr)}
+    .m-cast{order:-1;position:static;border-bottom:1px solid var(--border);padding-bottom:22px}
+    .m-cast-list{flex-direction:row;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:6px;
+      -webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+    .m-cast-item{flex-direction:column;text-align:center;width:84px;flex:0 0 auto;scroll-snap-align:start}
+    .m-cast-item .m-avatar{width:56px;height:56px}
+    .m-cast-name,.m-cast-char{white-space:normal;line-height:1.25}
+    .m-cast.expanded .m-cast-list{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none}
+    .m-cast.expanded .m-cast-item{width:auto;min-width:78px}
+    #epList.ep-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+    .m-hero-inner{max-width:100%}
+  }
+  @media(max-width:420px){
+    .modal{border-radius:10px}
+    #epList.ep-grid{grid-template-columns:1fr 1fr}
+    .m-hero-actions .hero-play{padding:10px 18px;font-size:14px}
+    .m-hero-actions .hero-add{width:40px;height:40px}
+  }
+  @media(max-width:360px){ #epList.ep-grid{grid-template-columns:1fr} }
+
+  @media(prefers-reduced-motion:reduce){
+    .m-hero-bg{animation:none}
+    .m-hero-inner>*{animation:none}
+    #epList.ep-grid .ep-still img,#epList.ep-grid .ep-row{transition:none}
+    .m-hero-trailer-slot iframe{transition:none}
+    .modal{transition:none}
+  }
+  .demo-note{background:rgba(208,35,52,.06);border:1px solid rgba(208,35,52,.2);border-radius:6px;
+    padding:18px;font-size:17px;color:var(--text-muted);line-height:1.6}
+  .demo-note b{color:var(--accent);font-weight:400}
+  .qbadge{font-size:15px;padding:2px 8px;border-radius:3px;font-family:var(--font-mono);color:var(--ink)}
+
+  /* ---------- site footer + legal / takedown page ---------- */
+  .site-footer{border-top:1px solid var(--border);margin:0 var(--page-pad);padding:26px 0 46px;
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 22px;
+    font-size:14px;color:var(--text-muted);line-height:1.65}
+  .site-footer .sf-disclaimer{flex:1 1 360px;max-width:780px}
+  .site-footer .sf-links{display:flex;gap:20px;flex-wrap:wrap;font-family:var(--font-mono);font-size:13px;margin-left:auto}
+  .site-footer a{color:var(--text-muted);cursor:pointer;text-decoration:none;border-bottom:1px solid transparent}
+  .site-footer a:hover{color:var(--accent);border-bottom-color:rgba(var(--accent-rgb),.4)}
+
+  .legal-wrap{max-width:1300px}
+  .legal-back{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:14px;
+    color:var(--text-muted);cursor:pointer;background:none;border:0;padding:0;margin-bottom:18px}
+  .legal-back:hover{color:var(--accent)}
+  .legal-updated{font-family:var(--font-mono);font-size:13px;color:var(--text-muted);margin:-6px 0 32px}
+  .legal-section{margin-bottom:36px}
+  .legal-section h3{font-size:20px;font-weight:400;color:var(--text);margin-bottom:12px;letter-spacing:.01em}
+  .legal-section p{color:var(--text-muted);font-size:16px;line-height:1.75;margin-bottom:12px}
+  .legal-section ol{color:var(--text-muted);font-size:16px;line-height:1.7;margin:6px 0 14px;padding-left:22px}
+  .legal-section ol li{margin-bottom:8px}
+  .legal-contact{background:rgba(208,35,52,.06);border:1px solid rgba(208,35,52,.2);border-radius:6px;padding:18px}
+  .legal-contact p{margin-bottom:8px}
+  .legal-contact a{color:var(--accent);font-family:var(--font-mono);text-decoration:none}
+  .legal-contact a:hover{text-decoration:underline}
+  /* Terms & Conditions — numbered sections built on the shared .legal-section look */
+  .terms-body{counter-reset:tsec}
+  .terms-body .legal-section{scroll-margin-top:90px}
+  .terms-body .legal-section h3{counter-increment:tsec;display:flex;gap:9px;align-items:baseline}
+  .terms-body .legal-section h3::before{content:counter(tsec) ".";color:var(--accent);font-family:var(--font-mono);font-size:.82em;flex-shrink:0}
+  .terms-body .legal-section ul{color:var(--text-muted);font-size:16px;line-height:1.7;margin:6px 0 14px;padding-left:22px}
+  .terms-body .legal-section ul li{margin-bottom:8px}
+  .terms-body .legal-section ul li b,.terms-body .legal-section p b{color:var(--text);font-weight:500}
+  .terms-body a{color:var(--accent);font-family:var(--font-mono);text-decoration:none;word-break:break-word}
+  .terms-body a:hover{text-decoration:underline}
+
+  /* ---------- functional stream list (ported from streamvault) ---------- */
+  /* season + episode chooser (TV / anime) */
+  .ep-chooser{margin-bottom:20px}
+  .season-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .season-tab{font-family:var(--font-mono);font-size:13px;letter-spacing:.06em;padding:5px 12px;border-radius:4px;
+    cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:.15s;white-space:nowrap}
+  .season-tab:hover{border-color:var(--accent);color:var(--accent)}
+  .season-tab.on{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  .lang-select{position:relative;margin:0 0 14px;width:max-content;min-width:210px;font-family:var(--font-mono)}
+  .lang-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;
+    font-family:var(--font-mono);font-size:14px;letter-spacing:.04em;padding:9px 14px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--border);background:var(--bg-3);color:var(--text);transition:.15s}
+  .lang-select-trigger:hover,.lang-select.open .lang-select-trigger{border-color:var(--accent)}
+  .lang-chev{color:var(--text-muted);font-size:11px;transition:transform .15s}
+  .lang-select.open .lang-chev{transform:rotate(180deg)}
+  .lang-menu{display:none;position:absolute;z-index:30;top:calc(100% + 6px);left:0;min-width:100%;margin:0;padding:5px;
+    list-style:none;border:1px solid var(--border);border-radius:8px;background:var(--bg-3);box-shadow:0 14px 40px rgba(0,0,0,.55)}
+  .lang-select.open .lang-menu{display:block}
+  .lang-opt{font-size:14px;letter-spacing:.04em;padding:9px 13px;border-radius:6px;cursor:pointer;color:var(--text-muted);
+    white-space:nowrap;transition:.12s}
+  .lang-opt:hover{background:var(--card);color:var(--text)}
+  .lang-opt[aria-selected="true"]{background:var(--accent);color:var(--ink)}
+  /* Real SVG flags (data-URI) — Windows Chrome/Edge don't render flag emoji, so we
+     don't rely on them. 3:2 ratio, subtle ring for definition on the dark panel. */
+  .flag{display:inline-block;width:22px;height:15px;border-radius:2px;margin-right:9px;vertical-align:-2px;
+    background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  .flag-uk{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 2'><rect width='3' height='2' fill='%23FFD500'/><rect width='3' height='1' fill='%230057B7'/></svg>")}
+  .flag-ru{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 6'><rect width='9' height='6' fill='%23fff'/><rect y='2' width='9' height='2' fill='%230039A6'/><rect y='4' width='9' height='2' fill='%23D52B1E'/></svg>")}
+  .flag-ka{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 200'><rect width='300' height='200' fill='%23fff'/><g fill='%23ff0000'><rect x='130' width='40' height='200'/><rect y='80' width='300' height='40'/><rect x='55' y='30' width='20' height='8'/><rect x='61' y='24' width='8' height='20'/><rect x='225' y='30' width='20' height='8'/><rect x='231' y='24' width='8' height='20'/><rect x='55' y='162' width='20' height='8'/><rect x='61' y='156' width='8' height='20'/><rect x='225' y='162' width='20' height='8'/><rect x='231' y='156' width='8' height='20'/></g></svg>")}
+  .flag-en{background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'><clipPath id='a'><path d='M0 0v30h60V0z'/></clipPath><clipPath id='b'><path d='M30 15h30v15zv15H0zH0V0zV0h30z'/></clipPath><g clip-path='url(%23a)'><path d='M0 0v30h60V0z' fill='%23012169'/><path d='M0 0l60 30m0-30L0 30' stroke='%23fff' stroke-width='6'/><path d='M0 0l60 30m0-30L0 30' clip-path='url(%23b)' stroke='%23C8102E' stroke-width='4'/><path d='M30 0v30M0 15h60' stroke='%23fff' stroke-width='10'/><path d='M30 0v30M0 15h60' stroke='%23C8102E' stroke-width='6'/></g></svg>")}
+  .lang-empty{font-size:16px;color:var(--text-muted);padding:18px 4px;line-height:1.5}
+  /* Catalog-only / empty-state notice styling (reused by renderCatalogOnly) */
+  .streams-locked{background:rgba(208,35,52,.05);border:1px solid rgba(208,35,52,.18);
+    border-radius:8px;padding:22px 22px;text-align:center}
+  .streams-locked .sl-ico{font-size:30px;line-height:1;margin-bottom:10px}
+  .streams-locked .sl-title{font-size:18px;color:var(--text);letter-spacing:.04em}
+  .streams-locked .sl-sub{font-size:15px;color:var(--text-muted);margin:8px 0 16px;line-height:1.55}
+  .streams-locked .sl-btn{background:var(--accent);color:var(--ink);border:none;border-radius:5px;
+    padding:11px 22px;font-family:var(--font-mono);font-size:14px;letter-spacing:.1em;cursor:pointer;transition:.2s}
+  .streams-locked .sl-btn:hover{background:var(--accent-h)}
+  .ep-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px}
+  .ep-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--border);
+    border-radius:4px;background:var(--card);cursor:pointer;transition:border-color .15s,background .15s;text-align:left;width:100%}
+  .ep-row:hover{border-color:rgba(208,35,52,.35);background:rgba(208,35,52,.05)}
+  .ep-row.on{border-color:var(--accent);background:rgba(208,35,52,.1)}
+  .ep-num{font-family:var(--font-mono);font-size:13px;color:var(--accent);flex-shrink:0;min-width:38px}
+  .ep-body{flex:1;min-width:0}
+  .ep-name{font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ep-sub{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ep-loading{font-family:var(--font-mono);font-size:13px;color:var(--text-muted);padding:8px 0}
+  .stream-source-label{font-family:var(--font-mono);font-size:13px;color:var(--text-muted);
+    letter-spacing:.15em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .stream-source-label::after{content:"";flex:1;height:1px;background:var(--border)}
+  .stream-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);
+    border-radius:4px;margin-bottom:8px;background:var(--card);transition:border-color .15s}
+  .stream-row:hover{border-color:rgba(208,35,52,.2)}
+  .quality-badge{font-family:var(--font-mono);font-size:13px;font-weight:500;padding:3px 8px;border-radius:3px;flex-shrink:0}
+  .q-4k{background:rgba(208,35,52,.15);color:var(--accent)}
+  .q-1080{background:rgba(240,240,240,.08);color:#ccc}
+  .q-720{background:rgba(255,255,255,.04);color:var(--text-muted)}
+  .stream-info{flex:1;min-width:0}
+  .stream-title{font-size:16px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stream-detail{font-family:var(--font-mono);font-size:13px;color:var(--text-muted);margin-top:2px}
+  .stream-actions{display:flex;gap:6px;flex-shrink:0}
+  .s-btn{font-family:var(--font-mono);font-size:13px;letter-spacing:.08em;padding:5px 10px;border-radius:3px;
+    cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:.15s;white-space:nowrap}
+  .s-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(208,35,52,.08)}
+  .s-btn.play{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  .s-btn.play:hover{background:var(--accent-h)}
+  /* Each add-on-supplied stream object is drawn as one selectable box (not a "play"
+     button). Selecting it resolves that source's link. Full-width, left-aligned. */
+  .addon-stream{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    padding:10px 12px;border:1px solid var(--border);border-radius:4px;margin-bottom:8px;
+    background:var(--card);color:var(--text);cursor:pointer;transition:border-color .15s,background .15s;font:inherit}
+  .addon-stream:hover,.addon-stream:focus-visible{border-color:var(--accent);background:rgba(208,35,52,.08);outline:none}
+  .addon-stream .stream-info{flex:1;min-width:0}
+  .addon-stream .stream-title{display:block;font-size:16px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .addon-stream .stream-detail{display:block;font-family:var(--font-mono);font-size:13px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .addon-stream-chevron{flex-shrink:0;color:var(--text-muted);font-size:20px;line-height:1}
+  .addon-stream:hover .addon-stream-chevron{color:var(--accent)}
+
+  /* external player menu */
+  .ext-menu{position:absolute;right:0;bottom:calc(100% + 6px);background:#16131f;border:1px solid var(--border);
+    border-radius:4px;padding:6px;min-width:180px;z-index:100;opacity:0;pointer-events:none;transform:translateY(4px);transition:.15s}
+  .ext-menu.open{opacity:1;pointer-events:all;transform:translateY(0)}
+  .ext-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:3px;cursor:pointer;transition:background .1s}
+  .ext-item:hover{background:var(--card)}
+  .ext-icon{font-size:16px;width:20px;text-align:center}
+  .ext-name{font-size:16px;color:var(--text)}
+  .ext-sub{font-family:var(--font-mono);font-size:13px;color:var(--text-muted)}
+
+  .spinner{width:10px;height:10px;border:1.5px solid rgba(208,35,52,.3);border-top-color:var(--accent);
+    border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- premium video player ---------- */
+  .vp-overlay{position:fixed;inset:0;background:#000;z-index:3000;opacity:0;pointer-events:none;
+    overflow:hidden;transition:opacity .35s ease;font-family:var(--font)}
+    /* overflow:hidden clips the episode panel parked off-screen at translateX(100%);
+       without it that fixed-overlay child extends the page's horizontal scroll width
+       (body{overflow-x:hidden} can't clip a position:fixed descendant) */
+  .vp-overlay.open{opacity:1;pointer-events:all}
+  .vp-overlay video{position:absolute;inset:0;width:100%;height:100%;background:#000;object-fit:contain}
+  /* picture-enhance: an animated film-grain layer over the video image. Doesn't add real detail
+     (impossible client-side) — it dithers away banding + masks macroblocking on low-bitrate streams
+     so they read sharper. display:none when off so it costs zero; opacity is driven by --grain (set
+     from the intensity slider). Sits above the video image (z1) but below gestures(z2)/loading(z3)/UI.
+     overlay blend leaves the black letterbox bars untouched (it only lifts mid-tones). */
+  .vp-grain{position:absolute;inset:0;z-index:1;pointer-events:none;display:none;opacity:var(--grain,0);
+    mix-blend-mode:overlay;background-size:160px 160px;will-change:background-position;
+    animation:vpGrain .55s steps(4) infinite;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E")}
+  .vp-overlay.enhance-on .vp-grain{display:block}
+  @keyframes vpGrain{0%{background-position:0 0}20%{background-position:-30px 10px}40%{background-position:20px -25px}60%{background-position:-15px 30px}80%{background-position:25px 15px}100%{background-position:0 0}}
+  @media (prefers-reduced-motion:reduce){.vp-grain{animation:none}}
+  /* enhance intensity slider (lives in the gear menu's Enhance section) */
+  .vp-enh-slider{display:flex;align-items:center;gap:10px;padding:4px 12px 10px}
+  .vp-enh-slider.off{opacity:.4}
+  .vp-enh-slider input[type=range]{flex:1;accent-color:var(--accent);height:4px;cursor:pointer}
+  .vp-enh-val{font-size:12px;color:rgba(255,255,255,.6);min-width:36px;text-align:right;font-variant-numeric:tabular-nums}
+  .vp-overlay.hide-ui{cursor:none}
+  /* auto-hide fades the chrome PER-SECTION rather than the whole .vp-ui — an opacity:0
+     on the shared parent creates a stacking context the contextual Skip / Next button
+     (a sibling of the bars) can't escape, so it would vanish with the controls. Fading
+     the bars individually keeps that vidking-style floating prompt up and clickable. */
+  .vp-overlay.hide-ui .vp-top,.vp-overlay.hide-ui .vp-bottom,
+  .vp-overlay.hide-ui .vp-center{opacity:0;pointer-events:none}
+
+  /* loading / status overlay */
+  .vp-loading{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+    gap:18px;text-align:center;z-index:3;background:radial-gradient(ellipse at center,rgba(20,18,30,.6),rgba(0,0,0,.85))}
+  .vp-loading.show{display:flex}
+  .vp-loading .ring{width:54px;height:54px;border:2.5px solid rgba(208,35,52,.15);border-top-color:var(--accent);
+    border-radius:50%;animation:spin .9s linear infinite}
+  .vp-loading .lt{font-size:16px;color:var(--text);font-weight:400;max-width:460px;padding:0 20px;line-height:1.5}
+  .vp-loading .ls{font-family:var(--font-mono);font-size:16px;color:var(--text-muted);max-width:460px;padding:0 20px;line-height:1.6}
+
+  /* control layer */
+  .vp-ui{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;justify-content:space-between;
+    opacity:1;transition:opacity .25s ease;pointer-events:none}
+  /* only capture pointer events while the player is actually open — otherwise the
+     invisible (opacity:0) control bars would intercept clicks on the real topbar.
+     NOTE: .vp-menu is deliberately NOT listed here — it would force pointer-events:auto on
+     the CLOSED (opacity:0) dropdown, whose 264px box floats over the progress bar and would
+     eat scrub clicks. Its own .vp-menu / .vp-menu.open rules gate pointer-events correctly. */
+  .vp-overlay.open .vp-top,.vp-overlay.open .vp-bottom,
+  .vp-overlay.open .vp-center,
+  .vp-overlay.open .vp-skip,.vp-overlay.open .vp-eppanel{pointer-events:auto}
+  .vp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 26px;
+    background:linear-gradient(180deg,rgba(0,0,0,.7),transparent);transition:opacity .25s ease}
+  .vp-title{font-family:var(--font);font-size:16px;font-weight:700;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.6);line-height:1.3}
+  .vp-top-right{display:flex;align-items:center;gap:14px;flex-shrink:0}
+  .vp-status{font-family:var(--font-mono);font-size:15px;color:var(--accent);display:flex;align-items:center;gap:6px;white-space:nowrap}
+
+  /* center play / buffering */
+  .vp-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;
+    border:none;background:rgba(11,10,18,.55);backdrop-filter:blur(6px);color:#fff;font-size:30px;cursor:pointer;
+    display:grid;place-items:center;transition:transform .2s,background .2s,opacity .2s;z-index:1;
+    box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .vp-center:hover{transform:translate(-50%,-50%) scale(1.08);background:rgba(208,35,52,.92);color:var(--ink)}
+  .vp-center.hidden{opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(.7)}
+  .vp-center .ring{position:absolute;width:76px;height:76px;border:2.5px solid rgba(255,255,255,.18);
+    border-top-color:var(--accent);border-radius:50%;animation:spin .9s linear infinite;display:none}
+  .vp-center.buffering .ring{display:block}
+  .vp-center.buffering .ic{display:none}
+
+  /* bottom controls */
+  .vp-bottom{padding:10px 24px 18px;background:linear-gradient(0deg,rgba(0,0,0,.82),rgba(0,0,0,.4) 60%,transparent);transition:opacity .25s ease}
+  .vp-progress{position:relative;padding:10px 0;cursor:pointer}
+  .vp-bar{position:relative;height:4px;border-radius:3px;background:rgba(255,255,255,.18);transition:height .15s}
+  .vp-progress:hover .vp-bar{height:6px}
+  .vp-buffered{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:rgba(255,255,255,.28);width:0}
+  .vp-played{position:absolute;left:0;top:0;bottom:0;border-radius:3px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-h));width:0}
+  .vp-thumb{position:absolute;top:50%;transform:translate(-50%,-50%) scale(0);left:0;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 0 10px rgba(208,35,52,.7);transition:transform .15s}
+  .vp-progress:hover .vp-thumb{transform:translate(-50%,-50%) scale(1)}
+  .vp-tooltip{position:absolute;bottom:24px;transform:translateX(-50%);background:#16131f;border:1px solid var(--border);
+    color:#fff;font-family:var(--font-mono);font-size:15px;padding:3px 7px;border-radius:4px;opacity:0;
+    pointer-events:none;transition:opacity .12s;white-space:nowrap}
+  .vp-progress:hover .vp-tooltip{opacity:1}
+
+  .vp-controls{display:flex;align-items:center;gap:8px;margin-top:4px}
+  .vp-icon{background:none;border:none;color:#e8e8e8;font-size:17px;cursor:pointer;padding:7px;border-radius:6px;
+    line-height:1;transition:.15s;display:flex;align-items:center;justify-content:center;min-width:34px;height:34px}
+  .vp-icon:hover{background:rgba(255,255,255,.12);color:#fff}
+  .vp-icon.active{color:var(--accent)}
+  .vp-icon.cc{font-size:16px;font-weight:600;letter-spacing:.04em;border:1.5px solid currentColor;min-width:auto;padding:3px 6px;height:26px}
+  .vp-spacer{flex:1}
+  .vp-time{font-family:var(--font-mono);font-size:16px;color:#cfcfcf;padding:0 8px;white-space:nowrap}
+  .vp-time #vpDur{color:var(--text-muted)}
+  .vp-vol{display:flex;align-items:center;gap:2px}
+  .vp-vol-slider{width:0;opacity:0;transition:width .2s,opacity .2s;appearance:none;height:4px;border-radius:3px;
+    background:rgba(255,255,255,.25);outline:none;cursor:pointer}
+  .vp-vol:hover .vp-vol-slider{width:74px;opacity:1;margin-left:4px}
+  .vp-vol-slider::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;cursor:pointer}
+
+  /* settings menu */
+  .vp-menu-wrap{position:relative}
+  .vp-menu{position:absolute;bottom:calc(100% + 12px);right:0;width:264px;max-height:72vh;overflow-y:auto;
+    overscroll-behavior:contain;
+    background:rgb(0, 0, 0);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:14px;
+    padding:6px;opacity:0;pointer-events:none;transform:translateY(8px) scale(.98);transform-origin:bottom right;
+    transition:.18s cubic-bezier(.2,.8,.2,1);box-shadow:0 24px 70px rgba(0,0,0,.6);z-index:6}
+  .vp-menu.open{opacity:1;pointer-events:all;transform:none}
+  /* thin, on-brand scrollbar for the (often long) subtitle/audio list */
+  .vp-menu::-webkit-scrollbar{width:8px}
+  .vp-menu::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+  .vp-menu::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.24);background-clip:padding-box}
+  .vp-menu{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+  /* accordion sections — each collapses behind a gear-icon header */
+  .vp-acc + .vp-acc{border-top:1px solid rgba(255,255,255,.06)}
+  .vp-acc-head{position:sticky;top:-6px;z-index:2;display:flex;align-items:center;gap:10px;width:100%;
+    padding:11px 10px;background:rgba(1, 1, 2, 0.99);border:none;cursor:pointer;color:#dad9e0;
+    font-family:var(--font);font-size:14px;text-align:left;border-radius:8px;transition:background .12s,color .12s}
+  .vp-acc-head:hover{background:rgba(255,255,255,.06);color:#fff}
+  .vp-acc-ic{width:15px;height:15px;flex-shrink:0;color:var(--text-muted);transition:transform .25s cubic-bezier(.2,.8,.2,1),color .15s}
+  .vp-acc.open > .vp-acc-head .vp-acc-ic{color:var(--accent);transform:rotate(90deg)}
+  .vp-acc.open > .vp-acc-head{color:#fff}
+  .vp-acc-label{font-weight:600;letter-spacing:.01em}
+  .vp-acc-val{margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--text-muted);
+    max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vp-acc.open > .vp-acc-head .vp-acc-val{color:var(--accent)}
+  .vp-acc-body{display:none;padding:2px 0 8px}
+  .vp-acc.open > .vp-acc-body{display:block}
+  .vp-opt{display:flex;align-items:center;gap:9px;padding:7px 10px 7px 16px;border-radius:8px;font-size:14px;line-height:1.2;
+    color:#cfcdd6;cursor:pointer;transition:background .12s,color .12s}
+  .vp-opt:hover{background:rgba(255,255,255,.07);color:#fff}
+  .vp-opt .ck{width:13px;color:var(--accent);flex-shrink:0;font-size:13px;text-align:center}
+  .vp-opt.on{color:#fff;font-weight:600}
+  .vp-opt .sub{margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--text-muted)}
+  .vp-opt .vp-instant{display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:10px;font-weight:700;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:rgba(var(--accent-rgb),.12);
+    border:1px solid rgba(var(--accent-rgb),.38);border-radius:4px;padding:2px 6px;line-height:1;flex-shrink:0}
+  .vp-opt .vp-instant svg{width:9px;height:9px;fill:currentColor}
+  .vp-speeds{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:2px 14px 6px}
+  .vp-speed{font-family:var(--font-mono);font-size:13px;padding:7px 0;border-radius:8px;cursor:pointer;text-align:center;
+    border:1px solid var(--border);color:var(--text-muted);background:none;transition:.15s}
+  .vp-speed:hover{border-color:var(--accent);color:var(--accent)}
+  .vp-speed.on{background:var(--accent);color:var(--ink);border-color:var(--accent);font-weight:600}
+
+  /* subtitle cue styling */
+  #playerVideo::cue{background:rgba(0,0,0,.55);color:#fff;font-family:var(--font);
+    font-size:inherit;line-height:1.35;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+  .vp-overlay.subs-lg
+  .vp-toast{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);background:rgba(15,14,22,.95);
+    border:1px solid var(--border);color:#fff;font-family:var(--font-mono);font-size:16px;padding:8px 16px;
+    border-radius:6px;z-index:7;opacity:0;transition:opacity .2s;pointer-events:none}
+  .vp-toast.show{opacity:1}
+
+  /* ---- mobile gesture layer (touch only; enabled by JS via .gestures-on) ---- */
+  /* surface sits above the video (z2), below .vp-loading (z3) + .vp-ui (z4) */
+  .vp-gestures{position:absolute;inset:0;z-index:2;display:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+  .vp-overlay.gestures-on .vp-gestures{display:block}
+  .vp-gestures *{pointer-events:none}   /* only the container itself takes touches */
+  /* brightness dimmer — web can't set device brightness, so we darken the frame (0 … ~.85) */
+  .vp-bright{position:absolute;inset:0;background:#000;opacity:0;transition:opacity .08s linear}
+  /* double-tap seek ripple + side label */
+  .vp-seekpulse{position:absolute;top:0;bottom:0;width:38%;display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .25s ease}
+  .vp-seekpulse.left{left:0;border-radius:0 50% 50% 0/0 50% 50% 0}
+  .vp-seekpulse.right{right:0;border-radius:50% 0 0 50%/50% 0 0 50%}
+  .vp-seekpulse.show{opacity:1}
+  .vp-seekpulse.show .rip{animation:vpRip .5s ease-out}
+  .vp-seekpulse .rip{position:absolute;width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.22),rgba(255,255,255,0) 70%)}
+  .vp-seekpulse .lbl{position:relative;z-index:1;font-family:var(--font-mono);font-size:15px;font-weight:700;
+    color:#fff;letter-spacing:.04em;text-shadow:0 1px 8px rgba(0,0,0,.7);display:flex;align-items:center;gap:6px}
+  @keyframes vpRip{0%{transform:scale(.4);opacity:0}30%{opacity:1}100%{transform:scale(1.25);opacity:0}}
+  /* vertical-drag HUD (volume / brightness) */
+  .vp-vhud{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:12px;
+    background:rgba(15,14,22,.9);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px 18px;
+    opacity:0;transition:opacity .15s ease;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .vp-vhud.show{opacity:1}
+  .vp-vhud .ic{font-size:22px;line-height:1;color:#fff;display:flex;align-items:center}
+  .vp-vhud .ic svg{display:block}
+  .vp-vhud .bar{position:relative;width:120px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);overflow:hidden}
+  .vp-vhud .bar i{position:absolute;left:0;top:0;bottom:0;width:50%;border-radius:3px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-h))}
+
+  /* episode label under the player title (series) */
+  .vp-subtitle{font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;color:#a9a9a9;
+    margin-top:4px;text-shadow:0 1px 6px rgba(0,0,0,.6);display:none}
+
+  /* skip intro / next episode — floating contextual button (vidking-style).
+     Sits bottom-right, clearing the control bar via --vp-skip-bottom so the same rule
+     re-targets on every breakpoint (the bar grows taller as controls wrap on phones). */
+  .vp-skip{--vp-skip-bottom:112px;
+    position:absolute;right:32px;bottom:var(--vp-skip-bottom);z-index:5;display:none;
+    white-space:nowrap;align-items:center;justify-content:center;
+    background:rgba(15,14,22,.78);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.24);
+    color:#fff;font-family:var(--font-mono);font-size:15px;letter-spacing:.04em;padding:11px 19px;border-radius:9px;
+    cursor:pointer;opacity:0;transform:translateY(10px);
+    transition:transform .18s cubic-bezier(.2,.8,.2,1),background .18s,color .18s,opacity .25s;
+    box-shadow:0 10px 36px rgba(0,0,0,.5)}
+  .vp-skip.show{display:flex;opacity:1;transform:none}
+  .vp-skip:hover{background:var(--accent);color:var(--ink);border-color:var(--accent);transform:translateY(-1px)}
+
+  /* in-player episodes panel — slides in from the right */
+  .vp-eppanel{position:absolute;top:0;right:0;bottom:0;width:min(384px,86vw);z-index:8;
+    background:linear-gradient(180deg,rgba(7,7,7,.985),rgba(0,0,0,.99));backdrop-filter:blur(20px);
+    border-left:1px solid var(--border);box-shadow:-28px 0 80px rgba(0,0,0,.7);
+    transform:translateX(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);
+    display:flex;flex-direction:column;padding:20px 16px 16px}
+  .vp-eppanel.open{transform:none}
+  .vp-eppanel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding:0 4px}
+  .vp-eppanel-head .ttl{font-size:15px;color:#fff;font-weight:500;line-height:1.3;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vp-eppanel-head .lbl{font-family:var(--font-mono);font-size:12px;letter-spacing:.2em;color:var(--text-muted)}
+  .vp-eppanel-seasons{display:flex;gap:8px;flex-wrap:wrap;margin:14px 4px;max-height:96px;overflow-y:auto}
+  .vp-season-tab{font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;padding:5px 13px;border-radius:20px;
+    cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:.15s;white-space:nowrap}
+  .vp-season-tab:hover{border-color:var(--accent);color:var(--accent)}
+  .vp-season-tab.on{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  .vp-eppanel-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 4px}
+  /* in-player rows become 16:9 thumbnail + title cards. Scoped to .vp-eppanel-list so the
+     modal #epList grid and the base .ep-row list elsewhere are left untouched. */
+  /* flex:0 0 auto — the list is a column flexbox; without it 20+ rows get crushed to fit the
+     panel height, squashing the thumbnails and clipping the titles. Let the list scroll instead. */
+  .vp-eppanel-list .ep-row{position:relative;flex:0 0 auto;align-items:stretch;gap:0;padding:0;overflow:hidden;border-radius:8px;background:var(--bg-3)}
+  .vp-eppanel-list .ep-row:hover{background:rgba(var(--accent-rgb),.07)}
+  .vp-eppanel-list .ep-row.on{background:rgba(var(--accent-rgb),.12)}
+  .vp-eppanel-list .ep-still{position:relative;flex:0 0 118px;aspect-ratio:16/9;overflow:hidden;background:var(--bg-3)}
+  .vp-eppanel-list .ep-still img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    transition:transform .3s cubic-bezier(.2,.7,.2,1)}
+  .vp-eppanel-list .ep-row:hover .ep-still img{transform:scale(1.06)}
+  .vp-eppanel-list .ep-row.on .ep-still img{filter:brightness(1.07)}
+  .vp-eppanel-list .ep-still.no-still{display:grid;place-items:center;background:linear-gradient(150deg,#140202,#000000)}
+  .vp-eppanel-list .ep-still.no-still::after{content:attr(data-n);font-family:var(--font-mono);font-size:18px;color:rgba(var(--accent-rgb),.4)}
+  .vp-eppanel-list .ep-num{position:absolute;top:5px;left:5px;z-index:2;flex:none;min-width:0;
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:#fff;
+    background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.14);padding:1px 6px;border-radius:4px;backdrop-filter:blur(4px)}
+  .vp-eppanel-list .ep-row.on .ep-num{color:var(--ink);background:var(--accent);border-color:var(--accent)}
+  .vp-eppanel-list .ep-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:7px 11px}
+  .vp-eppanel-list .ep-name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;
+    -webkit-box-orient:vertical;overflow:hidden;font-size:14px;line-height:1.3}
+  .vp-eppanel-list .ep-row.on .ep-name{color:var(--highlight)}
+  @media(max-width:640px){
+    /* phones: control bar is taller (time gets its own line + the icon row can wrap),
+       so lift the button higher to clear it; tighten the chip itself */
+    .vp-skip{--vp-skip-bottom:132px;right:16px;font-size:13px;padding:9px 15px;max-width:calc(100vw - 32px)}
+    .vp-eppanel{padding:16px 12px 12px}
+  }
+
+  /* ---------- responsive ---------- */
+  @media(max-width:860px){
+    main{margin-left:0!important}
+    aside{box-shadow:0 0 60px rgba(0,0,0,.7)}
+    aside .aside-close{display:block}
+    header{padding:12px 14px;gap:10px}
+    .page{--page-pad:14px;--page-top:20px;--rail-fade:36px;padding:var(--page-top) var(--page-pad) 80px}
+    .section-title{padding-top:34px}
+    .set-card-head{padding:15px 16px}
+    .set-card-body{padding:0 16px 4px}
+    .setting-row{flex-wrap:wrap;gap:10px}
+    .setting-row label{flex:1 1 100%}
+    .setting-row select,.setting-row input{flex:1 1 100%;max-width:none}
+    .setting-row .sw{margin-left:auto}
+    .setting-row input[type=color]{flex:0 0 auto;width:100%}
+    .install-box{flex-wrap:wrap}
+    .install-box button{width:100%}
+  }
+  @media(max-width:640px){
+    .enter{display:none}                          /* search applies live + filters apply on change */
+    .grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:13px}
+    .fp-row{flex-wrap:wrap}
+    .fp-row input[type=range]{width:160px}
+    .stream-row{flex-wrap:wrap}
+    .stream-actions{flex-wrap:wrap;justify-content:flex-end;width:100%}
+    .s-btn,.minibtn{padding:8px 12px}
+    .vp-controls{gap:3px}
+    .vp-icon{min-width:40px;height:40px}
+    .vignette{opacity:.55}
+    .section-title{padding-top:24px}
+    /* movie cards track desktop proportions (2:3), only slightly smaller than the 160×240
+       desktop cover so larger phones still feel cinematic (user request) */
+    .strip-row{gap:12px}
+    /* .pcard is a fixed-width wrapper whose `.pcard .poster{width:100%}` outranks the
+       .poster width — so resize the wrapper too, or the cover keeps the 160px desktop
+       width against the shorter mobile height and the 2:3 ratio shears */
+    .poster{width:156px;height:234px}
+    .pcard{width:156px}
+  }
+  @media(max-width:420px){
+    .grid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:11px}
+    .poster{width:144px;height:216px}
+    .pcard{width:144px}
+    .poster .ov{padding:10px}
+  }
+
+  /* ---------- a11y utility ---------- */
+  .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  /* the [hidden] attribute must win over explicit display rules (e.g. .spinner) */
+  [hidden]{display:none!important}
+
+  /* ---------- auth: topbar control ---------- */
+  /* SIGN IN crowds the single mobile row alongside the logo, language toggle and search
+     magnifier — trim its horizontal bulk + type on phones. #topbar prefix beats the
+     #topbar .signin-btn{padding:11px 18px} rule in the max-width:900px block. The 44px
+     min-height from the (pointer:coarse) block still holds the tap target. */
+  @media (max-width:520px){ #topbar .signin-btn{padding:11px 14px;font-size:13px;letter-spacing:.05em} }
+  @media (max-width:420px){ #topbar .signin-btn{padding:10px 12px;font-size:12px;letter-spacing:.03em} }
+  .auth-control{display:flex;align-items:center;flex-shrink:0;margin-left:2px}
+  /* sign-in: rounded pill with a dim→bright crimson gradient hairline (matches the search bar) */
+  .signin-btn{background:var(--accent);border:none;border-radius:5px;color:#fff;letter-spacing:.08em;
+    font-weight:700;font-size:14px;cursor:pointer;padding:9px 20px;transition:.2s}
+  .signin-btn:hover{background:var(--accent-h)}
+  /* signed-in: a compact avatar chip — email stays hidden until the dropdown opens.
+     When authed, the redundant nav person-icon collapses so this is the only account control. */
+  body.authed #userIcon{display:none}
+  .user-menu{position:relative;display:flex;align-items:center}
+  /* no surrounding pill — the avatar IS the button (a boxed circle looked clunky) */
+  .user-chip{display:flex;align-items:center;gap:5px;border:0;background:none;border-radius:999px;
+    padding:3px 2px 3px 3px;cursor:pointer;transition:.2s;-webkit-tap-highlight-color:transparent}
+  .user-chip:focus-visible{outline:2px solid rgba(177,18,38,.75);outline-offset:2px}
+  /* avatar mirrors the EN|GE language toggle: flat crimson fill, square 4px corners,
+     same hairline border and mono lettering — a matching segmented-control look, not a gem */
+  .user-chip .u-avatar{width:32px;height:30px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-size:13px;font-weight:700;line-height:1;flex-shrink:0;text-transform:uppercase;
+    color:#fff;letter-spacing:.06em;background:var(--crimson-bright);
+    border:1px solid rgba(255,255,255,.22);
+    transition:background .2s,border-color .2s,transform .2s}
+  .user-chip:hover .u-avatar,.user-menu.open .user-chip .u-avatar{border-color:rgba(255,255,255,.55);
+    background:var(--accent-h)}
+  .user-chip:active .u-avatar{transform:scale(.95)}
+  .user-chip .u-caret{color:rgba(237,230,221,.5);font-size:9px;line-height:1;transition:transform .2s,color .2s}
+  .user-chip:hover .u-caret,.user-menu.open .user-chip .u-caret{color:#EDE6DD}
+  .user-menu.open .user-chip .u-caret{transform:rotate(180deg)}
+  .user-dropdown{position:absolute;top:calc(100% + 9px);right:0;min-width:212px;z-index:50;
+    background:#15110f;border:1px solid rgba(255,255,255,.12);border-radius:11px;padding:6px;
+    box-shadow:0 18px 44px rgba(0,0,0,.6);
+    opacity:0;visibility:hidden;transform:translateY(-6px);
+    transition:opacity .16s ease,transform .16s ease,visibility .16s}
+  .user-menu.open .user-dropdown{opacity:1;visibility:visible;transform:translateY(0)}
+  .user-dropdown .ud-email{display:flex;flex-direction:column;gap:3px;padding:9px 12px 11px;margin-bottom:5px;
+    border-bottom:1px solid rgba(255,255,255,.08);max-width:100%}
+  .user-dropdown .ud-email .ud-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(237,230,221,.38)}
+  .user-dropdown .ud-email .ud-addr{font-size:13.5px;color:rgba(237,230,221,.92);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .user-dropdown .ud-item{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;border:none;
+    border-radius:8px;color:rgba(237,230,221,.85);font-size:14px;padding:9px 12px;cursor:pointer;transition:.15s}
+  .user-dropdown .ud-item:hover{background:rgba(255,255,255,.08);color:#fff}
+  .user-dropdown .ud-item svg{width:17px;height:17px;flex-shrink:0;opacity:.72}
+  .user-dropdown .ud-logout{color:rgba(229,128,128,.92)}
+  .user-dropdown .ud-logout:hover{background:rgba(177,18,38,.18);color:#ff9090}
+
+  /* gated nav (Addons/Settings): when signed out, keep them visible but clearly
+     locked — dimmed with a padlock; clicking opens the sign-in dialog */
+  .nav-item .lock{display:none;margin-left:auto;font-size:16px;line-height:1;opacity:.85}
+  body:not(.authed) .nav-item.gated{color:var(--text-muted);opacity:.55}
+  body:not(.authed) .nav-item.gated:hover{opacity:.9;background:rgba(var(--accent-rgb),.05)}
+  body:not(.authed) .nav-item.gated .dot{opacity:.3}
+  body:not(.authed) .nav-item.gated .lock{display:inline-block}
+  /* admin link: only revealed once we know the signed-in user is an admin */
+  .nav-item.admin-only{display:none}
+  body.is-admin .nav-item.admin-only{display:flex}
+  .nav-item.admin-only .lock{display:inline-block;color:var(--accent)}
+
+  /* ---------- auth: full-screen overlay ---------- */
+  .auth-overlay{position:fixed;inset:0;z-index:2500;display:none;align-items:center;justify-content:center;
+    padding:24px;background:rgba(16,16,22,.86);backdrop-filter:blur(8px)}
+  .auth-overlay.open{display:flex;animation:authfade .3s ease-out}
+  @keyframes authfade{from{opacity:0}to{opacity:1}}
+  .auth-card{position:relative;width:min(420px,100%);background:linear-gradient(180deg,#161419,#070707);
+    border:1px solid var(--border);border-radius:10px;padding:38px 34px 28px;
+    box-shadow:0 30px 90px rgba(0,0,0,.7),0 0 0 1px rgba(208,35,52,.06);
+    transform:translateY(18px) scale(.985);opacity:0;transition:.32s cubic-bezier(.2,.8,.2,1)}
+  .auth-overlay.open .auth-card{transform:none;opacity:1}
+  .auth-dismiss{position:absolute;top:16px;right:18px;background:none;border:none;color:var(--text-muted);
+    font-size:18px;cursor:pointer;line-height:1;transition:.2s}
+  .auth-dismiss:hover{color:var(--accent)}
+  .auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+  .auth-logo{height:30px;width:auto;display:block;filter:drop-shadow(0 1px 5px rgba(0,0,0,.6))}
+  .auth-omega{font-size:26px;color:var(--accent);line-height:1}
+  .auth-word{font-size:19px;letter-spacing:.18em;font-weight:300}
+  .auth-word b{font-weight:500;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+  .auth-kicker{font-size:15px;letter-spacing:.12em;color:var(--text-muted);margin:2px 0 24px}
+  .auth-tabs{display:flex;gap:6px;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;
+    padding:4px;margin-bottom:22px}
+  .auth-tab{flex:1;background:none;border:none;color:var(--text-muted);font-family:var(--font-mono);
+    font-size:16px;letter-spacing:.14em;padding:9px 0;border-radius:4px;cursor:pointer;transition:.2s}
+  .auth-tab:hover{color:var(--text)}
+  .auth-tab.on{background:rgba(208,35,52,.12);color:var(--accent)}
+  .auth-field{margin-bottom:16px}
+  .auth-row{display:flex;gap:12px}
+  .auth-row .auth-field{flex:1;min-width:0}
+  /* Google sign-in block + "or" divider */
+  .auth-google{margin-bottom:6px}
+  .auth-google-btn{display:flex;justify-content:center;min-height:40px}
+  .auth-or{display:flex;align-items:center;gap:12px;color:var(--text-muted);
+    font-size:13px;letter-spacing:.2em;text-transform:uppercase;margin:16px 0 4px}
+  .auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--border)}
+  .auth-field input[type=date]{font-family:var(--font-mono);color-scheme:dark}
+  .auth-field > label{display:block;font-size:13px;letter-spacing:.2em;color:var(--text-muted);margin-bottom:7px}
+  .auth-field input{width:100%;background:var(--bg-3);border:1px solid var(--border);color:var(--text);
+    padding:12px 13px;border-radius:5px;font-family:var(--font-mono);font-size:17px;outline:none;transition:.2s}
+  .auth-field input::placeholder{color:var(--text-muted)}
+  .auth-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(208,35,52,.12)}
+  .auth-field input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(234,100,121,.1)}
+  .auth-pass-wrap{position:relative;display:flex;align-items:center}
+  .auth-pass-wrap input{padding-right:60px}
+  .auth-pass-toggle{position:absolute;right:8px;background:none;border:none;color:var(--text-muted);
+    font-size:13px;letter-spacing:.1em;cursor:pointer;padding:6px;transition:.2s}
+  .auth-pass-toggle:hover{color:var(--accent)}
+  .auth-hint{font-size:15px;color:var(--text-muted);margin-top:7px;opacity:.85}
+  .auth-field-error{font-size:16px;color:var(--danger);margin-top:7px;min-height:0;line-height:1.4}
+  .auth-field-error:empty{margin-top:0}
+  .auth-error{font-size:16px;color:var(--danger);text-align:center;min-height:0;line-height:1.5;
+    margin:2px 0 14px}
+  .auth-error:empty{margin:0}
+  .auth-submit{position:relative;width:100%;background:var(--accent);color:var(--ink);border:none;border-radius:5px;
+    padding:13px 0;font-family:var(--font-mono);font-size:16px;letter-spacing:.14em;cursor:pointer;
+    transition:.2s;display:flex;align-items:center;justify-content:center;min-height:44px}
+  .auth-submit:hover{background:var(--accent-h)}
+  .auth-submit:disabled{opacity:.7;cursor:pointer}
+  .auth-submit .spinner{border-color:rgba(10,8,20,.35);border-top-color:var(--ink);width:14px;height:14px}
+  .auth-foot{text-align:center;font-size:16px;color:var(--text-muted);margin-top:20px}
+  .auth-foot a{color:var(--accent);cursor:pointer;margin-left:5px}
+  .auth-foot a:hover{color:var(--accent-h)}
+  .auth-note{text-align:center;font-size:15px;color:var(--text-muted);opacity:.9;margin-top:14px;line-height:1.5}
+  @media(max-width:480px){ .auth-card{padding:32px 22px 24px} }
+  /* ---- direct-to-sources sheet (add-on catalog cards → add-on streams → player) ---- */
+  .sources-card{max-width:560px;width:min(560px,92vw)}
+  .sources-card #sourcesSub{margin-bottom:16px}
+  .sources-list{max-height:min(56vh,440px);overflow-y:auto;margin-top:4px}
+  .sources-list .stream-source-label:first-child{margin-top:0}
+  .addon .ic.studios{background:radial-gradient(circle at 50% 50%,rgba(var(--accent-rgb),.20),rgba(var(--accent-rgb),.05) 72%);font-size:21px}
+  /* ---- option-row checkbox list (add-on configure: catalog-row / provider pickers) ---- */
+  .optrow-list{display:flex;flex-direction:column;gap:8px;margin:6px 0 4px}
+  .optrow{display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid var(--border);
+    border-radius:6px;cursor:pointer;transition:.15s;font-size:16px;color:var(--text);user-select:none}
+  .optrow:hover{border-color:rgba(208,35,52,.35)}
+  .optrow.on{border-color:var(--accent);background:rgba(208,35,52,.08)}
+  .optrow input{accent-color:var(--accent);width:17px;height:17px;cursor:pointer}
+  .optrow-block{margin-top:20px}
+  .optrow-block.is-hidden{display:none}
+  /* ---- Official add-on configure: live "home screen" preview of which rows show ---- */
+  .cfg-preview{margin:18px 0 6px;border:1px solid var(--border);border-radius:9px;overflow:hidden;
+    background:linear-gradient(180deg,#0d0c10,#050506)}
+  .cfg-preview-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;
+    border-bottom:1px solid var(--border);background:rgba(255,255,255,.015)}
+  .cfg-preview-bar .pvdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.12)}
+  .cfg-preview-bar .pvdot.red{background:rgba(var(--accent-rgb),.55)}
+  .cfg-preview-bar .pv-label{margin-left:auto;font-family:var(--font-mono);font-size:11px;
+    letter-spacing:.16em;color:var(--text-muted);text-transform:uppercase}
+  .cfg-preview-screen{max-height:226px;overflow-y:auto;padding:13px 13px 5px}
+  .cfg-preview-row{margin-bottom:14px;animation:pvRowIn .3s cubic-bezier(.2,.8,.2,1)}
+  @keyframes pvRowIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+  .cfg-row-label{font-size:11px;letter-spacing:.13em;font-weight:500;color:var(--text);
+    margin-bottom:7px;text-transform:uppercase;display:flex;align-items:center;gap:7px;line-height:1}
+  .cfg-row-label::before{content:"";width:3px;height:11px;border-radius:2px;background:var(--accent);flex:0 0 auto}
+  .cfg-row-strip{display:flex;gap:7px;overflow:hidden}
+  .cfg-tile{flex:0 0 auto;width:42px;height:62px;border-radius:5px;border:1px solid rgba(255,255,255,.05);
+    background:linear-gradient(145deg,#1d1a23,#0d0c12);position:relative;overflow:hidden}
+  .cfg-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+    animation:pvTileIn .3s ease-out}
+  @keyframes pvTileIn{from{opacity:0}to{opacity:1}}
+  /* Upcoming preview reuses the REAL home marquee (.um-rail/.um-track/.upcoming-card).
+     Make that screen full-bleed so the rail's left/right edge-fade mask reaches the modal
+     edges like it does on home, and tall enough to show both auto-scrolling rows. */
+  .cfg-preview-screen.is-marquee{padding:13px 0 9px;max-height:280px}
+  .cfg-preview-screen.is-marquee .cfg-preview-row{margin-bottom:8px}
+  .cfg-preview-screen.is-marquee .cfg-row-label{padding-left:13px}
+  /* shrink the marquee cards for the compact preview (gap stays 14px so the seamless-loop
+     period maths in startUpcomingAnim is unchanged); rail reserves only the smaller height */
+  .cfg-preview-screen.is-marquee .um-rail{min-height:0;padding:4px 0}
+  .cfg-preview-screen.is-marquee .upcoming-card{width:132px;height:79px}
+  .cfg-preview-screen.is-marquee .upcoming-card .uc-title{font-size:10px;letter-spacing:.12em}
+  /* Studios preview mirrors the real home row: white logo plates (a scaled-down
+     .studio-card) with the same gradient, contained+--logo-scale logo, and a caption
+     that fades in on hover. */
+  .cfg-studio-row{display:flex;gap:9px;overflow-x:auto;overflow-y:hidden;padding-bottom:9px;
+    -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
+    scrollbar-width:thin;scrollbar-color:rgba(var(--accent-rgb),.55) transparent}
+  .cfg-studio-row::-webkit-scrollbar{height:6px}
+  .cfg-studio-row::-webkit-scrollbar-track{background:rgba(255,255,255,.05);border-radius:3px}
+  .cfg-studio-row::-webkit-scrollbar-thumb{background:rgba(var(--accent-rgb),.5);border-radius:3px}
+  .cfg-studio-row::-webkit-scrollbar-thumb:hover{background:rgba(var(--accent-rgb),.75)}
+  .cfg-studio-card{scroll-snap-align:start}
+  .cfg-studio-card{flex:0 0 auto;width:106px;height:63px;border-radius:8px;position:relative;overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);background:linear-gradient(160deg,#ffffff,#ecebf3);
+    display:grid;place-items:center;box-shadow:0 2px 9px rgba(0,0,0,.35);
+    transition:transform .25s cubic-bezier(.2,.7,.2,1),box-shadow .25s}
+  .cfg-studio-card:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 9px 24px rgba(208,35,52,.3)}
+  .cfg-studio-card img{width:auto;height:auto;max-width:82px;max-height:38px;object-fit:contain;
+    transform:scale(var(--logo-scale,1))}
+  .cfg-studio-card .cfg-studio-name{position:absolute;left:0;right:0;bottom:0;padding:4px 6px;text-align:center;
+    font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;color:#3a3550;
+    background:linear-gradient(180deg,transparent,rgba(255,255,255,.92));opacity:0;transition:opacity .25s}
+  .cfg-studio-card:hover .cfg-studio-name{opacity:1}
+  .cfg-preview-empty{padding:28px 16px;text-align:center;color:var(--text-muted);
+    font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;line-height:1.6}
+  @media(prefers-reduced-motion:reduce){ .cfg-preview-row{animation:none} }
+
+  /* Minow Knock — the intro display face, self-hosted (font ships weight 400; the splash asks
+     for 700 and gets faux-bold, exactly as your CodePen did). Declared inline so the face is
+     registered the instant CSS parses, letting document.fonts.load('400 …') gate the animation
+     on it. Same-origin + preloaded means it's loaded before the sting starts → no mid-zoom swap. */
+  @font-face{font-family:'Minow Knock';font-style:normal;font-weight:400;font-display:swap;
+    src:url('/assets/fonts/MinowKnock-Regular.woff2') format('woff2');}
+
+  /* ---------- intro splash — your CodePen "netflix_style" sting, used verbatim ----------
+     Your CSS is unchanged. The ONLY edit a browser forces: the Sass makelongshadow($n,$a)
+     calls are compiled to their identical literal text-shadow lists (browsers can't run
+     Sass). Your `body` rules live on the #intro overlay so they don't leak onto the page,
+     and `.txt` + @keyframes netflix_style are exactly as you wrote them. */
+  #intro{position:fixed;inset:0;z-index:2147483000;
+    background:radial-gradient(#fff,#aaa);background-size:100vw 100vh;overflow:hidden;padding-top:40vh;
+    cursor:default;pointer-events:none;
+    /* perf: own compositor layer + isolate repaints from the app behind the overlay */
+    contain:layout paint;transform:translateZ(0)}
+  #intro .txt{
+    text-align:center;
+    font-family:'Minow Knock',sans-serif;
+    font-size:12vmin;
+    font-weight:700;
+    animation:netflix_style 5.5s infinite;
+    /* start paused — JS resumes it only once the Minow Knock face is loaded, so the
+       glyph never reflows from the fallback mid-zoom (the cold-cache "skip" in incognito) */
+    animation-play-state:paused;
+    outline:none;
+    white-space:nowrap;
+    /* perf: hint the compositor so the scale() runs on the GPU and the heavy
+       text-shadow interpolation is confined to this promoted layer — no visual change */
+    will-change:transform,text-shadow,color;
+    backface-visibility:hidden}
+  #intro.play .txt{animation-play-state:running}
+
+  /* reveal curtain: a solid-black panel parked just above the viewport. On animation end
+     it slides DOWN to cover the splash; we tear down the splash + build the home behind the
+     black (so that heavy work is never visible), then it slides UP to reveal the app. */
+  #curtain{position:fixed;inset:0;z-index:2147483001;background:#000;pointer-events:none;
+    transform:translateY(-100%);will-change:transform;
+    transition:transform .6s cubic-bezier(.7,0,.15,1)}
+  #curtain.cover{transform:translateY(0)}
+  @media (prefers-reduced-motion: reduce){ #curtain{display:none!important} }
+  @keyframes netflix_style{
+    0%{text-shadow:0px 0px transparent, 2px 2px #aaa, 4px 4px #aaa, 6px 6px #aaa, 8px 8px #aaa, 10px 10px #aaa;color:#f3f3f3;transform:scale(1, 1)}
+    10%{text-shadow:0px 0px transparent, 2px 3px #aaa, 4px 6px #aaa, 6px 9px #aaa, 8px 12px #aaa, 10px 15px #aaa, 12px 18px #aaa, 14px 21px #aaa, 16px 24px #aaa, 18px 27px #aaa, 20px 30px #aaa, 22px 33px #aaa, 24px 36px #aaa, 26px 39px #aaa, 28px 42px #aaa, 30px 45px #aaa, 32px 48px #aaa, 34px 51px #aaa, 36px 54px #aaa, 38px 57px #aaa, 40px 60px #aaa, 42px 63px #aaa, 44px 66px #aaa, 46px 69px #aaa, 48px 72px #aaa, 50px 75px #aaa;color:#f3f3f3;transform:scale(3, 3)}
+    15%{color:#f3f3f3}
+    25%{color:#1a1a1a;text-shadow:none;transform:scale(2, 2)}
+    100%{opacity:1}
+    100%{opacity:100;color:#000000;transform:scale(2, 2)}
+    80%{opacity:100;color:#e90418;transform:scale(2, 2)}
+    50%{text-shadow:0px 0px transparent, 1px 1.5px #aaa, 2px 3px #aaa, 3px 4.5px #aaa, 4px 6px #aaa, 5px 7.5px #aaa;color:#e90418;transform:scale(2, 2)}
+    100%{opacity:1;color:#e90418}
+  }
+  /* motion-averse visitors skip the sting — the overlay never shows */
+  @media (prefers-reduced-motion: reduce){ #intro{display:none!important} }
+
+  /* ==========================================================================
+     MOBILE & iOS OPTIMIZATION — phone / tablet / touch refinements (2026).
+     Appended last so equal-specificity mobile rules win the cascade cleanly.
+     Everything here is gated on touch / small viewports / iOS; the desktop
+     layout (>=901px, fine pointer) is intentionally untouched. env(safe-area-*)
+     insets resolve to 0 on non-notch displays and dvh==vh where unsupported, so
+     every rule degrades safely on older browsers and on the desktop.
+     ========================================================================== */
+
+  /* global iOS hygiene: stop rotation font-inflation + the default dark
+     tap-flash (both no-ops with a desktop mouse) */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  @supports(height:100dvh){ #intro{background-size:100vw 100dvh} }
+
+  /* ---- touch ergonomics (no hover / coarse pointer) ---- */
+  @media (hover:none),(pointer:coarse){
+    body{overscroll-behavior-y:none}
+    /* a tap shouldn't leave a stuck focus ring; desktop keyboard focus keeps it,
+       and text fields keep it here for accessibility */
+    a:focus-visible,button:focus-visible,select:focus-visible,[role=button]:focus-visible,
+    [tabindex]:focus-visible,.nav-item:focus-visible,.poster:focus-visible,.topnav-link:focus-visible{outline:none}
+    input:focus-visible,textarea:focus-visible{outline:none}
+
+    /* 44px tap targets: drawer rows + close, sign-in, navigable section headers */
+    .nav-item{padding:12px 12px;min-height:44px}
+    .nav-group{gap:4px}
+    aside .aside-close{top:calc(10px + env(safe-area-inset-top,0px));right:10px;width:44px;height:44px;
+      display:flex;align-items:center;justify-content:center;font-size:20px;border-radius:10px}
+    aside .aside-close:active{background:rgba(255,255,255,.08)}
+    /* keep a comfortable tap target but don't let the 44px floor make the pill
+       TALLER than the ~36px desktop button — that bulk read as oversized on phones */
+    #topbar .signin-btn{min-height:36px}
+    .topnav-link{min-height:44px;display:flex;align-items:center}
+    .strip-title:not(.static){min-height:44px;padding-top:8px;padding-bottom:8px}
+
+    /* posters: drop the sticky hover lift/zoom that hangs after a tap on iOS */
+    .poster:hover{box-shadow:none;border-color:var(--border)}
+    .poster:hover .art img,.poster:focus-within .art img{transform:none}
+    .poster .cw-remove{padding:7px 11px}
+    .poster .cw-remove svg{width:16px;height:16px}
+    /* The hover/tap overlay is purely decorative on touch (a tap opens the modal). On iOS,
+       tapping a card sets :focus-within, which fires the .ov reveal (translateY(0)+visible)
+       and leaves the dark rgba(0,0,0,.5) panel STUCK at the card's bottom edge after the
+       modal closes — that's the persistent "black thing". Killing only the blur (previous
+       fix) didn't help because the panel's own dark background is what bleeds. Remove the
+       panel entirely on touch: it's never needed (no hover) and a tap opens the full modal. */
+    .poster .ov{display:none!important}
+    /* upcoming-card titles only reveal on hover, which never fires on touch, so the heavy
+       bottom gradient just darkens the backdrop art for no payoff — lighten it so the
+       thumbnails read crisply on phones. */
+    .upcoming-card .uc-grad{background:linear-gradient(180deg,rgba(10,8,18,0) 62%,rgba(10,8,18,.5) 100%)}
+    .strip-row{scroll-snap-type:x proximity}
+
+    /* hero dots: a transparent overlay extends the tap area without touching the
+       painted 6px bar or its fill animation */
+    .hero-dots{gap:14px}
+    .hero-dot::before{content:"";position:absolute;left:-4px;right:-4px;top:-10px;bottom:-10px}
+
+    /* upcoming marquee labels never get a hover on touch — keep them shown */
+    .upcoming-card .uc-title{opacity:1;transform:none}
+    .upcoming-card .uc-info{max-height:28px;opacity:1;transform:none}
+    .upcoming-card .uc-grad{background:linear-gradient(180deg,rgba(10,8,18,0) 8%,rgba(10,8,18,.92) 100%)}
+
+    /* detail-modal hero discs */
+    .modal .close.m-disc,.m-mute{width:46px;height:46px}
+
+    /* video player: a visible scrub handle + thumb-sized controls */
+    .vp-progress{padding:14px 0}
+    .vp-bar{height:6px}
+    .vp-thumb{width:18px;height:18px;transform:translate(-50%,-50%) scale(1)}
+    .s-btn{min-height:40px;padding:9px 14px;display:inline-flex;align-items:center}
+    .season-tab{min-height:40px;display:inline-flex;align-items:center}
+    .lang-opt{min-height:44px;display:flex;align-items:center}
+    .lang-select-trigger{min-height:44px}
+    .ext-item{min-height:44px}
+    .vp-speed{min-height:40px}
+
+    /* auth / sheet small targets */
+    .auth-dismiss{width:44px;height:44px;display:flex;align-items:center;justify-content:center;top:6px;right:6px}
+  }
+
+  /* ---- phones + tablets (<=900px): safe-area insets, dvh, iOS input-zoom ---- */
+  @media (max-width:900px){
+    /* every text field >=16px so iOS never zooms the page on focus (the collapsed
+       search input was 15px; auth fields are already 17px and keep their size) */
+    input,textarea,select,#searchInput,.search input{font-size:16px}
+
+    /* shell + drawer track the visible viewport and clear the notch / home bar */
+    .shell{min-height:100vh;min-height:100dvh}
+    aside{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding-top:calc(24px + env(safe-area-inset-top,0px));
+      padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+      padding-left:calc(18px + env(safe-area-inset-left,0px))}
+
+    /* topbar clears the Dynamic Island (portrait) and the left notch (landscape) */
+    #topbar{padding-top:calc(9px + env(safe-area-inset-top,0px));
+      padding-left:calc(12px + env(safe-area-inset-left,0px));
+      padding-right:calc(12px + env(safe-area-inset-right,0px))}
+
+    /* category strip: edge breathing room, both-side fade + clean swipe snap so
+       "My List" no longer rests half-cut at the row edge */
+    .topnav{padding-left:14px;padding-right:14px;scroll-snap-type:x proximity;scroll-padding-left:14px;
+      -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 88%,transparent 100%);
+      mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 88%,transparent 100%)}
+    .topnav-link{scroll-snap-align:start}
+
+    /* hero pull-up = real two-row header height (logo/icons row + 44px-tap
+       category strip = 128px, measured stable across phone widths) + the island
+       inset on device, so no black sliver shows above the backdrop */
+    .hero{--topbar-h:calc(128px + env(safe-area-inset-top,0px))}
+
+    /* detail modal lifts off the iOS toolbar */
+    .modal{max-height:92vh;max-height:92dvh}
+    .m-hero{max-height:56vh;max-height:56dvh}
+
+    /* video-player chrome clears the home indicator + side notches */
+    .vp-bottom{padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+    .vp-progress,.vp-controls{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+    .vp-top{padding:calc(16px + env(safe-area-inset-top,0px)) calc(18px + env(safe-area-inset-right,0px)) 16px calc(18px + env(safe-area-inset-left,0px))}
+    .vp-menu{max-height:60vh;max-height:min(60dvh,calc(100dvh - 150px));width:min(264px,calc(100vw - 24px));margin-right:env(safe-area-inset-right,0px)}
+
+    /* auth + sheet overlays scroll and respect insets (keyboard / short / notch) */
+    .auth-overlay{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding:calc(24px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(24px + env(safe-area-inset-left,0px))}
+    .auth-card{max-height:none;margin:auto}
+    .sources-list{max-height:min(56vh,440px);max-height:min(56dvh,440px);-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,0px)}
+  }
+
+  /* ---- small phones (<=640px) ---- */
+  @media (max-width:640px){
+    .hero-logo{height:clamp(46px,12vw,66px);max-width:86%;margin-bottom:12px}
+    .hero-dots{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+    /* player */
+    .vp-icon.cc{height:40px;min-width:40px;padding:3px 8px}
+    /* Bottom control bar: keep the WHOLE row on-screen on phones. The desktop row packs
+       ~11 controls + a wide "0:00 / 0:00" readout into one non-wrapping line; on a narrow
+       portrait viewport that overflows the right edge and — because .vp-overlay is
+       overflow:hidden — the trailing controls (CC / ⚙ / PiP / ⛶) get clipped off-screen.
+       Fix: give the time its own full-width line above the buttons (also far more legible),
+       let the icon row wrap as a safety net so nothing can ever clip, and drop the two
+       least-essential controls here so the rest (▶ play, ⤺/⤻ seek, ▦ episodes, CC, ⚙, ⛶)
+       sit on ONE clean row at full 40px tap targets:
+         · ◉ volume — phones control volume with hardware buttons; the inline slider was
+           already hover-only (hidden on touch), so only a redundant mute toggle is dropped.
+           This is exactly how YouTube / Netflix mobile omit a volume control;
+         · ⧉ PiP — phones expose OS-level Picture-in-Picture gestures instead. */
+    .vp-controls{flex-wrap:wrap;gap:3px;row-gap:6px}
+    .vp-time{order:-1;flex:0 0 100%;text-align:center;font-size:14px;padding:0 0 3px;color:#dadada}
+    /* #vpBack/#vpFwd dropped on phones — double-tap-left/right gestures replace them */
+    .vp-vol,#vpPip,#vpBack,#vpFwd{display:none}
+    /* …but iOS Safari supports per-video PiP (webkitSetPresentationMode); re-show the button
+       there. The .vp-has-webkit-pip class is set at runtime only when that API is real. */
+    .vp-overlay.vp-has-webkit-pip #vpPip{display:flex}
+    .vp-skip{--vp-skip-bottom:calc(132px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px))}
+    .vp-eppanel{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+    .vp-eppanel-list{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+    /* footer: stack links left, generous tap rows, clear the home bar */
+    .site-footer{padding:22px 0 calc(34px + env(safe-area-inset-bottom,0px));gap:16px 18px}
+    .site-footer .sf-disclaimer{flex:1 1 100%}
+    .site-footer .sf-links{margin-left:0;flex:1 1 100%;gap:6px 22px}
+    .site-footer .sf-links a{padding:8px 0;display:inline-flex;align-items:center;min-height:40px}
+    /* add-on catalog action buttons fill the wrapped row at 44px */
+    .addon .acts{justify-content:stretch}
+    .addon .acts .minibtn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:11px 15px;max-width:none}
+  }
+
+  /* ---- phones (<=520px): full-bleed detail sheet + filter panel + install ---- */
+  @media (max-width:520px){
+    .overlay{padding:0;align-items:stretch;justify-content:stretch}
+    .modal{width:100%;max-width:100%;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;border-radius:0}
+    .m-scroll{flex:1 1 auto;min-height:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+    .modal .close.m-disc{top:calc(12px + env(safe-area-inset-top,0px))}
+    .m-body{padding-bottom:calc(clamp(20px,3vw,32px) + env(safe-area-inset-bottom,0px))}
+    .filter-panel{max-height:calc(100dvh - 160px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+    .install-box input,.install-box button{min-height:44px}
+  }
+
+  /* ---- compact / smallest phones ---- */
+  @media (max-width:420px){
+    .m-hero-actions .hero-add{width:44px;height:44px}
+    .m-hero-actions .hero-play{min-height:44px;padding:11px 18px}
+  }
+
+  /* ---- landscape phones / short windows ---- */
+  @media (max-width:900px) and (orientation:landscape){
+    body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  }
+  @media (max-height:560px){
+    .auth-overlay{align-items:flex-start}
+    .auth-card{max-height:100vh;max-height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  }
+  @media (max-height:430px) and (orientation:landscape){
+    .m-hero{max-height:62vh;max-height:62dvh}
+    .m-hero-inner{bottom:10px}
+    .m-hero-actions .hero-play{padding:9px 18px;font-size:14px}
+    .auth-card{padding-top:20px;padding-bottom:18px}
+    .auth-kicker{margin:2px 0 12px}
+    .auth-tabs{margin-bottom:12px}
+    .auth-field{margin-bottom:10px}
+    .auth-foot{margin-top:12px}
+  }
+
+  /* ==========================================================================
+     PHONE LAYOUT REFINEMENTS (2026 pass) — folds the category nav into the
+     slide-out drawer, gives the detail-modal hero a full portrait media area,
+     calms the hero type, and adds a "Read more" synopsis. Phones only
+     (<=900 / <=640 / portrait). Desktop + tablet (>900px) are untouched.
+     Appended last so these win the cascade over the earlier mobile blocks.
+     ========================================================================== */
+
+  /* ---- category nav folds into the slide-out drawer on phones ---- */
+  /* desktop/tablet keep the header strip → the drawer category group is hidden there */
+  .nav-cat-group{display:none}
+  .m-readmore{display:inline-flex;align-items:center;gap:6px;background:none;border:0;cursor:pointer;
+    padding:0;margin-top:9px;font-family:var(--font-mono);font-size:12.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--accent);transition:color .2s}
+  :root[data-lang="ka"] .m-readmore{text-transform:none;letter-spacing:.04em}
+  .m-readmore:hover{color:var(--accent-h)}
+  .m-readmore::after{content:"▾";font-size:11px;line-height:1}
+  .m-readmore.is-less::after{content:"▴"}
+
+  /* #mPoster carries BOTH .poster and .m-hero-bg — the responsive .poster{width/height}
+     overrides above (same specificity, later in source) were shrinking the modal hero
+     backdrop into a small ~144px card ("small movie card size cover"). Pin it to fill the
+     hero with a higher-specificity selector so the backdrop/trailer spans full-bleed. */
+  .m-hero .m-hero-bg{width:100%;height:100%}
+
+  @media (max-width:900px){
+    /* hide the horizontal STREDIO strip — categories now live in the drawer */
+    #topbar .topnav{display:none}
+    /* surface the hamburger (display:none everywhere by default) as the drawer opener,
+       pinned to the far left ahead of the wordmark */
+    #topbar .menu-btn{display:flex;order:-2;align-items:center;justify-content:center;
+      width:42px;height:42px;margin:0 2px 0 -2px;padding:0;background:none;border:none;cursor:pointer;
+      color:#fff;font-size:22px;line-height:1;border-radius:10px;flex-shrink:0;
+      -webkit-tap-highlight-color:transparent;transition:background .2s}
+    #topbar .menu-btn:active{background:rgba(255,255,255,.08)}
+    /* the header is now a single control row (~56px), not the old two-row strip — re-point
+       the homepage hero pull-up so its backdrop still meets the top with no black sliver */
+    .hero{--topbar-h:calc(56px + env(safe-area-inset-top,0px))}
+    /* tapping the search icon adds a full-width second header row (~53px). Grow the hero
+       pull-up by that row so the backdrop still meets the top instead of dropping a dark
+       band ("cut") at the top while search is open (before the topnav was hidden, opening
+       search just replaced the category row, so the height — and the hero — never moved) */
+    #topbar.search-open ~ .page .hero{--topbar-h:calc(109px + env(safe-area-inset-top,0px))}
+    /* the animated placeholder reads oversized at the 16px the input needs to dodge iOS
+       focus-zoom — shrink just the placeholder text (the input value itself stays 16px) */
+    #searchInput::placeholder{font-size:13.5px}
+    /* reveal the drawer category group; it reuses the existing .nav-item styling */
+    .nav-cat-group{display:flex}
+    /* the BROWSE page list (Catalog/Addons/Settings/Admin) is redundant on phones — "Home"
+       in the WATCH group + the logo reach the catalog, and Settings/Addons live in the
+       account ▾ menu — so drop it; the drawer shows just the category nav */
+    aside .nav-group:not(.nav-cat-group){display:none}
+  }
+
+  /* ---- detail-modal hero: calmer, readable type on phones ---- */
+  @media (max-width:640px){
+    .m-hero-inner{left:clamp(14px,4vw,22px);right:clamp(14px,4vw,22px);
+      bottom:clamp(26px,6vw,40px);max-width:100%}
+    .m-kicker{font-size:10.5px;letter-spacing:.2em;margin-bottom:8px}
+    .m-kicker::before{width:16px}
+    #mTitle{font-size:clamp(20px,6.2vw,30px);line-height:1.12;margin:0 0 9px;letter-spacing:.03em}
+    #mTitle .title-logo{height:clamp(34px,11vw,52px);max-width:min(76%,260px)}
+    .m-meta{font-size:11.5px;gap:8px;margin:0 0 8px}
+    .m-genres{gap:6px;margin:0 0 12px}
+    .m-genres .chip{font-size:10px;padding:2px 7px;letter-spacing:.05em}
+    .m-hero-actions{gap:10px}
+    .m-hero-actions .hero-play{padding:10px 20px;font-size:13.5px}
+    /* synopsis: smaller body + a 5-line clamp the JS toggles on overflow */
+    .m-plot{font-size:14.5px;line-height:1.6}
+    .m-plot.clamped{display:-webkit-box;-webkit-line-clamp:5;line-clamp:5;
+      -webkit-box-orient:vertical;overflow:hidden}
+  }
+
+  /* ---- portrait phones: tall full-bleed hero media (the 16:9 cap made it a thin band
+     where the cover looked like a small card and the text piled up over it). Every hero
+     child is absolutely positioned, so min-height alone drives the media size. ---- */
+  @media (max-width:640px) and (orientation:portrait){
+    /* base the tall hero on the modal black --bg-2 (not the default --bg-3 purple-grey). The
+       backdrop band's ::after dissolves its 16:9 bottom edge into --bg-2; without a trailer the
+       base stayed --bg-3, so the poster faded to black and then seam-jumped back to grey under
+       the title. Painting the base --bg-2 here makes the no-trailer backdrop melt into one
+       continuous surface — i.e. the poster now "has a bg" exactly like the trailer case below. */
+    .m-hero{aspect-ratio:auto;height:auto;background:var(--bg-2);
+      min-height:clamp(420px,62vh,600px);min-height:clamp(420px,62dvh,600px);max-height:none}
+    /* The tall portrait hero made the 16:9 trailer letterbox itself: filling the full hero
+       height vertically-centred left a fat black band ABOVE the video (with the close ✕
+       stranded in it). Pin the trailer slot to a true 16:9 band at the TOP of the hero so the
+       video meets the top edge — the iframe's center+scale crop now happens within that band,
+       and the backdrop+scrim+title fill the space below it. overflow:hidden clips the scaled
+       iframe's bottom bleed exactly at the 16:9 line so there's one fixed, predictable
+       trailer-bottom to fade from (independent of the fluid hero height). */
+    .m-hero-trailer-slot{inset:0 0 auto;height:auto;aspect-ratio:16/9;overflow:hidden}
+    /* pin the backdrop to the SAME 16:9 top band as the trailer (not the full tall hero) so
+       the poster is framed identically to the video — the cross-dissolve lands pixel-aligned
+       with no crop "jump", making the trailer fade in smoothly. The hero base below the band
+       is the modal black --bg-2, which the poster fades into when the trailer reveals. */
+    /* kill the Ken-Burns zoom/pan here: its scale(1.06→1.14)+drift transform inflated the
+       poster (~7% bigger) and slid it off the trailer slot, so the two bands never aligned.
+       Static = the poster is a 16:9 band pixel-identical to the trailer, for a clean fade. */
+    .m-hero .m-hero-bg{inset:0 0 auto;height:auto;aspect-ratio:16/9;animation:none;transform:none}
+    /* same bottom-dissolve gradient as the trailer so the poster band's hard 16:9 bottom edge
+       melts into --bg-2 identically — the backdrop and the trailer share one continuous
+       bottom fade, so the cross-dissolve never reveals a mismatched hard edge. */
+    .m-hero .m-hero-bg::after{content:"";position:absolute;left:0;right:0;bottom:0;
+      height:66%;z-index:2;pointer-events:none;background:linear-gradient(180deg,
+        transparent 0%,rgba(7,7,7,.15) 38%,rgba(7,7,7,.5) 64%,rgba(7,7,7,.86) 84%,var(--bg-2) 100%)}
+    /* the trailer only covers the top 16:9 band here, so the backdrop kept showing (a second
+       still frame) behind the title below it. Fade the backdrop out once the trailer reveals,
+       and recolour the exposed hero base from --bg-3 (#161419, a lighter purple-grey) to the
+       modal black --bg-2 — so the trailer fade, the area under it and the body below are ONE
+       continuous black with no lighter seam. */
+    .m-hero.has-trailer{background:var(--bg-2)}
+    .m-hero.has-trailer .m-hero-bg{opacity:0;transition:opacity 1.3s cubic-bezier(.4,0,.2,1) .15s}
+    /* the natural smooth dissolve: an eased multi-stop black gradient rising out of the
+       trailer's lower third into that same --bg-2, so the hard rectangular bottom edge melts
+       and trailer → background reads as a single surface. Anchored to the slot (fixed 16:9),
+       not the hero, so it lands identically at every phone height. */
+    .m-hero.has-trailer .m-hero-trailer-slot::after{content:"";position:absolute;left:0;right:0;bottom:0;
+      height:66%;z-index:2;pointer-events:none;background:linear-gradient(180deg,
+        transparent 0%,rgba(7,7,7,.15) 38%,rgba(7,7,7,.5) 64%,rgba(7,7,7,.86) 84%,var(--bg-2) 100%)}
+    /* with the trailer fade now owning the dissolve, calm the scrim's vertical ramp so it
+       doesn't double-darken the video; keep the horizontal wash for title legibility */
+    .m-hero-scrim{background:
+      linear-gradient(0deg,var(--bg-2) 0%,var(--bg-2) 3%,rgba(7,7,7,.6) 14%,transparent 34%),
+      linear-gradient(90deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.12) 46%,transparent 72%)}
+  }
