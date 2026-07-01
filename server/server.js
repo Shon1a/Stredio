@@ -113,8 +113,11 @@ app.use((req, res, next) => {
     "media-src 'self' blob: https:",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
     "font-src 'self' https://fonts.gstatic.com",
-    // Google Identity Services ships its button + flow from accounts.google.com/gsi
-    "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+    // Google Identity Services ships its button + flow from accounts.google.com/gsi.
+    // The Stredio-Heart core is imported as an ES module from jsDelivr and WebAssembly
+    // compilation needs 'wasm-unsafe-eval'; the add-ons loader falls back to inline JS
+    // if either is disallowed, so this only *enables* the wasm path, never requires it.
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net",
     // hls.js offloads demuxing to a Web Worker it spawns from a blob: URL; without
     // an explicit worker-src the script-src fallback blocks it, forcing slower
     // main-thread playback (and a console error) for every HLS source.
